@@ -1,0 +1,6 @@
+@DreamGuard.BE.API_HostAddress = http://localhost:5128
+
+GET {{DreamGuard.BE.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

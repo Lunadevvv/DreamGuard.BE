@@ -1,0 +1,16 @@
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\bin\Debug\net8.0\DreamGuard.BE.BLL.deps.json
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\bin\Debug\net8.0\DreamGuard.BE.BLL.dll
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\bin\Debug\net8.0\DreamGuard.BE.BLL.pdb
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\bin\Debug\net8.0\DreamGuard.BE.DAL.dll
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\bin\Debug\net8.0\DreamGuard.BE.DAL.pdb
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.csproj.AssemblyReference.cache
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.GeneratedMSBuildEditorConfig.editorconfig
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.AssemblyInfoInputs.cache
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.AssemblyInfo.cs
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.csproj.CoreCompileInputs.cache
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.sourcelink.json
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGua.3A93CAB6.Up2Date
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.dll
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\refint\DreamGuard.BE.BLL.dll
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\DreamGuard.BE.BLL.pdb
+D:\Capstone project\DreamGuard.BE\DreamGuard.BE.BLL\obj\Debug\net8.0\ref\DreamGuard.BE.BLL.dll

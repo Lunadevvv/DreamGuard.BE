@@ -1,0 +1,31 @@
+﻿using DreamGuard.BE.DAL.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DreamGuard.BE.DAL.DbContext
+{
+    public class DreamGuardContext : IdentityDbContext<User>
+    {
+        public DreamGuardContext()
+        {
+        }
+
+        public DreamGuardContext(DbContextOptions<DreamGuardContext> options) : base(options)
+        {
+        }
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+            // viết configuration cho các entity qua class riêng và tự động apply tất cả các configuration trong assembly ( đỡ rối & dễ sửa)
+            builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        }
+
+    }
+}
