@@ -13,6 +13,12 @@ namespace DreamGuard.BE.DAL.Configurations
     {
         public void Configure(EntityTypeBuilder<User> builder)
         {
+            builder.HasKey(e => e.Id);
+            builder.Property(e => e.FirstName).HasMaxLength(10);
+            builder.Property(e => e.LastName).HasMaxLength(10);
+            builder.Property(e => e.DateOfBirth).IsRequired();
+            builder.Property(e => e.CreatedAt).HasColumnType("TIMESTAMPTZ");
+            builder.Property(e => e.UpdatedAt).HasColumnType("TIMESTAMPTZ");
             builder.ToTable("Users");
         }
     }

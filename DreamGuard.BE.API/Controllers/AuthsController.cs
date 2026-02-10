@@ -1,6 +1,7 @@
 ﻿using DreamGuard.BE.API.Dtos;
 using DreamGuard.BE.API.Requests;
 using DreamGuard.BE.BLL.Services;
+using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
@@ -21,14 +22,17 @@ namespace DreamGuard.BE.API.Controllers
     public class AuthsController : ControllerBase
     {
         private readonly IIdentityService _identityService;
-        public AuthsController(IIdentityService identityService)
+        private readonly IOtpService _otpService;
+        public AuthsController(IIdentityService identityService, IOtpService otpService)
         {
             _identityService = identityService;
+            _otpService = otpService;
         }
+
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            var result = await _identityService.LoginAsync(loginRequest.Email, loginRequest.Password);
+            var result = await _identityService.LoginAsync(loginRequest.PhoneNumber, loginRequest.Password);
             if(!result.Succeeded)
             {
                 return StatusCode(result.StatusCode,new ErrorResponse
@@ -39,13 +43,15 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpPost("Register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
         {
             var result = await _identityService
                 .RegisterAsync(registerRequest.Email,
                 registerRequest.Password,
-                registerRequest.UserName,
+                registerRequest.FirstName,
+                registerRequest.LastName,
                 registerRequest.PhoneNumber,
                 registerRequest.Gender,
                 registerRequest.DateOfBirth);
@@ -59,10 +65,11 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
-        [HttpPost("VerifyOtp")]
+
+        [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest verifyOtpRequest)
         {
-            var result = await _identityService.VerifyOtpAsync(verifyOtpRequest.UserId, verifyOtpRequest.OtpCode);
+            var result = await _otpService.VerifyOtpAsync(verifyOtpRequest.phoneNumber, verifyOtpRequest.email, verifyOtpRequest.OtpCode);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -73,10 +80,11 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok("Xác thực OTP thành công");
         }
-        [HttpPost("ResendOtp")]
-        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest resendOtpRequest)
+
+        [HttpPost("send-otp")]
+        public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest sendOtpRequest)
         {
-            var result = await _identityService.ReSendOtpAsync(resendOtpRequest.UserId);
+            var result = await _otpService.GenerateAndSendOtpAsync(sendOtpRequest.phone, sendOtpRequest.email);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -85,8 +93,9 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Gửi lại mã OTP thành công");
+            return Ok($"Gửi mã OTP về {sendOtpRequest.email} thành công");
         }
+
         [Authorize(Roles = $"{Role.Admin},{Role.User}")]
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout()
@@ -103,6 +112,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok("Đăng xuất thành công");
         }
+
         [HttpPost("RefreshToken")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest refreshTokenRequest)
         {

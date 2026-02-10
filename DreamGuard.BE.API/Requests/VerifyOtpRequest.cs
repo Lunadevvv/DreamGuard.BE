@@ -2,7 +2,8 @@
 {
     public class VerifyOtpRequest
     {
-        public string UserId { get; set; } = string.Empty;
+        public string phoneNumber { get; set; } = string.Empty;
+        public string email { get; set; } = string.Empty;
         public string OtpCode { get; set; } = string.Empty;
     }
 }

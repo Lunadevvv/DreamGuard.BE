@@ -1,9 +1,13 @@
 ﻿
 using DreamGuard.BE.BLL.Services;
+using DreamGuard.BE.BLL.Services.Implements;
+using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Options;
+using DreamGuard.BE.DAL.Repositories.Implements;
+using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
@@ -144,8 +148,13 @@ namespace DreamGuard.BE.API
             //Add BrevoKey
             builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
 
+            builder.Services.AddHttpContextAccessor();
+
             //Add DI for BLL and DAL
             builder.Services.AddScoped<IIdentityService, IdentityService>();
+            builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+            builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+            builder.Services.AddScoped<IOtpService, OtpService>();
             builder.Services.AddScoped<IBrevoEmailService, BrevoEmailService>();
             builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
 
