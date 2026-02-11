@@ -20,9 +20,13 @@ namespace DreamGuard.BE.DAL.DbContext
         {
         }
 
+        public DbSet<User> Users { get; set; }
+        public DbSet<Otp> Otps { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
             // viết configuration cho các entity qua class riêng và tự động apply tất cả các configuration trong assembly ( đỡ rối & dễ sửa)
             builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         }

@@ -9,13 +9,15 @@ namespace DreamGuard.BE.DAL.Models
 {
     public class User : IdentityUser
     {
-        public string RefreshToken { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
         public DateOnly DateOfBirth { get; set; }
         public string Gender { get; set; } = string.Empty;
-        public string? OtpCode { get; set; }
-        public DateTime? OtpExpiryTime { get; set; }
-        public int OtpAttempts { get; set; } = 0;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsRevoked { get; set; } = false;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     }
 }

@@ -64,10 +64,25 @@ namespace DreamGuard.BE.DAL.DbContext
         {
             // Default roles
             var adminRole = new IdentityRole(Role.Admin);
+            var managerRole = new IdentityRole(Role.Manager);
+            var sellerRole = new IdentityRole(Role.Seller);
+            var cleaningStaffRole = new IdentityRole(Role.CleaningStaff);
             var userRole = new IdentityRole(Role.User);
             if (_roleManager.Roles.All(r => r.Name != adminRole.Name))
             {
                 await _roleManager.CreateAsync(adminRole);
+            }
+            if (_roleManager.Roles.All(r => r.Name != managerRole.Name))
+            {
+                await _roleManager.CreateAsync(managerRole);
+            }
+            if (_roleManager.Roles.All(r => r.Name != sellerRole.Name))
+            {
+                await _roleManager.CreateAsync(sellerRole);
+            }
+            if (_roleManager.Roles.All(r => r.Name != cleaningStaffRole.Name))
+            {
+                await _roleManager.CreateAsync(cleaningStaffRole);
             }
             if (_roleManager.Roles.All(r => r.Name != userRole.Name))
             {
@@ -75,7 +90,7 @@ namespace DreamGuard.BE.DAL.DbContext
             }
 
             // Default users
-            var administrator = new User { UserName = "Admin", Email = "admin@gmail.com", DateOfBirth = new DateOnly(2004, 01, 07), Gender = Gender.Male, EmailConfirmed = true};
+            var administrator = new User { PhoneNumber = "0357968555", UserName = "Admin", Email = "admin@gmail.com", DateOfBirth = new DateOnly(2004, 01, 07), Gender = Gender.Male, EmailConfirmed = true};
 
             if (_userManager.Users.All(u => u.UserName != administrator.UserName))
             {
