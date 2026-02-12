@@ -96,7 +96,7 @@ namespace DreamGuard.BE.API.Controllers
             return Ok($"Gửi mã OTP về {sendOtpRequest.email} thành công");
         }
 
-        [Authorize(Roles = $"{Role.Admin},{Role.User}")]
+        [Authorize]
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout()
         {
