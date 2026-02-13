@@ -98,7 +98,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Email = email,
                 FirstName = firstName,
                 LastName = lastName,
-                UserName = firstName + " " + lastName,
+                UserName = firstName + lastName,
                 PhoneNumber = phoneNumber,
                 Gender = gender,
                 DateOfBirth = dateOfBirth,
@@ -107,7 +107,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(newUser, Role.User);
-                await _brevoEmailService.ActivateEmailAsync(newUser.Email, "Congratulations! Your account has been successfully created.");
+                await _brevoEmailService.SendCustomEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
                 var registerResponse = new RegisterResponse
                 {
                     UserId = newUser.Id,
