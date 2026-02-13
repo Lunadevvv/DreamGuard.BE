@@ -129,7 +129,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     , new Claim[]
                     {
                     new(ClaimTypes.Name, account.UserName),
-                    new(ClaimTypes.NameIdentifier, account.Id),
+                    new(ClaimTypes.NameIdentifier, account.Id.ToString()),
                     new(ClaimTypes.Role, roleName),
                     },
                     expires: DateTime.UtcNow.AddMinutes(_config["Jwt:AccessTokenValidityInMinutes"] != null ? Convert.ToDouble(_config["Jwt:AccessTokenValidityInMinutes"]) : 15),
@@ -148,9 +148,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Convert.ToBase64String(randomNumber);
         }
 
-        public async Task<Result> LogoutAsync(string userId)
+        public async Task<Result> LogoutAsync(Guid userId)
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
             {
                 return Result.Failure("User không tồn tại", 404);

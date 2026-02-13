@@ -26,7 +26,7 @@ namespace DreamGuard.BE.API.Controllers
      
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var result = await _addressService.GetAllAsync(userId, pageNumber);
             if (!result.Succeeded)
             {
@@ -39,9 +39,9 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
         [HttpGet("{addressId}")]
-        public async Task<IActionResult> GetByIdAsync(string addressId)
+        public async Task<IActionResult> GetByIdAsync(Guid addressId)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var result = await _addressService.GetByIdAsync(userId, addressId);
             if (!result.Succeeded)
             {
@@ -56,7 +56,7 @@ namespace DreamGuard.BE.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAsync([FromBody] AddressCreateRequest AddressRequest)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var Address = _mapper.Map<Address>(AddressRequest);
             Address.UserId = userId;
             var result = await _addressService.CreateAsync(Address);
@@ -71,10 +71,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result);
         }
 		[HttpPut("{addressId}")]
-		public async Task<IActionResult> UpdateAsync(string addressId, [FromBody] AddressUpdateRequest AddressRequest)
+		public async Task<IActionResult> UpdateAsync(Guid addressId, [FromBody] AddressUpdateRequest AddressRequest)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			var result = await _addressService.UpdateAsync(userId, addressId, AddressRequest);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var result = await _addressService.UpdateAsync(userId, addressId, AddressRequest);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -86,9 +86,9 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result);
         }
         [HttpDelete("{addressId}")]
-        public async Task<IActionResult> RemoveAsync(string addressId)
+        public async Task<IActionResult> RemoveAsync(Guid addressId)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var result = await _addressService.RemoveAsync(userId, addressId);
             if (!result.Succeeded)
             {

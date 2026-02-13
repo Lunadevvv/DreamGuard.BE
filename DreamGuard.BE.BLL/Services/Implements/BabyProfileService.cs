@@ -27,7 +27,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _mapper = mapper;
             _repo = repo;
         }
-        public async Task<Result<PaginatedList<BabyProfileResponse>>> GetAllAsync(string userId,int pageNumber)
+        public async Task<Result<PaginatedList<BabyProfileResponse>>> GetAllAsync(Guid userId,int pageNumber)
         {
             var babies = await  _repo.GetAllAsync(userId, pageNumber);
             if (babies == null || babies.TotalCount == 0)
@@ -39,7 +39,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<BabyProfileResponse>>.Success(paginatedResult);
         }
 
-        public async Task<Result<BabyProfileResponse>> GetByIdAsync(string userId, string babyId)
+        public async Task<Result<BabyProfileResponse>> GetByIdAsync(Guid userId, Guid babyId)
         {
             var baby = await _repo.GetByIdAsync(userId, babyId);
             if (baby == null)
@@ -55,7 +55,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var result = await _repo.CreateAsync(babyProfile);
             return Result.Success($"{result}");
         }
-        public async Task<Result> UpdateAsync(string userId, string babyId, BabyProfileUpdateRequest babyProfileRequest)
+        public async Task<Result> UpdateAsync(Guid userId, Guid babyId, BabyProfileUpdateRequest babyProfileRequest)
         {
             var existingBabyProfile = await _repo.GetByIdAsync(userId, babyId);
             if (existingBabyProfile == null)
@@ -66,7 +66,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var result = await _repo.UpdateAsync(existingBabyProfile);
             return Result.Success($"{result}");
         }
-        public async Task<Result> RemoveAsync(string userId, string babyId)
+        public async Task<Result> RemoveAsync(Guid userId, Guid babyId)
         {
             var babyProfile = await _repo.GetByIdAsync(userId, babyId);
             if (babyProfile == null)

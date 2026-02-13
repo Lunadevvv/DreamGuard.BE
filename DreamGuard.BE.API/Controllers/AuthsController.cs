@@ -98,7 +98,7 @@ namespace DreamGuard.BE.API.Controllers
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var result = await _identityService.LogoutAsync(userId);
             if (!result.Succeeded)
             {

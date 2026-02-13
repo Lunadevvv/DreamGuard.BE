@@ -16,7 +16,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public AddressRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<Address> GetByIdAsync(string userId, string addressId)
+        public async Task<Address> GetByIdAsync(Guid userId, Guid addressId)
         {
             try
             {
@@ -28,7 +28,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<PaginatedList<Address>> GetAllAsync(string userId, int pageNumber)
+        public async Task<PaginatedList<Address>> GetAllAsync(Guid userId, int pageNumber)
         {
             try
             {

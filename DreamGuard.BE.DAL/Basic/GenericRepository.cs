@@ -63,7 +63,7 @@ namespace DreamGuard.BE.DAL.Basic
                 throw new Exception($"Error removing entity: {ex.Message}");
             }
         }
-        public async Task<T> GetByIdAsync(string id)
+        public async Task<T> GetByIdAsync(Guid id)
         {
             try
             {

@@ -12,7 +12,7 @@ namespace DreamGuard.BE.BLL.Responses
 {
     public class AddressResponse
     {
-        public string AddressId { get; set; }
+        public Guid AddressId { get; set; }
         public string ReceiverName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Street { get; set; } = string.Empty;

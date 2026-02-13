@@ -11,7 +11,7 @@ namespace DreamGuard.BE.BLL.Responses
 {
     public class BabyProfileResponse
     {
-        public string BabyId { get; set; }
+        public Guid BabyId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Gender { get; set; } = string.Empty;
         public DateOnly DateOfBirth { get; set; }

@@ -145,7 +145,7 @@ namespace DreamGuard.BE.API
 
             //Add IdentityUser and IdentityRole
             builder.Services.AddIdentityCore<User>()
-                .AddRoles<IdentityRole>()
+                .AddRoles<IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<DreamGuardContext>();
             //Add BrevoKey
             builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));

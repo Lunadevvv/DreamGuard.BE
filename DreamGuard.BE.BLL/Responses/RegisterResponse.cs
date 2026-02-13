@@ -8,7 +8,7 @@ namespace DreamGuard.BE.BLL.Responses
 {
     public class RegisterResponse
     {
-        public string UserId { get; set; } = string.Empty;
+        public Guid UserId { get; set; } = Guid.Empty;
         public string Message { get; set; } = string.Empty;
     }
 }

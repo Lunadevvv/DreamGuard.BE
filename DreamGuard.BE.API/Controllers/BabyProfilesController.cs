@@ -26,7 +26,7 @@ namespace DreamGuard.BE.API.Controllers
      
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var result = await _babyProfileService.GetAllAsync(userId, pageNumber);
             if (!result.Succeeded)
             {
@@ -39,9 +39,9 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
         [HttpGet("{babyId}")]
-        public async Task<IActionResult> GetByIdAsync(string babyId)
+        public async Task<IActionResult> GetByIdAsync(Guid babyId)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var result = await _babyProfileService.GetByIdAsync(userId, babyId);
             if (!result.Succeeded)
             {
@@ -56,7 +56,7 @@ namespace DreamGuard.BE.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAsync([FromBody] BabyProfileCreateRequest babyProfileRequest)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var babyProfile = _mapper.Map<BabyProfile>(babyProfileRequest);
             babyProfile.UserId = userId;
             var result = await _babyProfileService.CreateAsync(babyProfile);
@@ -71,10 +71,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result);
         }
 		[HttpPut("{babyId}")]
-		public async Task<IActionResult> UpdateAsync(string babyId, [FromBody] BabyProfileUpdateRequest babyProfileRequest)
+		public async Task<IActionResult> UpdateAsync(Guid babyId, [FromBody] BabyProfileUpdateRequest babyProfileRequest)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			var result = await _babyProfileService.UpdateAsync(userId, babyId, babyProfileRequest);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var result = await _babyProfileService.UpdateAsync(userId, babyId, babyProfileRequest);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -86,9 +86,9 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result);
         }
         [HttpDelete("{babyId}")]
-        public async Task<IActionResult> RemoveAsync(string babyId)
+        public async Task<IActionResult> RemoveAsync(Guid babyId)
         {
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var result = await _babyProfileService.RemoveAsync(userId, babyId);
             if (!result.Succeeded)
             {

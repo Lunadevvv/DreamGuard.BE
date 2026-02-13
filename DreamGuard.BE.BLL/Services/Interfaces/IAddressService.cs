@@ -13,10 +13,10 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IAddressService
     {
-        Task<Result<PaginatedList<AddressResponse>>> GetAllAsync(string userId, int pageNumber);
-        Task<Result<AddressResponse>> GetByIdAsync(string userId, string addressId);
+        Task<Result<PaginatedList<AddressResponse>>> GetAllAsync(Guid userId, int pageNumber);
+        Task<Result<AddressResponse>> GetByIdAsync(Guid userId, Guid addressId);
         Task<Result> CreateAsync(Address address);
-        Task<Result> UpdateAsync(string userId, string addressId, AddressUpdateRequest addressRequest);
-        Task<Result> RemoveAsync(string userId, string addressId);
+        Task<Result> UpdateAsync(Guid userId, Guid addressId, AddressUpdateRequest addressRequest);
+        Task<Result> RemoveAsync(Guid userId, Guid addressId);
     }
 }

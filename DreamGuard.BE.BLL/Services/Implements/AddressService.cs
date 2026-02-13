@@ -27,7 +27,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _mapper = mapper;
             _repo = repo;
         }
-        public async Task<Result<PaginatedList<AddressResponse>>> GetAllAsync(string userId, int pageNumber)
+        public async Task<Result<PaginatedList<AddressResponse>>> GetAllAsync(Guid userId, int pageNumber)
         {
             var addresses = await  _repo.GetAllAsync(userId, pageNumber);
             if (addresses == null || addresses.TotalCount == 0)
@@ -39,7 +39,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<AddressResponse>>.Success(paginatedResult);
         }
 
-        public async Task<Result<AddressResponse>> GetByIdAsync(string userId, string addressId)
+        public async Task<Result<AddressResponse>> GetByIdAsync(Guid userId, Guid addressId)
         {
             var address = await _repo.GetByIdAsync(userId, addressId);
             if (address == null)
@@ -55,7 +55,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var result = await _repo.CreateAsync(Address);
             return Result.Success($"{result}");
         }
-        public async Task<Result> UpdateAsync(string userId, string addressId, AddressUpdateRequest addressRequest)
+        public async Task<Result> UpdateAsync(Guid userId, Guid addressId, AddressUpdateRequest addressRequest)
         {
             var existingAddress = await _repo.GetByIdAsync(userId, addressId);
             if (existingAddress == null)
@@ -66,7 +66,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var result = await _repo.UpdateAsync(existingAddress);
             return Result.Success($"{result}");
         }
-        public async Task<Result> RemoveAsync(string userId, string addressId)
+        public async Task<Result> RemoveAsync(Guid userId, Guid addressId)
         {
             var Address = await _repo.GetByIdAsync(userId, addressId);
             if (Address == null)

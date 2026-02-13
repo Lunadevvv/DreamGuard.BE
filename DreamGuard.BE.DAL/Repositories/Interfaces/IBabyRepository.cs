@@ -11,8 +11,8 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IBabyProfileRepository : IGenericRepository<BabyProfile>
     {
-        Task<PaginatedList<BabyProfile>> GetAllAsync(string userId, int pageNumber);
-        Task<BabyProfile> GetByIdAsync(string userId, string babyId);
+        Task<PaginatedList<BabyProfile>> GetAllAsync(Guid userId, int pageNumber);
+        Task<BabyProfile> GetByIdAsync(Guid userId, Guid babyId);
 
     }
 }

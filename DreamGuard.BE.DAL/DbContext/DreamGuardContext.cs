@@ -1,4 +1,5 @@
 ﻿using DreamGuard.BE.DAL.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace DreamGuard.BE.DAL.DbContext
 {
-    public class DreamGuardContext : IdentityDbContext<User>
+    public class DreamGuardContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     {
         public DreamGuardContext()
         {

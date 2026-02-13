@@ -16,7 +16,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public BabyProfileRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<BabyProfile> GetByIdAsync(string userId, string babyId)
+        public async Task<BabyProfile> GetByIdAsync(Guid userId, Guid babyId)
         {
             try
             {
@@ -28,7 +28,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<PaginatedList<BabyProfile>> GetAllAsync(string userId, int pageNumber)
+        public async Task<PaginatedList<BabyProfile>> GetAllAsync(Guid userId, int pageNumber)
         {
             try
             {

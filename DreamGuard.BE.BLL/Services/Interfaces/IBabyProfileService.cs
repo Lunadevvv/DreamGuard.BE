@@ -13,10 +13,10 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IBabyProfileService
     {
-        Task<Result<PaginatedList<BabyProfileResponse>>> GetAllAsync(string userId, int pageNumber);
-        Task<Result<BabyProfileResponse>> GetByIdAsync(string userId, string babyId);
+        Task<Result<PaginatedList<BabyProfileResponse>>> GetAllAsync(Guid userId, int pageNumber);
+        Task<Result<BabyProfileResponse>> GetByIdAsync(Guid userId, Guid babyId);
         Task<Result> CreateAsync(BabyProfile babyProfile);
-        Task<Result> UpdateAsync(string userId, string babyId, BabyProfileUpdateRequest babyProfileRequest);
-        Task<Result> RemoveAsync(string userId, string babyId);
+        Task<Result> UpdateAsync(Guid userId, Guid babyId, BabyProfileUpdateRequest babyProfileRequest);
+        Task<Result> RemoveAsync(Guid userId, Guid babyId);
     }
 }

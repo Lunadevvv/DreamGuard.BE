@@ -8,8 +8,8 @@ namespace DreamGuard.BE.DAL.Models
 {
     public class BabyProfile
     {
-        public string BabyId { get; set; } = Guid.NewGuid().ToString();
-        public string UserId { get; set; }
+        public Guid BabyId { get; set; } = Guid.NewGuid();
+        public Guid UserId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Gender { get; set; } = string.Empty;
         public DateOnly DateOfBirth { get; set; }
