@@ -1,4 +1,5 @@
 ﻿using DreamGuard.BE.BLL.Common;
+using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Options;
 using Microsoft.Extensions.Options;
 using sib_api_v3_sdk.Api;
@@ -6,7 +7,7 @@ using sib_api_v3_sdk.Client;
 using sib_api_v3_sdk.Model;
 using Task = System.Threading.Tasks.Task;
 
-namespace DreamGuard.BE.BLL.Services
+namespace DreamGuard.BE.BLL.Services.Implements
 {
     public class BrevoEmailService : IBrevoEmailService
     {
@@ -33,7 +34,7 @@ namespace DreamGuard.BE.BLL.Services
                     }
                 );
                 await apiInstance.SendTransacEmailAsync(sendSmtpEmail);
-                return Result.Success();
+                return Result.Success("Send mail successfully");
             }
             catch (Exception ex)
             {
@@ -52,7 +53,7 @@ namespace DreamGuard.BE.BLL.Services
                     htmlContent: content
                 );
                 await apiInstance.SendTransacEmailAsync(sendSmtpEmail);
-                return Result.Success();
+                return Result.Success("Send mail successfully");
             }
             catch (Exception ex)
             {

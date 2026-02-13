@@ -1,4 +1,4 @@
-﻿namespace DreamGuard.BE.API.Dtos
+﻿namespace DreamGuard.BE.BLL.Requests
 {
     public class RefreshTokenRequest
     {

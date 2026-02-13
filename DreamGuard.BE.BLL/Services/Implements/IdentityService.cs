@@ -1,6 +1,7 @@
 ﻿using DreamGuard.BE.BLL.Common;
+using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
-using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -17,7 +18,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DreamGuard.BE.BLL.Services
+namespace DreamGuard.BE.BLL.Services.Implements
 {
     public class IdentityService : IIdentityService
     {
@@ -171,7 +172,7 @@ namespace DreamGuard.BE.BLL.Services
             // 4. Xóa cookies
             DeleteAuthCookie("AccessToken");
             DeleteAuthCookie("RefreshToken");
-            return Result.Success();
+            return Result.Success("Log out successfully");
         }
 
         //viết token vào cookie gửi lên client

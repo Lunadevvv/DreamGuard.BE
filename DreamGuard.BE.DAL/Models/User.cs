@@ -18,6 +18,8 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public bool IsRevoked { get; set; } = false;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public ICollection<BabyProfile> BabyProfiles { get; set; } = new List<BabyProfile>();
+        public ICollection<Address> Addresses { get; set; } = new List<Address>();
 
     }
 }

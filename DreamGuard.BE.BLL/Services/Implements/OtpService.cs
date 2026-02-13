@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
@@ -83,7 +83,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             //Send email with OTP code
             await _brevoEmailService.ActivateEmailAsync(email, otpCode);
-            return Result.Success();
+            return Result.Success($"Gửi mã OTP về {email} thành công");
         }
 
         public async Task<Result<bool>> VerifyOtpAsync(string phoneNumber, string email, string code)

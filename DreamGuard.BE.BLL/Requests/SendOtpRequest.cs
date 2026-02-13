@@ -1,4 +1,4 @@
-﻿namespace DreamGuard.BE.API.Requests
+﻿namespace DreamGuard.BE.BLL.Requests
 {
     public class SendOtpRequest
     {

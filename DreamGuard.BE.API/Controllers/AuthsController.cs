@@ -1,9 +1,7 @@
-﻿using DreamGuard.BE.API.Dtos;
-using DreamGuard.BE.API.Requests;
-using DreamGuard.BE.BLL.Services;
+﻿using DreamGuard.BE.BLL.Requests;
+using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
-using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
@@ -93,7 +91,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok($"Gửi mã OTP về {sendOtpRequest.email} thành công");
+            return Ok(result);
         }
 
         [Authorize]
@@ -110,7 +108,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Đăng xuất thành công");
+            return Ok(result);
         }
 
         [HttpPost("RefreshToken")]

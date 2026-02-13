@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DreamGuard.BE.DAL.ModelExtensions
+namespace DreamGuard.BE.BLL.Responses
 {
     public class ErrorResponse
     {

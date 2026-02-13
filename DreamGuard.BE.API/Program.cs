@@ -1,9 +1,9 @@
-﻿
-using DreamGuard.BE.BLL.Services;
+﻿using DreamGuard.BE.BLL;
+using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.DbContext;
-using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Implements;
@@ -15,7 +15,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Data;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -147,6 +149,8 @@ namespace DreamGuard.BE.API
                 .AddEntityFrameworkStores<DreamGuardContext>();
             //Add BrevoKey
             builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
+            //Add BLL services
+            builder.AddBLLServices();
 
             builder.Services.AddHttpContextAccessor();
 
@@ -156,7 +160,12 @@ namespace DreamGuard.BE.API
             builder.Services.AddScoped<IOtpRepository, OtpRepository>();
             builder.Services.AddScoped<IOtpService, OtpService>();
             builder.Services.AddScoped<IBrevoEmailService, BrevoEmailService>();
-            builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
+            builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            builder.Services.AddScoped<IBabyProfileRepository, BabyProfileRepository>();
+            builder.Services.AddScoped<IBabyProfileService, BabyProfileService>();
+            builder.Services.AddScoped<IAddressRepository, AddressRepository>();
+            builder.Services.AddScoped<IAddressService, AddressService>();
+			builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
 
             var app = builder.Build();
             //Use exception handler

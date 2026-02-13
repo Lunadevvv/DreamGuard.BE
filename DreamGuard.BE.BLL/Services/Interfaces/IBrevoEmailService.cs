@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Common;
 
-namespace DreamGuard.BE.BLL.Services
+namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IBrevoEmailService
     {

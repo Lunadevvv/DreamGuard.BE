@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DreamGuard.BE.API.Dtos
+namespace DreamGuard.BE.BLL.Requests
 {
     public class RegisterRequest
     {
