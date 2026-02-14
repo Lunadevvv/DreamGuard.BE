@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using DreamGuard.BE.BLL.Services.Implements;
+using DreamGuard.BE.BLL.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
@@ -14,6 +16,8 @@ namespace DreamGuard.BE.BLL
         public static void AddBLLServices(this IHostApplicationBuilder builder)
         {
             builder.Services.AddAutoMapper(Assembly.GetExecutingAssembly());
+
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
         }
     }
 }

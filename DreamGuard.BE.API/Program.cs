@@ -2,6 +2,7 @@
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.Models;
@@ -149,8 +150,9 @@ namespace DreamGuard.BE.API
                 .AddEntityFrameworkStores<DreamGuardContext>();
             //Add BrevoKey
             builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
-            //Add BLL services
+
             builder.AddBLLServices();
+            builder.AddDALServices();
 
             builder.Services.AddHttpContextAccessor();
 
