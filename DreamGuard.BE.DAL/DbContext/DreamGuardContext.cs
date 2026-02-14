@@ -25,6 +25,8 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<Otp> Otps { get; set; }
         public DbSet<BabyProfile> BabyProfiles { get; set; }
         public DbSet<Address> Addresses { get; set; }
+        public DbSet<Voucher> Vouchers { get; set; }
+        public DbSet<UserVoucher> UserVouchers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
