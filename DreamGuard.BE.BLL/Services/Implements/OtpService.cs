@@ -34,12 +34,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             await CleanupExpiredOtpsAsync();
 
+            //tại sao lại check phone number ở đây ??? phải check ở hàm register chứ 
             //Check if phone number is registered
-            var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
-            if (user != null)
-            {
-                return Result.Failure("Phone number is registered", 400);
-            }
+            //var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
+            //if (user != null)
+            //{
+            //    return Result.Failure("Phone number is registered", 400);
+            //}
 
             //Generate OTP code
             var otpCode = new Random().Next(100000, 999999).ToString();
@@ -89,10 +90,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<bool>> VerifyOtpAsync(string phoneNumber, string email, string code)
         {
             var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
-            if (user != null)
-            {
-                return Result<bool>.Failure("User with this phone number existed", 400);
-            }
+            //tại sao lại check phone number ở đây ??? phải check ở hàm register chứ 
+            //if (user != null)
+            //{
+            //    return Result<bool>.Failure("User with this phone number existed", 400);
+            //}
             var otp = await _otpRepository.GetOtpByPhoneAsync(phoneNumber);
 
             if (otp == null)

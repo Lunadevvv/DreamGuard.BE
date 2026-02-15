@@ -168,6 +168,7 @@ namespace DreamGuard.BE.API
             builder.Services.AddScoped<IUserVoucherRepository, UserVoucherRepository>();
             builder.Services.AddScoped<IVoucherRepository, VoucherRepository>();
             builder.Services.AddScoped<IVoucherService, VoucherService>();
+            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
             builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
 
             var app = builder.Build();
