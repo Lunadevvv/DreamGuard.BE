@@ -40,7 +40,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var user = await _authRepository.GetUserByPhoneAsync(phone);
             if(user == null)
                 return Result<LoginResponse>.Failure("User không tồn tại", 404);
-            if(await _userManager.CheckPasswordAsync(user, password) && user.EmailConfirmed)
+            if(await _userManager.CheckPasswordAsync(user, password))
             {
                 var role = await _userManager.GetRolesAsync(user);
                 var accessToken = GenerateJSONWebToken(user, role[0] ?? Role.User);
@@ -102,6 +102,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PhoneNumber = phoneNumber,
                 Gender = gender,
                 DateOfBirth = dateOfBirth,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true
             };
             var result = await _userManager.CreateAsync(newUser, password);
             if (result.Succeeded)
