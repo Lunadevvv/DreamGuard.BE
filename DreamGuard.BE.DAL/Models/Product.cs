@@ -25,7 +25,6 @@ namespace DreamGuard.BE.DAL.Models
         public Category? Category { get; set; }
         [JsonIgnore]
         public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
-        [JsonIgnore]
         public ICollection<ProductAsset> Assets { get; set; } = new List<ProductAsset>();
     }
 }

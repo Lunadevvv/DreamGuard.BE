@@ -14,6 +14,7 @@ namespace DreamGuard.BE.DAL
         public static void AddDALServices(this IHostApplicationBuilder builder)
         {
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
         }
     }
 }
