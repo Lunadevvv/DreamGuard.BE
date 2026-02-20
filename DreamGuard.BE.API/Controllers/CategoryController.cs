@@ -6,6 +6,7 @@ using AutoMapper;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Implements;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,6 +36,7 @@ namespace DreamGuard.BE.API.Controllers
 
         //Create new category
         [HttpPost]
+        [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> CreateCategory([FromBody] Category request)
         {
             var result = await _categoryService.CreateCategoryAsync(request);
@@ -47,6 +49,7 @@ namespace DreamGuard.BE.API.Controllers
 
         //Update category
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> UpdateCategory(int id, [FromBody] Category request)
         {
             var result = await _categoryService.UpdateCategoryAsync(id, request);
