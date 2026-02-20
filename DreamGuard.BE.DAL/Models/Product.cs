@@ -19,6 +19,7 @@ namespace DreamGuard.BE.DAL.Models
         public int? ReturnPolicyDay { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public double AverageRating { get; set; } = 0.0;
         public int? CateId { get; set; }
         [JsonIgnore]
         public Category? Category { get; set; }

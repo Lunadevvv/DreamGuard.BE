@@ -19,5 +19,7 @@ namespace DreamGuard.BE.DAL.Models
         public Guid ProductId { get; set; }
         [JsonIgnore]
         public Product? Product { get; set; }
+        [JsonIgnore]
+        public Inventory? Inventory { get; set; }
     }
 }
