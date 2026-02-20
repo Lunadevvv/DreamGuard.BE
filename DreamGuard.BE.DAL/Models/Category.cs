@@ -17,5 +17,7 @@ namespace DreamGuard.BE.DAL.Models
         public Category? CateParent { get; set; }
         [JsonIgnore]
         public ICollection<Category> ChildCategoryList { get; set; } = new List<Category>();
+        [JsonIgnore]
+        public ICollection<Product> Products { get; set; } = new List<Product>();
     }
 }
