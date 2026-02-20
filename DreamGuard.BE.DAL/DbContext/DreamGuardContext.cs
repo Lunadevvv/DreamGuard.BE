@@ -27,6 +27,9 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<Address> Addresses { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<ProductVariant> ProductVariants { get; set; }
+        public DbSet<ProductAsset> ProductAssets { get; set; }
+        public DbSet<Inventory> Inventories { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)

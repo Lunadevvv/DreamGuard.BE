@@ -10,8 +10,10 @@ namespace DreamGuard.BE.DAL.Models
     public class ProductVariant
     {
         public Guid Id { get; set; }
+        public string? Sku { get; set; }
         public required double BasePrice { get; set; }
         public required double SalePrice { get; set; }
+        public double? Weight { get; set; }
         public ProductAttribute? Attributes { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

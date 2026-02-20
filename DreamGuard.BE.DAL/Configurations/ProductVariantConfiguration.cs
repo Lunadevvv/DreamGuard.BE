@@ -13,6 +13,7 @@ namespace DreamGuard.BE.DAL.Configurations
         public void Configure(EntityTypeBuilder<ProductVariant> builder)
         {
             builder.HasKey(e => e.Id);
+            builder.Property(e => e.Sku).IsRequired().HasMaxLength(100);
             builder.Property(e => e.BasePrice).IsRequired();
             builder.Property(e => e.SalePrice).IsRequired();
             builder.Property(e => e.CreatedAt).HasColumnType("TIMESTAMPTZ");
@@ -21,6 +22,8 @@ namespace DreamGuard.BE.DAL.Configurations
                 .WithMany(v => v.Variants)
                 .HasForeignKey(p => p.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(p => p.Attributes).HasMethod("gin");
             builder.ToTable("ProductVariants");
         }
     }
