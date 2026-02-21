@@ -12,6 +12,7 @@ using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -165,6 +166,19 @@ namespace DreamGuard.BE.API
 
             var cloudinary = new Cloudinary(cloudinaryAccount);
             builder.Services.AddSingleton(cloudinary);
+
+            // CẤU HÌNH GIỚI HẠN DUNG LƯỢNG REQUEST
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 52428800; // 50MB
+                options.ValueLengthLimit = 52428800;
+                options.MultipartHeadersLengthLimit = 52428800;
+            });
+
+            builder.WebHost.ConfigureKestrel(serverOptions =>
+            {
+                serverOptions.Limits.MaxRequestBodySize = 52428800; // 50MB
+            });
 
             builder.AddBLLServices();
             builder.AddDALServices();
