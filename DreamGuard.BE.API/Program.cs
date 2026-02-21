@@ -1,4 +1,5 @@
-﻿using DreamGuard.BE.BLL;
+﻿using CloudinaryDotNet;
+using DreamGuard.BE.BLL;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
@@ -148,8 +149,22 @@ namespace DreamGuard.BE.API
             builder.Services.AddIdentityCore<User>()
                 .AddRoles<IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<DreamGuardContext>();
+
             //Add BrevoKey
             builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
+
+            // Cloudinary configuration
+            var cloudinaryAccount = new Account(
+                // Environment.GetEnvironmentVariable("Cloudinary__CloudName"),
+                // Environment.GetEnvironmentVariable("Cloudinary__ApiKey"),
+                // Environment.GetEnvironmentVariable("Cloudinary__ApiSecret")
+                builder.Configuration["Cloudinary:CloudName"],
+                builder.Configuration["Cloudinary:ApiKey"],
+                builder.Configuration["Cloudinary:ApiSecret"]   
+            );
+
+            var cloudinary = new Cloudinary(cloudinaryAccount);
+            builder.Services.AddSingleton(cloudinary);
 
             builder.AddBLLServices();
             builder.AddDALServices();
