@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -27,7 +28,11 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _productService.GetAllProductByCategoryAsync(cateId, pageNumber);
             if (!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
             return Ok(result.Data);
         }
@@ -38,7 +43,11 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _productService.GetProductByIdAsync(id);
             if (!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
             return Ok(result.Data);
         }
@@ -49,7 +58,11 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _productService.GetProductDetailBySlugAsync(slug);
             if (!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
             return Ok(result.Data);
         }
@@ -61,9 +74,13 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _productService.CreateProductAsync(product);
             if (!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
-            return Ok("Create product successfully");
+            return Ok("Create product with name " + product.Name + " successfully");
         }
         //Update
         [HttpPut]
@@ -73,9 +90,13 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _productService.UpdateProductAsync(product);
             if (!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
-            return Ok("Update product id " + product.Id + "successfully");
+            return Ok("Update product id '" + product.Id + "' successfully");
         }
         //Delete
         [HttpDelete("{id}")]
@@ -85,9 +106,13 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _productService.DeleteProductAsync(id);
             if (!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
-            return Ok("Delete product id " + id + "successfully");
+            return Ok("Delete product id " + id + " successfully");
         }
     }
 }

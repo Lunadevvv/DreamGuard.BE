@@ -81,9 +81,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Slug = p.Slug,
                 AgeGroup = p.AgeGroup,
                 AverageRating = p.AverageRating,
-                BasePrice = p.Variants.Min(v => v.BasePrice),
-                SalePrice = p.Variants.Min(v => v.SalePrice),
-                ImageUrls = p.Assets.Select(a => a.Url).ToList()
+                // BasePrice = p.Variants.Min(v => v.BasePrice),
+                // SalePrice = p.Variants.Min(v => v.SalePrice),
+                // ImageUrls = p.Assets.Select(a => a.Url).ToList()
             }).ToList();
 
             // Create a new PaginatedList for ProductResponse
