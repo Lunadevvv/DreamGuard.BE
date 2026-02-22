@@ -164,5 +164,46 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             return Result<ProductAssetResponse>.Success(response);
         }
+
+        public async Task<Result<ProductAssetResponse>> UploadImageWithoutSaveDbAsync(IFormFile file)
+        {
+            //Check if file is null or empty
+            if (file == null || file.Length == 0)
+            {
+                return Result<ProductAssetResponse>.Failure("No file uploaded.", 400);
+            }
+
+            //Check if file size exceeds the limit
+            if(file.Length > MAX_FILE_SIZE)
+            {
+                return Result<ProductAssetResponse>.Failure("File size exceeds the maximum limit of 5MB.", 400);
+            }
+
+            //Upload file to Cloudinary
+            using var stream = file.OpenReadStream();
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                Transformation = new Transformation().Quality("auto").FetchFormat("auto"),
+                Folder = CLOUDINARY_FOLDER
+            };
+
+            //Get result from Cloudinary
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+            if (uploadResult.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                return Result<ProductAssetResponse>.Failure("Failed to upload image to Cloudinary.", 400);
+            }
+
+            var response = new ProductAssetResponse
+            {
+                Url = uploadResult.SecureUrl.ToString(),
+                Type = file.ContentType,
+                PublicId = uploadResult.PublicId,
+            };
+
+            return Result<ProductAssetResponse>.Success(response);
+        }
     }
 }

@@ -35,6 +35,23 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
+        //Upload image for product without save to database
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadImageWithoutSaveDb([FromForm] IFormFile file)
+        {
+            var result = await _cloudinaryService.UploadImageWithoutSaveDbAsync(file);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         //Update image for product
         [HttpPut("{assetId}")]
         public async Task<IActionResult> UpdateImage(Guid assetId, [FromForm]IFormFile file)

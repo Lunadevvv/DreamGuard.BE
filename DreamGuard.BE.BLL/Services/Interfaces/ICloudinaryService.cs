@@ -12,6 +12,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     public interface ICloudinaryService
     {
         Task<Result<ProductAssetResponse>> UploadImageAsync(Guid productId, IFormFile file);
+        Task<Result<ProductAssetResponse>> UploadImageWithoutSaveDbAsync(IFormFile file);
         Task<Result<ProductAssetResponse>> UpdateImageAsync(Guid assetId, IFormFile file);
         Task<Result<bool>> DeleteImageAsync(Guid assetId);
     }
