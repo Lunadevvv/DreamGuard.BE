@@ -16,6 +16,7 @@ namespace DreamGuard.BE.DAL
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IProductAssetRepository, ProductAssetRepository>();
+            builder.Services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
         }
     }
 }
