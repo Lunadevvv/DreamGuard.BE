@@ -81,8 +81,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Slug = p.Slug,
                 AgeGroup = p.AgeGroup,
                 AverageRating = p.AverageRating,
-                // BasePrice = p.Variants.Min(v => v.BasePrice),
-                // SalePrice = p.Variants.Min(v => v.SalePrice),
+                BasePrice = p.Variants.Min(v => v.BasePrice),
+                SalePrice = p.Variants.Min(v => v.SalePrice),
                 ImageUrls = p.Assets.Select(a => a.Url).ToList()
             }).ToList();
 
@@ -138,7 +138,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     BasePrice = v.BasePrice,
                     SalePrice = v.SalePrice,
                     Weight = v.Weight,
-                    Attributes = v.Attributes
+                    Attributes = v.Attributes,
+                    IsNew = v.IsNew,
+                    IsActive = v.IsActive,
+                    CreatedAt = v.CreatedAt,
+                    ProductId = v.ProductId
                 }).ToList(),
                 ImageUrls = prod.Assets.Select(a => a.Url).ToList()
             };

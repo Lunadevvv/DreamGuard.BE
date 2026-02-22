@@ -14,5 +14,9 @@ namespace DreamGuard.BE.BLL.Responses
         public double SalePrice { get; set; }
         public double? Weight { get; set; }
         public ProductAttribute? Attributes { get; set; }
+        public bool IsNew { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public Guid ProductId { get; set; }
     }
 }
