@@ -3,11 +3,13 @@ using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -24,16 +26,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IAuthRepository _authRepository;
         private readonly UserManager<User> _userManager;
-        private readonly IConfiguration _config;
         private readonly IBrevoEmailService _brevoEmailService;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public IdentityService(UserManager<User> userManager, IConfiguration config, IBrevoEmailService brevoEmailService, IAuthRepository authRepository, IHttpContextAccessor httpContextAccessor)
+        private readonly JwtOptions _jwtOptions;
+        public IdentityService(UserManager<User> userManager, IBrevoEmailService brevoEmailService, IAuthRepository authRepository, IHttpContextAccessor httpContextAccessor, IOptions<JwtOptions> jwtOptions)
         {
             _userManager = userManager;
-            _config = config;
             _brevoEmailService = brevoEmailService;
             _authRepository = authRepository;
             _httpContextAccessor = httpContextAccessor;
+            _jwtOptions = jwtOptions.Value;
         }
         public async Task<Result<LoginResponse>> LoginAsync(string phone, string password)
         {
@@ -52,10 +54,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     RoleName = role[0] ?? Role.User
                 };
                 user.RefreshToken = loginResponse.RefreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7);
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7);
                 await _userManager.UpdateAsync(user);
-                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_config["Jwt:AccessTokenValidityInMinutes"] != null ? Convert.ToDouble(_config["Jwt:AccessTokenValidityInMinutes"]) : 15));
-                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7));
+                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenValidityInMinutes > 0 ? _jwtOptions.AccessTokenValidityInMinutes : 15));
+                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<LoginResponse>.Success(loginResponse);
             }
             return Result<LoginResponse>.Failure("Sai tài khoản hoặc mật khẩu", 404); ;
@@ -75,10 +77,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     RefreshToken = newRefreshToken
                 };
                 user.RefreshToken = refreshTokenResponse.RefreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7);
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7);
                 await _userManager.UpdateAsync(user);
-                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_config["Jwt:AccessTokenValidityInMinutes"] != null ? Convert.ToDouble(_config["Jwt:AccessTokenValidityInMinutes"]) : 15));
-                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7));
+                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenValidityInMinutes > 0 ? _jwtOptions.AccessTokenValidityInMinutes : 15));
+                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<RefreshTokenResponse>.Success(refreshTokenResponse);
             }
             return Result<RefreshTokenResponse>.Failure("User không tồn tại", 404);
@@ -123,18 +125,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         private string GenerateJSONWebToken(User account, string roleName)
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(_config["Jwt:Issuer"]
-                    , _config["Jwt:Audience"]
+            var token = new JwtSecurityToken(_jwtOptions.Issuer
+                    , _jwtOptions.Audience
                     , new Claim[]
                     {
                     new(ClaimTypes.Name, account.UserName),
                     new(ClaimTypes.NameIdentifier, account.Id.ToString()),
                     new(ClaimTypes.Role, roleName),
                     },
-                    expires: DateTime.UtcNow.AddMinutes(_config["Jwt:AccessTokenValidityInMinutes"] != null ? Convert.ToDouble(_config["Jwt:AccessTokenValidityInMinutes"]) : 15),
+                    expires: DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenValidityInMinutes > 0 ? _jwtOptions.AccessTokenValidityInMinutes : 15),
                     signingCredentials: credentials
                 );
 

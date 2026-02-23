@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -16,13 +18,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IAuthRepository _authRepository;
         private readonly IOtpRepository _otpRepository;
-        private readonly IConfiguration _configuration;
+        private readonly OtpOptions _otpOptions;
         private readonly IBrevoEmailService _brevoEmailService;
-        public OtpService(IOtpRepository otpRepository, IAuthRepository authRepository, IConfiguration configuration, IBrevoEmailService brevoEmailService)
+        public OtpService(IOtpRepository otpRepository, IAuthRepository authRepository, IOptions<OtpOptions> otpOptions, IBrevoEmailService brevoEmailService)
         {
             _otpRepository = otpRepository;
             _authRepository = authRepository;
-            _configuration = configuration;
+            _otpOptions = otpOptions.Value;
             _brevoEmailService = brevoEmailService;
         }
         public async Task CleanupExpiredOtpsAsync()
@@ -70,7 +72,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 CodeHashed = otpHash,
                 Salt = salt,
                 CreatedAt = DateTime.UtcNow,
-                ExpiredAt = DateTime.UtcNow.AddMinutes(_configuration["OtpExpiryInMinutes"] != null ? Convert.ToDouble(_configuration["OtpExpiryInMinutes"]) : 5),
+                ExpiredAt = DateTime.UtcNow.AddMinutes(_otpOptions.ExpiryInMinutes > 0 ? _otpOptions.ExpiryInMinutes : 5),
                 IsUsed = false
             };
 

@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Data;
@@ -59,19 +60,28 @@ namespace DreamGuard.BE.API
                     };
                 });
 
+            //Register options
+            builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+            builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
+            builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
+            builder.Services.Configure<OtpOptions>(builder.Configuration.GetSection("OtpOptions"));
+            
             //Add authentication with JWT
+
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                    ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                    ValidIssuer = jwtSettings.Issuer,
+                    ValidAudience = jwtSettings.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
                 };
 
                 options.Events = new JwtBearerEvents
@@ -151,21 +161,21 @@ namespace DreamGuard.BE.API
                 .AddRoles<IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<DreamGuardContext>();
 
-            //Add BrevoKey
-            builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
-
             // Cloudinary configuration
-            var cloudinaryAccount = new Account(
-                // Environment.GetEnvironmentVariable("Cloudinary__CloudName"),
-                // Environment.GetEnvironmentVariable("Cloudinary__ApiKey"),
-                // Environment.GetEnvironmentVariable("Cloudinary__ApiSecret")
-                builder.Configuration["Cloudinary:CloudName"],
-                builder.Configuration["Cloudinary:ApiKey"],
-                builder.Configuration["Cloudinary:ApiSecret"]   
-            );
+            builder.Services.AddSingleton(sp =>
+            {
+                // Lấy config đã được bind chuẩn ra khỏi DI Container
+                var config = sp.GetRequiredService<IOptions<CloudinaryOptions>>().Value;
 
-            var cloudinary = new Cloudinary(cloudinaryAccount);
-            builder.Services.AddSingleton(cloudinary);
+                // Khởi tạo Account bằng các thuộc tính (an toàn, có gợi ý code)
+                var account = new Account(
+                    config.CloudName,
+                    config.ApiKey,
+                    config.ApiSecret
+                );
+
+                return new Cloudinary(account);
+            });
 
             // CẤU HÌNH GIỚI HẠN DUNG LƯỢNG REQUEST
             builder.Services.Configure<FormOptions>(options =>
