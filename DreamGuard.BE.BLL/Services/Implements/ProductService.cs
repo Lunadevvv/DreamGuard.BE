@@ -62,14 +62,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<bool>.Success(true);
         }
 
-        public async Task<Result<PaginatedList<ProductResponse>>> GetAllProductByCategoryAsync(int cateId, int pageNumber)
+        public async Task<Result<PaginatedList<ProductResponse>>> GetAllProductByCategoryAsync(int cateId, int pageNumber, double? maxPrice, string? color, int? maxAgeGroup)
         {
-            var products = await _productRepository.GetAllProductByCategoryAsync(cateId, pageNumber);
+            var products = await _productRepository.GetAllProductByCategoryAsync(cateId, pageNumber, maxPrice, color, maxAgeGroup);
 
             //check if products is null or empty
             if (products == null || !products.Items.Any())
             {
                 return Result<PaginatedList<ProductResponse>>.Failure("No products found for the given category.", 404);
+            }
+
+            //check if product variant is empty then set baseprice and saleprice to 0
+            var basePrice = 0;
+            var salePrice = 0;
+            if(products.Items.Any(p =>p.Variants.Any()))
+            {
+                basePrice = (int)products.Items.Min(p => p.Variants.Min(v => v.BasePrice));
+                salePrice = (int)products.Items.Min(p => p.Variants.Min(v => v.SalePrice));
             }
 
             // Map products to ProductResponse
@@ -81,8 +90,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Slug = p.Slug,
                 AgeGroup = p.AgeGroup,
                 AverageRating = p.AverageRating,
-                BasePrice = p.Variants.Min(v => v.BasePrice),
-                SalePrice = p.Variants.Min(v => v.SalePrice),
+                BasePrice = basePrice,
+                SalePrice = salePrice,
                 ImageUrls = p.Assets.Select(a => a.Url).ToList()
             }).ToList();
 

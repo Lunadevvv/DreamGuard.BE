@@ -15,7 +15,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public ProductRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<PaginatedList<Product>> GetAllProductByCategoryAsync(int cateId, int pageNumber)
+        public async Task<PaginatedList<Product>> GetAllProductByCategoryAsync(int cateId, int pageNumber, double? maxPrice, string? color, int? maxAgeGroup)
         {
             var query = _context.Products
                     .Include(p => p.Variants.Where(v => v.IsActive))
@@ -24,6 +24,21 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                     .OrderByDescending(p => p.AverageRating)
                     .AsSplitQuery()
                     .AsNoTracking();
+                
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.Variants.Any(v => v.SalePrice <= maxPrice.Value));
+            }
+
+            if (!string.IsNullOrEmpty(color))
+            {
+                query = query.Where(p => p.Variants.Any(v => v.Attributes.Color == color));
+            }
+
+            if (maxAgeGroup.HasValue)
+            {
+                query = query.Where(p => p.AgeGroup <= maxAgeGroup.Value);
+            }
             return await PaginatedList<Product>.CreateAsync(query, pageNumber, 10);
         }
 

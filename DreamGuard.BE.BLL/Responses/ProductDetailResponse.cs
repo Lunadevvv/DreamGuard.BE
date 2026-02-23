@@ -12,7 +12,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string Name { get; set; } = string.Empty;
         public string Summary { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public string? AgeGroup { get; set; }
+        public int? AgeGroup { get; set; }
         public int? WarrantyPolicyDay { get; set; }
         public int? ReturnPolicyDay { get; set; }
         public double AverageRating { get; set; }

@@ -10,7 +10,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IProductRepository : IGenericRepository<Product>
     {
-        Task<PaginatedList<Product>> GetAllProductByCategoryAsync(int cateId, int pageNumber);
+        Task<PaginatedList<Product>> GetAllProductByCategoryAsync(int cateId, int pageNumber, double? maxPrice, string? color, int? maxAgeGroup);
         Task<Product?> GetProductBySlugAsync(string slug);
         Task<Product?> GetProductByIdAsync(Guid id);
     }

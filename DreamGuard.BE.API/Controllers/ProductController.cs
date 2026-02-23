@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Models;
@@ -22,10 +23,10 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         //GetAllWithPaging
-        [HttpGet("category/{cateId}/page/{pageNumber}")]
-        public async Task<IActionResult> GetAllProductByCategoryAsync(int cateId, int pageNumber = 1)
+        [HttpGet]
+        public async Task<IActionResult> GetAllProductByCategoryAsync([FromQuery]int cateId, int pageNumber, double? maxPrice, string? color, int? maxAgeGroup)
         {
-            var result = await _productService.GetAllProductByCategoryAsync(cateId, pageNumber);
+            var result = await _productService.GetAllProductByCategoryAsync(cateId, pageNumber, maxPrice, color, maxAgeGroup);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
