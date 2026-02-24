@@ -15,6 +15,7 @@ namespace DreamGuard.BE.DAL.Models
         public required double SalePrice { get; set; }
         public double? Weight { get; set; }
         public ProductAttribute? Attributes { get; set; }
+        public string Size { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public bool IsNew { get; set; } = true;

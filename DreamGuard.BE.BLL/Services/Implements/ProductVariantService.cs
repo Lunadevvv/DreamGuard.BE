@@ -7,6 +7,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 
@@ -72,6 +73,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             variant.Id = Guid.NewGuid();
             variant.IsActive = true;
             variant.CreatedAt = DateTime.UtcNow;
+            variant.Size = GenerateSize(variant.Attributes);
 
             var res = await _variantRepository.CreateAsync(variant);
             if (res < 0)
@@ -97,6 +99,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             _mapper.Map(request, variant);
+            variant.Size = GenerateSize(variant.Attributes);
 
             var res = await _variantRepository.UpdateAsync(variant);
             if (res < 0)
@@ -143,6 +146,26 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<bool>.Success(true);
         }
 
+        private static string GenerateSize(ProductAttribute? attributes)
+        {
+            if(attributes == null)
+            {
+                return string.Empty;
+            }
+            
+            if (attributes.Length > 0 && attributes.Width > 0 && attributes.Thickness > 0)
+            {
+                return string.Format("{0}x{1}x{2}", attributes.Length, attributes.Width, attributes.Thickness);
+            }
+
+            if (attributes.Length > 0 && attributes.Width > 0 && attributes.Thickness == null)
+            {
+                return string.Format("{0}x{1}", attributes.Length, attributes.Width);
+            }
+
+            return string.Empty;
+        }
+
         private static ProductVariantResponse MapToResponse(ProductVariant v)
         {
             return new ProductVariantResponse
@@ -153,7 +176,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 SalePrice = v.SalePrice,
                 Weight = v.Weight,
                 Attributes = v.Attributes,
-                Size = string.Format("{0}x{1}x{2}", v.Attributes?.Length ?? 0, v.Attributes?.Width ?? 0, v.Attributes?.Thickness ?? 0),
+                Size = v.Size,
                 IsNew = v.IsNew,
                 IsActive = v.IsActive,
                 CreatedAt = v.CreatedAt,
