@@ -15,6 +15,7 @@ namespace DreamGuard.BE.DAL.Models
         public required string Slug { get; set; }
         public string Summary { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string Material { get; set; } = string.Empty;
         [Range(0, int.MaxValue, ErrorMessage = "AgeGroup must be a non-negative value.")]
         public int? AgeGroup { get; set; }
         [Range(0, int.MaxValue, ErrorMessage = "Warranty must be a non-negative value.")]
