@@ -43,9 +43,9 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetComboByIdAsync(Guid id)
+        public async Task<IActionResult> GetComboByIdAsync(Guid id, [FromQuery]string? size, [FromQuery]string? color)
         {
-            var result = await _comboService.GetComboByIdAsync(id);
+            var result = await _comboService.GetComboByIdAsync(id, size, color);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

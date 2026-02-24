@@ -13,7 +13,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     {
         Task<Result<PaginatedList<ComboResponse>>> GetAllCombosAsync(
             int pageNumber, double? maxPrice, int? maxAgeGroup, string? color);
-        Task<Result<ComboDetailResponse>> GetComboByIdAsync(Guid id);
+        Task<Result<ComboDetailResponse>> GetComboByIdAsync(Guid id, string? size, string? color);
         Task<Result<ComboResponse>> CreateComboAsync(CreateComboRequest request);
         Task<Result<ComboResponse>> UpdateComboInfoAsync(Guid id, UpdateComboInfoRequest request);
         Task<Result<bool>> UpdateComboProductsAsync(Guid id, UpdateComboProductsRequest request);

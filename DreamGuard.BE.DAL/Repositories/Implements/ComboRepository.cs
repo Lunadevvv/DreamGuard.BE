@@ -51,13 +51,26 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
         }
 
-        public async Task<Combo?> GetComboWithChildrenAsync(Guid id)
+        public async Task<Combo?> GetComboWithChildrenAsync(Guid id, string? size, string? color)
         {
-            return await _context.Combos
+            var query = await _context.Combos
                 .Include(c => c.ComboChildrens.Where(ch => ch.IsActive))
                 .AsSplitQuery()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
+
+            if (query != null && query.ComboChildrens.Any()){
+                if (!string.IsNullOrEmpty(size))
+                {
+                    query.ComboChildrens = query.ComboChildrens.Where(c => c.Size == size).ToList();
+                }
+                if (!string.IsNullOrEmpty(color))
+                {
+                    query.ComboChildrens = query.ComboChildrens.Where(c => c.Color == color).ToList();
+                }
+            }
+
+            return query;
         }
 
         public async Task<Combo?> GetComboWithProductsAsync(Guid id)

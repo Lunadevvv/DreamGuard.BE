@@ -49,7 +49,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<ComboResponse>>.Success(paginatedResponse);
         }
 
-        public async Task<Result<ComboDetailResponse>> GetComboByIdAsync(Guid id)
+        public async Task<Result<ComboDetailResponse>> GetComboByIdAsync(Guid id, string? size, string? color)
         {
             var combo = await _comboRepository.GetComboByIdAsync(id);
             if (combo == null)
@@ -60,7 +60,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (combo.ComboParentId == null)
             {
                 // Parent combo: load children only
-                var parentCombo = await _comboRepository.GetComboWithChildrenAsync(id);
+                var parentCombo = await _comboRepository.GetComboWithChildrenAsync(id, size, color);
                 var response = MapToDetailResponse(parentCombo!);
                 response.ChildCombos = parentCombo!.ComboChildrens
                     .Select(ch => new ComboChildResponse
@@ -300,18 +300,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             // Cascade soft delete: if parent combo, also soft delete all children
-            if (combo.ComboParentId == null)
-            {
-                var parentWithChildren = await _comboRepository.GetComboWithChildrenAsync(id);
-                if (parentWithChildren?.ComboChildrens != null)
-                {
-                    foreach (var child in parentWithChildren.ComboChildrens)
-                    {
-                        child.IsActive = false;
-                        await _comboRepository.UpdateAsync(child);
-                    }
-                }
-            }
+            // if (combo.ComboParentId == null)
+            // {
+            //     var parentWithChildren = await _comboRepository.GetComboWithChildrenAsync(id);
+            //     if (parentWithChildren?.ComboChildrens != null)
+            //     {
+            //         foreach (var child in parentWithChildren.ComboChildrens)
+            //         {
+            //             child.IsActive = false;
+            //             await _comboRepository.UpdateAsync(child);
+            //         }
+            //     }
+            // }
 
             return Result<bool>.Success(true);
         }
