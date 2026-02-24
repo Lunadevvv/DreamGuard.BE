@@ -39,10 +39,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             if (!string.IsNullOrEmpty(color))
             {
                 query = query.Where(c =>
-                    c.ComboProductVariants.Any(cpv =>
-                        cpv.ProductVariant != null &&
-                        cpv.ProductVariant.Attributes != null &&
-                        cpv.ProductVariant.Attributes.Color == color));
+                    c.Color == color);
             }
 
             return await PaginatedList<Combo>.CreateAsync(query, pageNumber, 10);
