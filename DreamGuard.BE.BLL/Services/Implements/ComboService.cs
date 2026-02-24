@@ -200,7 +200,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<ComboResponse>> UpdateComboInfoAsync(
             Guid id, UpdateComboInfoRequest request)
         {
-            var combo = await _comboRepository.GetComboByIdAsync(id);
+            var combo = await _comboRepository.GetComboWithChildrenAsync(id, "", "");
             if (combo == null)
             {
                 return Result<ComboResponse>.Failure("Combo not found.", 404);
@@ -210,6 +210,24 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result<ComboResponse>.Failure(
                     "Sale price cannot be greater than base price.", 400);
+            }
+
+            //Validate parent's base price with children's base price
+            if(combo.ComboParentId == null && combo.ComboChildrens != null && combo.ComboChildrens.Any())
+            {
+                var maxChildBasePrice = combo.ComboChildrens.Max(c => c.BasePrice);
+                if (request.BasePrice < maxChildBasePrice)
+                {
+                    return Result<ComboResponse>.Failure(
+                        $"Parent combo's base price cannot be less than the maximum base price of its child combos ({maxChildBasePrice}).", 400);
+                }
+
+                // If parent combo's sale price is updated, validate with children's sale price
+                if (request.SalePrice < combo.ComboChildrens.Max(c => c.SalePrice))
+                {                    
+                    return Result<ComboResponse>.Failure(
+                        $"Parent combo's sale price cannot be less than the maximum sale price of its child combos ({combo.ComboChildrens.Max(c => c.SalePrice)}).", 400);
+                }
             }
 
             if (await _comboRepository.SlugExistsAsync(request.Slug, id))
