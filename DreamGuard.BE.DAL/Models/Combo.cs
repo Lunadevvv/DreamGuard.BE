@@ -15,6 +15,8 @@ namespace DreamGuard.BE.DAL.Models
         public double BasePrice { get; set; }
         public double SalePrice { get; set; }
         public string Description { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;
         public string ImagePublicId { get; set; } = string.Empty;
         public double AverageRating { get; set; }

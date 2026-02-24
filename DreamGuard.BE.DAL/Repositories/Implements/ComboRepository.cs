@@ -20,8 +20,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<PaginatedList<Combo>> GetAllCombosAsync(
             int pageNumber, double? maxPrice, int? maxAgeGroup, string? color)
         {
+            // Only with active parent combos
             var query = _context.Combos
-                .Where(c => c.IsActive)
+                .Where(c => c.IsActive && c.ComboParentId == null)
                 .OrderByDescending(c => c.AverageRating)
                 .AsNoTracking();
 

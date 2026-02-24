@@ -153,6 +153,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 SalePrice = v.SalePrice,
                 Weight = v.Weight,
                 Attributes = v.Attributes,
+                Size = string.Format("{0}x{1}x{2}", v.Attributes?.Length ?? 0, v.Attributes?.Width ?? 0, v.Attributes?.Thickness ?? 0),
                 IsNew = v.IsNew,
                 IsActive = v.IsActive,
                 CreatedAt = v.CreatedAt,

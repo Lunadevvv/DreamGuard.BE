@@ -30,7 +30,8 @@ namespace DreamGuard.BE.BLL.Requests
 
         [Range(0, int.MaxValue, ErrorMessage = "AgeGroup must be a non-negative value.")]
         public int? AgeGroup { get; set; }
-
+        public string Color { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
         [Required(ErrorMessage = "BasePrice is required.")]
         [Range(0, double.MaxValue, ErrorMessage = "BasePrice must be a non-negative value.")]
         public double BasePrice { get; set; }
@@ -77,7 +78,8 @@ namespace DreamGuard.BE.BLL.Requests
 
         [Range(0, int.MaxValue, ErrorMessage = "AgeGroup must be a non-negative value.")]
         public int? AgeGroup { get; set; }
-
+        public string Color { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
         [Required(ErrorMessage = "BasePrice is required.")]
         [Range(0, double.MaxValue, ErrorMessage = "BasePrice must be a non-negative value.")]
         public double BasePrice { get; set; }
