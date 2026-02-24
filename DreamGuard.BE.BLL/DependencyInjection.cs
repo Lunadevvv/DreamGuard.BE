@@ -21,6 +21,7 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
             builder.Services.AddScoped<IProductVariantService, ProductVariantService>();
+            builder.Services.AddScoped<IComboService, ComboService>();
         }
     }
 }

@@ -30,6 +30,8 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<ProductVariant> ProductVariants { get; set; }
         public DbSet<ProductAsset> ProductAssets { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
+        public DbSet<Combo> Combos { get; set; }
+        public DbSet<ComboProductVariant> ComboProductVariants { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)

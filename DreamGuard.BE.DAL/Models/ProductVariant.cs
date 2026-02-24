@@ -23,5 +23,7 @@ namespace DreamGuard.BE.DAL.Models
         public Product? Product { get; set; }
         [JsonIgnore]
         public Inventory? Inventory { get; set; }
+        [JsonIgnore]
+        public List<ComboProductVariant> ComboProductVariants { get; set; } = new List<ComboProductVariant>();
     }
 }
