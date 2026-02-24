@@ -23,9 +23,9 @@ namespace DreamGuard.BE.API.Controllers
 
         //Get all variants of a product
         [HttpGet("product/{productId}")]
-        public async Task<IActionResult> GetVariantsByProductIdAsync(Guid productId)
+        public async Task<IActionResult> GetVariantsByProductIdAsync(Guid productId, [FromQuery]string? size, [FromQuery]string? color)
         {
-            var result = await _productVariantService.GetVariantsByProductIdAsync(productId);
+            var result = await _productVariantService.GetVariantsByProductIdAsync(productId, size, color);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

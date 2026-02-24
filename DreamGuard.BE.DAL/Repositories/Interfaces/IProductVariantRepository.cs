@@ -9,7 +9,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IProductVariantRepository : IGenericRepository<ProductVariant>
     {
-        Task<List<ProductVariant>> GetVariantsByProductIdAsync(Guid productId);
+        Task<List<ProductVariant>> GetVariantsByProductIdAsync(Guid productId, string? size, string? color);
         Task<ProductVariant?> GetVariantByIdAsync(Guid id);
     }
 }

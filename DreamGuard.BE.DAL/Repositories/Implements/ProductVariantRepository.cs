@@ -16,13 +16,25 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
         }
 
-        public async Task<List<ProductVariant>> GetVariantsByProductIdAsync(Guid productId)
+        public async Task<List<ProductVariant>> GetVariantsByProductIdAsync(Guid productId, string? size, string? color)
         {
-            return await _context.ProductVariants
+            var query = await _context.ProductVariants
                 .Where(v => v.ProductId == productId)
                 .OrderByDescending(v => v.CreatedAt)
                 .AsNoTracking()
                 .ToListAsync();
+
+            if (!string.IsNullOrEmpty(size))
+            {
+                query = query.Where(v => v.Size == size).ToList();
+            }
+
+            if (!string.IsNullOrEmpty(color))
+            {
+                query = query.Where(v => v.Attributes != null && v.Attributes.Color == color).ToList();
+            }
+
+            return query;
         }
 
         public async Task<ProductVariant?> GetVariantByIdAsync(Guid id)

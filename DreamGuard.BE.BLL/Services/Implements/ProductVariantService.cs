@@ -29,7 +29,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _mapper = mapper;
         }
 
-        public async Task<Result<List<ProductVariantResponse>>> GetVariantsByProductIdAsync(Guid productId)
+        public async Task<Result<List<ProductVariantResponse>>> GetVariantsByProductIdAsync(Guid productId, string? size, string? color)
         {
             var product = await _productRepository.GetByIdAsync(productId);
             if (product == null)
@@ -37,7 +37,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<List<ProductVariantResponse>>.Failure("Product not found.", 404);
             }
 
-            var variants = await _variantRepository.GetVariantsByProductIdAsync(productId);
+            var variants = await _variantRepository.GetVariantsByProductIdAsync(productId, size, color);
 
             var response = variants.Select(MapToResponse).ToList();
 

@@ -10,7 +10,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IProductVariantService
     {
-        Task<Result<List<ProductVariantResponse>>> GetVariantsByProductIdAsync(Guid productId);
+        Task<Result<List<ProductVariantResponse>>> GetVariantsByProductIdAsync(Guid productId, string? size, string? color);
         Task<Result<ProductVariantResponse>> GetVariantByIdAsync(Guid id);
         Task<Result<ProductVariantResponse>> CreateVariantAsync(CreateProductVariantRequest request);
         Task<Result<ProductVariantResponse>> UpdateVariantAsync(Guid id, UpdateProductVariantRequest request);
