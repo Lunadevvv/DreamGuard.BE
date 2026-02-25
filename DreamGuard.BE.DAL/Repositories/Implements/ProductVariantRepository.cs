@@ -53,5 +53,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .AsNoTracking()
                 .ToListAsync();
         }
+
+        public async Task<bool> IsVariantSkuUniqueAsync(string sku, Guid? excludeVariantId = null)
+        {
+            return await _context.ProductVariants
+                .AnyAsync(v => v.Sku == sku && (!excludeVariantId.HasValue || v.Id != excludeVariantId.Value));
+        }
     }
 }
