@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.DAL.Models
@@ -16,7 +17,7 @@ namespace DreamGuard.BE.DAL.Models
         public double? Weight { get; set; }
         public ProductAttribute? Attributes { get; set; }
         public string Size { get; set; } = string.Empty;
-        public bool IsActive { get; set; } = true;
+        public ProductStatus Status { get; set; } = ProductStatus.Draft;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public bool IsNew { get; set; } = true;
         public Guid ProductId { get; set; }

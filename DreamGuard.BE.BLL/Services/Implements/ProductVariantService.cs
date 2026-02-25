@@ -7,6 +7,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
@@ -55,6 +56,40 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<ProductVariantResponse>.Success(MapToResponse(variant));
         }
 
+        public async Task<Result<ProductVariantAdminResponse>> GetVariantsByProductIdForAdminAsync(Guid productId)
+        {
+            var variants = await _variantRepository.GetVariantsByProductIdForAdminAsync(productId);
+
+            // Nhóm theo Color
+            var colorGroups = variants
+                .GroupBy(v => v.Attributes?.Color ?? "Unknown")
+                .Select(group => new ProductVariantGroupResponse
+                {
+                    Color = group.Key,
+                    Variants = group.Select(v => new ProductVariantItemResponse
+                    {
+                        Id = v.Id,
+                        Size = v.Size ?? string.Empty,
+                        Sku = v.Sku ?? string.Empty,
+                        SalePrice = v.SalePrice,
+                        BasePrice = v.BasePrice,
+                        // StockQuantity = v.StockQuantity,
+                        // StockStatus = GetStockStatus(v.StockQuantity)
+                    })
+                    .ToList()
+                })
+                .ToList();
+
+            var res = new ProductVariantAdminResponse
+            {
+                ProductId = productId,
+                TotalVariants = variants.Count,
+                ColorGroups = colorGroups
+            };
+
+            return Result<ProductVariantAdminResponse>.Success(res);
+        }
+
         public async Task<Result<ProductVariantResponse>> CreateVariantAsync(CreateProductVariantRequest request)
         {
             var product = await _productRepository.GetByIdAsync(request.ProductId);
@@ -71,7 +106,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             var variant = _mapper.Map<ProductVariant>(request);
             variant.Id = Guid.NewGuid();
-            variant.IsActive = true;
+            variant.Status = ProductStatus.Draft;
             variant.CreatedAt = DateTime.UtcNow;
             variant.Size = GenerateSize(variant.Attributes);
 
@@ -110,7 +145,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<ProductVariantResponse>.Success(MapToResponse(variant));
         }
 
-        public async Task<Result<bool>> UpdateVariantStatusAsync(Guid id, bool isActive)
+        public async Task<Result<bool>> UpdateVariantStatusAsync(Guid id, ProductStatus status)
         {
             var variant = await _variantRepository.GetVariantByIdAsync(id);
             if (variant == null)
@@ -118,29 +153,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<bool>.Failure("Variant not found.", 404);
             }
 
-            variant.IsActive = isActive;
+            variant.Status = status;
 
             var res = await _variantRepository.UpdateAsync(variant);
             if (res < 0)
             {
                 return Result<bool>.Failure("Failed to update variant status.", 400);
-            }
-
-            return Result<bool>.Success(true);
-        }
-
-        public async Task<Result<bool>> DeleteVariantAsync(Guid id)
-        {
-            var variant = await _variantRepository.GetVariantByIdAsync(id);
-            if (variant == null)
-            {
-                return Result<bool>.Failure("Variant not found.", 404);
-            }
-
-            var res = await _variantRepository.RemoveAsync(variant);
-            if (!res)
-            {
-                return Result<bool>.Failure("Failed to delete variant.", 400);
             }
 
             return Result<bool>.Success(true);
@@ -178,10 +196,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Attributes = v.Attributes,
                 Size = v.Size,
                 IsNew = v.IsNew,
-                IsActive = v.IsActive,
+                Status = v.Status,
                 CreatedAt = v.CreatedAt,
                 ProductId = v.ProductId
             };
         }
+
     }
 }

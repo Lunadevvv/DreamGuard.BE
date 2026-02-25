@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    [Migration("20260224062429_AddColorAndSizeToCombo")]
-    partial class AddColorAndSizeToCombo
+    [Migration("20260225103005_ChangeIsActiveToStatus")]
+    partial class ChangeIsActiveToStatus
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -175,9 +175,6 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -195,6 +192,11 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
 
@@ -312,9 +314,6 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Material")
                         .IsRequired()
                         .HasColumnType("text");
@@ -331,6 +330,11 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Summary")
                         .IsRequired()
@@ -396,9 +400,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TIMESTAMPTZ");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsNew")
                         .HasColumnType("boolean");
 
@@ -408,10 +409,19 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<double>("SalePrice")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Sku")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<double?>("Weight")
                         .HasColumnType("double precision");

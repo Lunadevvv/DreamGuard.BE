@@ -68,7 +68,7 @@ namespace DreamGuard.BE.BLL.Requests
                 CreateMap<UpdateProductVariantRequest, ProductVariant>()
                     .ForMember(dest => dest.Id, opt => opt.Ignore())
                     .ForMember(dest => dest.ProductId, opt => opt.Ignore())
-                    .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+                    .ForMember(dest => dest.Status, opt => opt.Ignore())
                     .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
             }
         }

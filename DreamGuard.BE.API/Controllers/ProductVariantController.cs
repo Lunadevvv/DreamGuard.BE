@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,11 +23,28 @@ namespace DreamGuard.BE.API.Controllers
             _productVariantService = productVariantService;
         }
 
-        //Get all variants of a product
+        //Get all variants of a product (User can filter by size and color)
         [HttpGet("product/{productId}")]
         public async Task<IActionResult> GetVariantsByProductIdAsync(Guid productId, [FromQuery]string? size, [FromQuery]string? color)
         {
             var result = await _productVariantService.GetVariantsByProductIdAsync(productId, size, color);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        //Get all variants of a product for admin (No filter)
+        [HttpGet("admin/product/{productId}")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> GetVariantsByProductIdForAdminAsync(Guid productId)
+        {
+            var result = await _productVariantService.GetVariantsByProductIdForAdminAsync(productId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -90,9 +109,9 @@ namespace DreamGuard.BE.API.Controllers
         //Update variant's status
         [HttpPatch("{id}/status")]
         [Authorize(Roles = "Admin, Manager")]
-        public async Task<IActionResult> UpdateVariantStatusAsync(Guid id, [FromQuery] bool isActive)
+        public async Task<IActionResult> UpdateVariantStatusAsync(Guid id, [FromQuery] ProductStatus status)
         {
-            var result = await _productVariantService.UpdateVariantStatusAsync(id, isActive);
+            var result = await _productVariantService.UpdateVariantStatusAsync(id, status);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -102,23 +121,6 @@ namespace DreamGuard.BE.API.Controllers
                 });
             }
             return Ok(new { Message = "Variant status updated successfully." });
-        }
-
-        //Delete variant
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin, Manager")]
-        public async Task<IActionResult> DeleteVariantAsync(Guid id)
-        {
-            var result = await _productVariantService.DeleteVariantAsync(id);
-            if (!result.Succeeded)
-            {
-                return StatusCode(result.StatusCode, new ErrorResponse
-                {
-                    ErrorCode = result.StatusCode,
-                    Message = new List<string> { result.Error }
-                });
-            }
-            return Ok(new { Message = "Variant deleted successfully." });
         }
     }
 }

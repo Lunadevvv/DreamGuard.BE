@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
@@ -22,7 +23,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             // Only with active parent combos
             var query = _context.Combos
-                .Where(c => c.IsActive && c.ComboParentId == null)
+                .Where(c => c.Status == ProductStatus.Published && c.ComboParentId == null)
                 .OrderByDescending(c => c.AverageRating)
                 .AsNoTracking();
 
@@ -48,16 +49,16 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<Combo?> GetComboByIdAsync(Guid id)
         {
             return await _context.Combos
-                .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
+                .FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task<Combo?> GetComboWithChildrenAsync(Guid id, string? size, string? color)
         {
             var query = await _context.Combos
-                .Include(c => c.ComboChildrens.Where(ch => ch.IsActive))
+                .Include(c => c.ComboChildrens.Where(ch => ch.Status == ProductStatus.Published))
                 .AsSplitQuery()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
+                .FirstOrDefaultAsync(c => c.Id == id);
 
             if (query != null && query.ComboChildrens.Any()){
                 if (!string.IsNullOrEmpty(size))
@@ -81,12 +82,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                         .ThenInclude(pv => pv.Product)
                 .AsSplitQuery()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
+                .FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task<bool> SlugExistsAsync(string slug, Guid? excludeId = null)
         {
-            var query = _context.Combos.Where(c => c.Slug == slug && c.IsActive);
+            var query = _context.Combos.Where(c => c.Slug == slug);
             if (excludeId.HasValue)
             {
                 query = query.Where(c => c.Id != excludeId.Value);
@@ -108,5 +109,27 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             await _context.ComboProductVariants.AddRangeAsync(items);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<PaginatedList<Combo>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status)
+        {
+            var query = _context.Combos
+                .Include(c => c.ComboChildrens)
+                .OrderByDescending(c => c.CreatedAt)
+                .AsNoTracking();
+
+            if(status.HasValue)
+            {
+                query = query.Where(c => c.Status == status.Value);
+            }
+
+            if (!string.IsNullOrEmpty(name))
+            {
+                query = query.Where(c =>
+                    c.Name == name);
+            }
+
+            return await PaginatedList<Combo>.CreateAsync(query, pageNumber, 10);
+        }
+
     }
 }

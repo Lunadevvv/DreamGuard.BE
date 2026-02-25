@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using DreamGuard.BE.DAL.Constants;
 
 namespace DreamGuard.BE.DAL.Models
 {
@@ -21,7 +22,7 @@ namespace DreamGuard.BE.DAL.Models
         public string ImagePublicId { get; set; } = string.Empty;
         public double AverageRating { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public bool IsActive { get; set; }
+        public ProductStatus Status { get; set; } = ProductStatus.Draft;
         public Guid? ComboParentId { get; set; }
         [JsonIgnore]
         public Combo? ComboParent { get; set; }

@@ -41,6 +41,8 @@ namespace DreamGuard.BE.API
                 {
                     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
+                    //chuyển đổi Enum thành String khi nhận/xuất JSON
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 })
                 .ConfigureApiBehaviorOptions(options =>
                 {

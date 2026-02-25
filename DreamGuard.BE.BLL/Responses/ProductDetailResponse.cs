@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.BLL.Responses
@@ -16,6 +17,7 @@ namespace DreamGuard.BE.BLL.Responses
         public int? AgeGroup { get; set; }
         public int? WarrantyPolicyDay { get; set; }
         public int? ReturnPolicyDay { get; set; }
+        public ProductStatus Status { get; set; }
         public double AverageRating { get; set; }
         public List<string> ImageUrls { get; set; } = new List<string>();
         public List<ProductVariantResponse> Variants { get; set; } = new List<ProductVariantResponse>();

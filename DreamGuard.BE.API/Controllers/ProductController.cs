@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +23,7 @@ namespace DreamGuard.BE.API.Controllers
             _productService = productService;
         }
 
-        //GetAllWithPaging
+        //GetAllWithPaging (User)
         [HttpGet]
         public async Task<IActionResult> GetAllProductByCategoryAsync([FromQuery]int cateId, int pageNumber, double? maxPrice, string? color, int? maxAgeGroup)
         {
@@ -52,7 +53,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
-        //GetBySlug
+        //GetBySlug (User)
         [HttpGet("slug/{slug}")]
         public async Task<IActionResult> GetProductDetailBySlugAsync(string slug)
         {
@@ -67,6 +68,24 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
+        //Get All With Paging (Admin)
+        [HttpGet("admin")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> GetAllProductsForAdminAsync([FromQuery]int pageNumber, string? name)
+        {
+            var result = await _productService.GetAllProductsForAdminAsync(pageNumber, name);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         //Create
         [HttpPost]
         [Authorize(Roles = "Admin, Manager")]
@@ -99,12 +118,12 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok("Update product id '" + product.Id + "' successfully");
         }
-        //Delete
-        [HttpDelete("{id}")]
+        //Update status
+        [HttpPut("{id}")]
         [Authorize(Roles = "Admin, Manager")]
-        public async Task<IActionResult> DeleteProductAsync(Guid id)
+        public async Task<IActionResult> UpdateProductStatusAsync(Guid id, [FromQuery] ProductStatus status)
         {
-            var result = await _productService.DeleteProductAsync(id);
+            var result = await _productService.UpdateProductStatusAsync(id, status);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -113,7 +132,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Delete product id " + id + " successfully");
+            return Ok(string.Format("Update product id '{0}' status to '{1}' successfully", id, status));
         }
     }
 }

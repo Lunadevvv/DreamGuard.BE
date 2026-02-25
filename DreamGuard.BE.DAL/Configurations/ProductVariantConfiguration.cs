@@ -19,6 +19,7 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.Property(e => e.BasePrice).IsRequired();
             builder.Property(e => e.SalePrice).IsRequired();
             builder.Property(e => e.CreatedAt).HasColumnType("TIMESTAMPTZ");
+            builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.Attributes)
                 .HasColumnType("jsonb")
                 .HasConversion(

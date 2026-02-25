@@ -61,7 +61,7 @@ namespace DreamGuard.BE.BLL.Requests
                     .ForMember(dest => dest.ComboChildrens, opt => opt.Ignore())
                     .ForMember(dest => dest.AverageRating, opt => opt.Ignore())
                     .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                    .ForMember(dest => dest.IsActive, opt => opt.Ignore());
+                    .ForMember(dest => dest.Status, opt => opt.Ignore());
             }
         }
     }
@@ -106,7 +106,7 @@ namespace DreamGuard.BE.BLL.Requests
                     .ForMember(dest => dest.ComboChildrens, opt => opt.Ignore())
                     .ForMember(dest => dest.AverageRating, opt => opt.Ignore())
                     .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                    .ForMember(dest => dest.IsActive, opt => opt.Ignore());
+                    .ForMember(dest => dest.Status, opt => opt.Ignore());
             }
         }
     }

@@ -19,6 +19,7 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.Property(c => c.Color).HasMaxLength(10);
             builder.Property(c => c.CreatedAt).HasColumnType("TIMESTAMPTZ");
             builder.Property(c => c.Description).HasColumnType("text");
+            builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
 
             builder.HasOne(c => c.ComboParent)
                     .WithMany(cp => cp.ComboChildrens)

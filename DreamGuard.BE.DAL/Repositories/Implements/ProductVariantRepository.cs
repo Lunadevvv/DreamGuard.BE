@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
@@ -19,7 +20,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<List<ProductVariant>> GetVariantsByProductIdAsync(Guid productId, string? size, string? color)
         {
             var query = await _context.ProductVariants
-                .Where(v => v.ProductId == productId)
+                .Where(v => v.ProductId == productId && v.Status != ProductStatus.Draft && v.Status != ProductStatus.Hidden)
                 .OrderByDescending(v => v.CreatedAt)
                 .AsNoTracking()
                 .ToListAsync();
@@ -41,6 +42,16 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             return await _context.ProductVariants
                 .FirstOrDefaultAsync(v => v.Id == id);
+        }
+
+        public async Task<List<ProductVariant>> GetVariantsByProductIdForAdminAsync(Guid productId)
+        {
+            return await _context.ProductVariants
+                .Where(v => v.ProductId == productId)
+                .OrderBy(v => v.Attributes != null ? v.Attributes.Color : string.Empty)
+                .ThenBy(v => v.Size)
+                .AsNoTracking()
+                .ToListAsync();
         }
     }
 }

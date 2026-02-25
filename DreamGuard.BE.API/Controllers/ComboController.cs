@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,6 +24,7 @@ namespace DreamGuard.BE.API.Controllers
             _comboService = comboService;
         }
 
+        //Get all combos with paging and filtering (User)  
         [HttpGet]
         public async Task<IActionResult> GetAllCombosAsync(
             [FromQuery] int pageNumber,
@@ -31,6 +34,23 @@ namespace DreamGuard.BE.API.Controllers
         {
             var result = await _comboService.GetAllCombosAsync(
                 pageNumber, maxPrice, maxAgeGroup, color);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        //Get all combos with paging (Admin)
+        [HttpGet("admin")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> GetAllCombosForAdminAsync([FromQuery] int pageNumber, [FromQuery] string? name, [FromQuery] ProductStatus? status)
+        {
+            var result = await _comboService.GetAllCombosForAdminAsync(pageNumber, name, status);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -109,9 +129,9 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin, Manager")]
-        public async Task<IActionResult> DeleteComboAsync(Guid id)
+        public async Task<IActionResult> UpdateComboStatusAsync(Guid id, ProductStatus status)
         {
-            var result = await _comboService.DeleteComboAsync(id);
+            var result = await _comboService.UpdateComboStatusAsync(id, status);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

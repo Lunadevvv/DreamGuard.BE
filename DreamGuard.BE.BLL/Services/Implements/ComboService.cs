@@ -7,6 +7,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
@@ -47,6 +48,47 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 responses, combos.TotalCount, combos.PageNumber, combos.PageSize);
 
             return Result<PaginatedList<ComboResponse>>.Success(paginatedResponse);
+        }
+
+        public async Task<Result<PaginatedList<ComboAdminResponse>>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status)
+        {
+            var combos = await _comboRepository.GetAllCombosForAdminAsync(pageNumber, name, status);
+
+            if (combos == null || !combos.Items.Any())
+            {
+                return Result<PaginatedList<ComboAdminResponse>>.Failure(
+                    "No combos found.", 404);
+            }
+
+            var responses = combos.Items.Select(
+                c => new ComboAdminResponse
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Slug = c.Slug,
+                    BasePrice = c.BasePrice,
+                    SalePrice = c.SalePrice,
+                    ImageUrl = c.ImageUrl,
+                    AverageRating = c.AverageRating,
+                    Status = c.Status,
+                    ChildCombos = c.ComboChildrens?.Select(ch => new ComboChildAdminResponse
+                    {
+                        Id = ch.Id,
+                        Name = ch.Name,
+                        Slug = ch.Slug,
+                        Color = ch.Color,
+                        Size = ch.Size,
+                        BasePrice = ch.BasePrice,
+                        SalePrice = ch.SalePrice,
+                        Status = ch.Status
+                    }).ToList()
+                }
+            ).ToList();
+
+            var paginatedResponse = new PaginatedList<ComboAdminResponse>(
+                responses, combos.TotalCount, combos.PageNumber, combos.PageSize);
+
+            return Result<PaginatedList<ComboAdminResponse>>.Success(paginatedResponse);
         }
 
         public async Task<Result<ComboDetailResponse>> GetComboByIdAsync(Guid id, string? size, string? color)
@@ -170,7 +212,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             // Map and create
             var combo = _mapper.Map<Combo>(request);
             combo.Id = Guid.NewGuid();
-            combo.IsActive = true;
+            combo.Status = ProductStatus.Draft;
             combo.CreatedAt = DateTime.UtcNow;
             combo.AverageRating = 0;
 
@@ -302,7 +344,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<bool>.Success(true);
         }
 
-        public async Task<Result<bool>> DeleteComboAsync(Guid id)
+        public async Task<Result<bool>> UpdateComboStatusAsync(Guid id, ProductStatus status)
         {
             var combo = await _comboRepository.GetComboByIdAsync(id);
             if (combo == null)
@@ -310,26 +352,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<bool>.Failure("Combo not found.", 404);
             }
 
-            combo.IsActive = false;
+            combo.Status = status;
             var res = await _comboRepository.UpdateAsync(combo);
             if (res < 0)
             {
                 return Result<bool>.Failure("Failed to delete combo.", 400);
             }
-
-            // Cascade soft delete: if parent combo, also soft delete all children
-            // if (combo.ComboParentId == null)
-            // {
-            //     var parentWithChildren = await _comboRepository.GetComboWithChildrenAsync(id);
-            //     if (parentWithChildren?.ComboChildrens != null)
-            //     {
-            //         foreach (var child in parentWithChildren.ComboChildrens)
-            //         {
-            //             child.IsActive = false;
-            //             await _comboRepository.UpdateAsync(child);
-            //         }
-            //     }
-            // }
 
             return Result<bool>.Success(true);
         }

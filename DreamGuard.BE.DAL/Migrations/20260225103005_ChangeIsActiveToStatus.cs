@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class ChangeIsActiveToStatus : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -59,11 +59,13 @@ namespace DreamGuard.BE.DAL.Migrations
                     BasePrice = table.Column<double>(type: "double precision", nullable: false),
                     SalePrice = table.Column<double>(type: "double precision", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: false),
+                    Color = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    Size = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     ImageUrl = table.Column<string>(type: "text", nullable: false),
                     ImagePublicId = table.Column<string>(type: "text", nullable: false),
                     AverageRating = table.Column<double>(type: "double precision", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TIMESTAMPTZ", nullable: false),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     ComboParentId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
@@ -159,10 +161,11 @@ namespace DreamGuard.BE.DAL.Migrations
                     Slug = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     Summary = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
+                    Material = table.Column<string>(type: "text", nullable: false),
                     AgeGroup = table.Column<int>(type: "integer", nullable: true),
                     WarrantyPolicyDay = table.Column<int>(type: "integer", nullable: true),
                     ReturnPolicyDay = table.Column<int>(type: "integer", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "TIMESTAMPTZ", nullable: false),
                     AverageRating = table.Column<double>(type: "double precision", nullable: false),
                     CateId = table.Column<int>(type: "integer", nullable: true)
@@ -343,7 +346,8 @@ namespace DreamGuard.BE.DAL.Migrations
                     SalePrice = table.Column<double>(type: "double precision", nullable: false),
                     Weight = table.Column<double>(type: "double precision", nullable: true),
                     Attributes = table.Column<string>(type: "jsonb", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Size = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "TIMESTAMPTZ", nullable: false),
                     IsNew = table.Column<bool>(type: "boolean", nullable: false),
                     ProductId = table.Column<Guid>(type: "uuid", nullable: false)

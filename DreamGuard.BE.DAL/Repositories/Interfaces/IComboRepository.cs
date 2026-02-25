@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 
@@ -12,6 +13,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         Task<PaginatedList<Combo>> GetAllCombosAsync(
             int pageNumber, double? maxPrice, int? maxAgeGroup, string? color);
+        Task<PaginatedList<Combo>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status);
         Task<Combo?> GetComboByIdAsync(Guid id);
         Task<Combo?> GetComboWithChildrenAsync(Guid id, string? size, string? color);
         Task<Combo?> GetComboWithProductsAsync(Guid id);

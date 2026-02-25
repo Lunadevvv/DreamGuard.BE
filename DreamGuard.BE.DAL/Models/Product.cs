@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.DAL.Models
@@ -22,7 +23,7 @@ namespace DreamGuard.BE.DAL.Models
         public int? WarrantyPolicyDay { get; set; }
         [Range(0, int.MaxValue, ErrorMessage = "Return Policy must be a non-negative value.")]
         public int? ReturnPolicyDay { get; set; }
-        public bool IsActive { get; set; } = true;
+        public ProductStatus Status { get; set; } = ProductStatus.Draft;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public double AverageRating { get; set; } = 0.0;
         public int? CateId { get; set; }
