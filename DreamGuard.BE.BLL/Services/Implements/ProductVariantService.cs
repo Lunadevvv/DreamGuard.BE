@@ -7,6 +7,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
@@ -18,15 +19,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IProductVariantRepository _variantRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IInventoryRepository _inventoryRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
         public ProductVariantService(
             IProductVariantRepository variantRepository,
             IProductRepository productRepository,
+            IInventoryRepository inventoryRepository,
+            IUnitOfWork unitOfWork,
             IMapper mapper)
         {
             _variantRepository = variantRepository;
             _productRepository = productRepository;
+            _inventoryRepository = inventoryRepository;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
 
@@ -115,13 +122,40 @@ namespace DreamGuard.BE.BLL.Services.Implements
             variant.CreatedAt = DateTime.UtcNow;
             variant.Size = GenerateSize(variant.Attributes);
 
-            var res = await _variantRepository.CreateAsync(variant);
-            if (res < 0)
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return Result<ProductVariantResponse>.Failure("Failed to create variant.", 400);
-            }
+                var variantResult = await _variantRepository.CreateAsync(variant);
+                if (variantResult < 0)
+                {
+                    await transaction.RollbackAsync();
+                    return Result<ProductVariantResponse>.Failure("Failed to create variant.", 400);
+                }
 
-            return Result<ProductVariantResponse>.Success(MapToResponse(variant));
+                var inventory = new Inventory
+                {
+                    Id = Guid.NewGuid(),
+                    Quantity = 0,
+                    LowStockThreshold = 10,
+                    UpdatedAt = DateTime.UtcNow,
+                    ProductVariantId = variant.Id
+                };
+
+                var inventoryResult = await _inventoryRepository.CreateAsync(inventory);
+                if (inventoryResult < 0)
+                {
+                    await transaction.RollbackAsync();
+                    return Result<ProductVariantResponse>.Failure("Failed to create inventory for variant.", 400);
+                }
+
+                await transaction.CommitAsync();
+                return Result<ProductVariantResponse>.Success(MapToResponse(variant));
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result<ProductVariantResponse>.Failure("Failed to create variant with inventory.", 500);
+            }
         }
 
         public async Task<Result<ProductVariantResponse>> UpdateVariantAsync(Guid id, UpdateProductVariantRequest request)
