@@ -80,8 +80,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         Sku = v.Sku ?? string.Empty,
                         SalePrice = v.SalePrice,
                         BasePrice = v.BasePrice,
-                        // StockQuantity = v.StockQuantity,
-                        // StockStatus = GetStockStatus(v.StockQuantity)
+                        StockQuantity = v.Inventory?.Quantity ?? 0,
+                        StockStatus = GetStockStatus(v.Inventory?.Quantity ?? 0, v.Inventory?.LowStockThreshold ?? 10)
                     })
                     .ToList()
                 })
@@ -244,6 +244,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 CreatedAt = v.CreatedAt,
                 ProductId = v.ProductId
             };
+        }
+
+        private static string GetStockStatus(int quantity, int lowStockThreshold)
+        {
+            if (quantity > 0)
+            {
+                return quantity <= lowStockThreshold ? "Low Stock" : "In Stock";
+            }
+            return "Out of Stock";
         }
 
     }

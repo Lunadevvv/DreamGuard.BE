@@ -47,6 +47,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<List<ProductVariant>> GetVariantsByProductIdForAdminAsync(Guid productId)
         {
             return await _context.ProductVariants
+                .Include(v => v.Inventory)
                 .Where(v => v.ProductId == productId)
                 .OrderBy(v => v.Attributes != null ? v.Attributes.Color : string.Empty)
                 .ThenBy(v => v.Size)
