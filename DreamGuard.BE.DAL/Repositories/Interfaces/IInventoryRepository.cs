@@ -9,6 +9,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IInventoryRepository : IGenericRepository<Inventory>
     {
-        
+        Task<Inventory?> GetInventoryByVariantIdAsync(Guid productVariantId);
     }
 }
