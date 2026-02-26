@@ -37,6 +37,7 @@ namespace DreamGuard.BE.BLL.Responses
         public double? BasePrice { get; set; }
         public int StockQuantity { get; set; }
         public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
+        public string Status { get; set; } = string.Empty; // "Active", "Draft", "Hidden"
     }
 
     public class ProductVariantAdminResponse
