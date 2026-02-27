@@ -208,7 +208,11 @@ namespace DreamGuard.BE.API
             builder.Services.AddScoped<IBabyProfileService, BabyProfileService>();
             builder.Services.AddScoped<IAddressRepository, AddressRepository>();
             builder.Services.AddScoped<IAddressService, AddressService>();
-			builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
+            builder.Services.AddScoped<IUserVoucherRepository, UserVoucherRepository>();
+            builder.Services.AddScoped<IVoucherRepository, VoucherRepository>();
+            builder.Services.AddScoped<IVoucherService, VoucherService>();
+            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+            builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
 
             var app = builder.Build();
             //Use exception handler
