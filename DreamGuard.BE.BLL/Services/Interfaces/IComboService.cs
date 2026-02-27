@@ -13,7 +13,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     public interface IComboService
     {
         Task<Result<PaginatedList<ComboResponse>>> GetAllCombosAsync(
-            int pageNumber, double? maxPrice, int? maxAgeGroup, string? color);
+            int pageNumber, decimal? maxPrice, int? maxAgeGroup, string? color);
         Task<Result<ComboDetailResponse>> GetComboByIdAsync(Guid id, string? size, string? color);
         Task<Result<PaginatedList<ComboAdminResponse>>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status);
         Task<Result<ComboResponse>> CreateComboAsync(CreateComboRequest request);

@@ -3,6 +3,7 @@ using System;
 using DreamGuard.BE.DAL.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    partial class DreamGuardContextModelSnapshot : ModelSnapshot
+    [Migration("20260227034253_AddVoucher")]
+    partial class AddVoucher
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -146,13 +149,13 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<double>("AverageRating")
                         .HasColumnType("double precision");
 
-                    b.Property<decimal>("BasePrice")
-                        .HasColumnType("numeric");
+                    b.Property<double>("BasePrice")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Color")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<Guid?>("ComboParentId")
                         .HasColumnType("uuid");
@@ -177,8 +180,8 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<decimal>("SalePrice")
-                        .HasColumnType("numeric");
+                    b.Property<double>("SalePrice")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Size")
                         .IsRequired()
@@ -277,8 +280,8 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("character varying(15)");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<byte[]>("Salt")
                         .IsRequired()
@@ -391,8 +394,8 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<string>("Attributes")
                         .HasColumnType("jsonb");
 
-                    b.Property<decimal>("BasePrice")
-                        .HasColumnType("numeric");
+                    b.Property<double>("BasePrice")
+                        .HasColumnType("double precision");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TIMESTAMPTZ");
@@ -403,8 +406,8 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("SalePrice")
-                        .HasColumnType("numeric");
+                    b.Property<double>("SalePrice")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Size")
                         .IsRequired()
@@ -430,9 +433,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Attributes"), "gin");
 
                     b.HasIndex("ProductId");
-
-                    b.HasIndex("Sku")
-                        .IsUnique();
 
                     b.ToTable("ProductVariants", (string)null);
                 });
@@ -465,8 +465,8 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("Gender")
                         .IsRequired()
@@ -477,8 +477,8 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -575,8 +575,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -586,7 +585,7 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasColumnType("numeric");
 
                     b.Property<DateTime>("EndDate")
-                        .HasColumnType("TIMESTAMPTZ");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -599,16 +598,12 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("StartDate")
-                        .HasColumnType("TIMESTAMPTZ");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("VoucherId");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
 
                     b.ToTable("Vouchers", (string)null);
                 });

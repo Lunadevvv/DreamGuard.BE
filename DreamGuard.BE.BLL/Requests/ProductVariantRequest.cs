@@ -15,12 +15,12 @@ namespace DreamGuard.BE.BLL.Requests
         public string? Sku { get; set; }
 
         [Required(ErrorMessage = "Base price is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "Base price must be a non-negative value.")]
-        public double BasePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "Base price must be a non-negative value.")]
+        public decimal BasePrice { get; set; }
 
         [Required(ErrorMessage = "Sale price is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "Sale price must be a non-negative value.")]
-        public double SalePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "Sale price must be a non-negative value.")]
+        public decimal SalePrice { get; set; }
 
         [Range(0, 1000, ErrorMessage = "Weight must be between 0 and 1000.")]
         public double? Weight { get; set; }
@@ -47,12 +47,12 @@ namespace DreamGuard.BE.BLL.Requests
         public string? Sku { get; set; }
 
         [Required(ErrorMessage = "Base price is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "Base price must be a non-negative value.")]
-        public double BasePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "Base price must be a non-negative value.")]
+        public decimal BasePrice { get; set; }
 
         [Required(ErrorMessage = "Sale price is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "Sale price must be a non-negative value.")]
-        public double SalePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "Sale price must be a non-negative value.")]
+        public decimal SalePrice { get; set; }
 
         [Range(0, 1000, ErrorMessage = "Weight must be between 0 and 1000.")]
         public double? Weight { get; set; }

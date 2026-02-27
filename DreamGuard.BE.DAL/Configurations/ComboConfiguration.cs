@@ -16,7 +16,7 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
             builder.Property(c => c.Slug).IsRequired().HasMaxLength(200);
             builder.Property(c => c.Size).HasMaxLength(20);
-            builder.Property(c => c.Color).HasMaxLength(10);
+            builder.Property(c => c.Color).HasMaxLength(50);
             builder.Property(c => c.CreatedAt).HasColumnType("TIMESTAMPTZ");
             builder.Property(c => c.Description).HasColumnType("text");
             builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);

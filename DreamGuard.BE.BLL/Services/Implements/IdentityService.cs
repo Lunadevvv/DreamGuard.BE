@@ -41,7 +41,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             var user = await _authRepository.GetUserByPhoneAsync(phone);
             if(user == null)
-                return Result<LoginResponse>.Failure("User không tồn tại", 404);
+                return Result<LoginResponse>.Failure("User không tồn tại", 401);
             if(await _userManager.CheckPasswordAsync(user, password))
             {
                 var role = await _userManager.GetRolesAsync(user);
@@ -60,7 +60,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<LoginResponse>.Success(loginResponse);
             }
-            return Result<LoginResponse>.Failure("Sai tài khoản hoặc mật khẩu", 404); ;
+            return Result<LoginResponse>.Failure("Sai tài khoản hoặc mật khẩu", 401); ;
         }
 
         public async Task<Result<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken)
@@ -80,7 +80,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7);
                 await _userManager.UpdateAsync(user);
                 WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenValidityInMinutes > 0 ? _jwtOptions.AccessTokenValidityInMinutes : 15));
-                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
+                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", newRefreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<RefreshTokenResponse>.Success(refreshTokenResponse);
             }
             return Result<RefreshTokenResponse>.Failure("User không tồn tại", 404);
@@ -100,7 +100,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Email = email,
                 FirstName = firstName,
                 LastName = lastName,
-                UserName = firstName + lastName,
+                UserName = phoneNumber,
                 PhoneNumber = phoneNumber,
                 Gender = gender,
                 DateOfBirth = dateOfBirth,

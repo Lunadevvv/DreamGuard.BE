@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Models;
-using DreamGuard.BE.DAL.Repositories.Implements;
+using DreamGuard.BE.BLL.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -42,9 +42,13 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _categoryService.CreateCategoryAsync(request);
             if(!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
 
         //Update category
@@ -55,9 +59,13 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _categoryService.UpdateCategoryAsync(id, request);
             if (!result.Succeeded)
             {
-                return StatusCode(result.StatusCode, result.Message);
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
     }
 }

@@ -16,7 +16,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public ProductRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<PaginatedList<Product>> GetAllProductByCategoryAsync(int cateId, int pageNumber, double? maxPrice, string? color, int? maxAgeGroup)
+        public async Task<PaginatedList<Product>> GetAllProductByCategoryAsync(int cateId, int pageNumber, decimal? maxPrice, string? color, int? maxAgeGroup)
         {
             var query = _context.Products
                     .Include(p => p.Variants.Where(v => v.Status != ProductStatus.Hidden && v.Status != ProductStatus.Draft))

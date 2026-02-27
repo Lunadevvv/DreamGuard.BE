@@ -12,8 +12,8 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Slug { get; set; } = string.Empty;
-        public double BasePrice { get; set; }
-        public double SalePrice { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
         public double AverageRating { get; set; }
         public ProductStatus Status { get; set; }
@@ -27,8 +27,8 @@ namespace DreamGuard.BE.BLL.Responses
         public string Slug { get; set; } = string.Empty;
         public string Size { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
-        public double BasePrice { get; set; }
-        public double SalePrice { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
         public ProductStatus Status { get; set; }
     }
 }

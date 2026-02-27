@@ -10,8 +10,8 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid ProductVariantId { get; set; }
         public string? Sku { get; set; }
         public string ProductName { get; set; } = string.Empty;
-        public double BasePrice { get; set; }
-        public double SalePrice { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
         public int Quantity { get; set; }
     }
 
@@ -23,8 +23,8 @@ namespace DreamGuard.BE.BLL.Responses
         public int? AgeGroup { get; set; }
         public string Size { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
-        public double BasePrice { get; set; }
-        public double SalePrice { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
         public double AverageRating { get; set; }
     }
@@ -37,8 +37,8 @@ namespace DreamGuard.BE.BLL.Responses
         public int? AgeGroup { get; set; }
         public string Size { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
-        public double BasePrice { get; set; }
-        public double SalePrice { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
         public string Description { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;
         public double AverageRating { get; set; }

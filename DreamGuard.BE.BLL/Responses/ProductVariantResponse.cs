@@ -11,8 +11,8 @@ namespace DreamGuard.BE.BLL.Responses
     {
         public Guid Id { get; set; }
         public string? Sku { get; set; }
-        public double BasePrice { get; set; }
-        public double SalePrice { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
         public double? Weight { get; set; }
         public ProductAttribute? Attributes { get; set; }
         public string Size { get; set; } = string.Empty;
@@ -33,8 +33,8 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid Id { get; set; }
         public string Size { get; set; } = string.Empty;
         public string Sku { get; set; } = string.Empty;
-        public double SalePrice { get; set; }
-        public double? BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
+        public decimal? BasePrice { get; set; }
         public int StockQuantity { get; set; }
         public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
         public string Status { get; set; } = string.Empty; // "Active", "Draft", "Hidden"

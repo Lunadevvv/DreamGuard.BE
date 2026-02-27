@@ -12,7 +12,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IComboRepository : IGenericRepository<Combo>
     {
         Task<PaginatedList<Combo>> GetAllCombosAsync(
-            int pageNumber, double? maxPrice, int? maxAgeGroup, string? color);
+            int pageNumber, decimal? maxPrice, int? maxAgeGroup, string? color);
         Task<PaginatedList<Combo>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status);
         Task<Combo?> GetComboByIdAsync(Guid id);
         Task<Combo?> GetComboWithChildrenAsync(Guid id, string? size, string? color);

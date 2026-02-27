@@ -31,6 +31,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> AddInventoryStockAsync(Guid productVariantId, int quantity)
         {
+            if (quantity <= 0)
+            {
+                return Result.Failure("Quantity must be greater than 0.", 400);
+            }
+
             var inventory = await _inventoryRepository.GetInventoryByVariantIdAsync(productVariantId);
 
             if (inventory == null)
@@ -52,6 +57,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> ReduceInventoryStockAsync(Guid productVariantId, int quantity)
         {
+            if (quantity <= 0)
+            {
+                return Result.Failure("Quantity must be greater than 0.", 400);
+            }
+
             var inventory = await _inventoryRepository.GetInventoryByVariantIdAsync(productVariantId);
 
             if (inventory == null)

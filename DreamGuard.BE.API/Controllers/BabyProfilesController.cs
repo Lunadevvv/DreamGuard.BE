@@ -26,7 +26,10 @@ namespace DreamGuard.BE.API.Controllers
      
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _babyProfileService.GetAllAsync(userId, pageNumber);
             if (!result.Succeeded)
             {
@@ -41,7 +44,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet("{babyId}")]
         public async Task<IActionResult> GetByIdAsync(Guid babyId)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _babyProfileService.GetByIdAsync(userId, babyId);
             if (!result.Succeeded)
             {
@@ -56,7 +62,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAsync([FromBody] BabyProfileCreateRequest babyProfileRequest)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var babyProfile = _mapper.Map<BabyProfile>(babyProfileRequest);
             babyProfile.UserId = userId;
             var result = await _babyProfileService.CreateAsync(babyProfile);
@@ -68,12 +77,15 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
 		[HttpPut("{babyId}")]
 		public async Task<IActionResult> UpdateAsync(Guid babyId, [FromBody] BabyProfileUpdateRequest babyProfileRequest)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _babyProfileService.UpdateAsync(userId, babyId, babyProfileRequest);
             if (!result.Succeeded)
             {
@@ -83,12 +95,15 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
         [HttpDelete("{babyId}")]
         public async Task<IActionResult> RemoveAsync(Guid babyId)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _babyProfileService.RemoveAsync(userId, babyId);
             if (!result.Succeeded)
             {
@@ -98,7 +113,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
     }
 }

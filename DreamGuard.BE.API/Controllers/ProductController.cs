@@ -25,7 +25,7 @@ namespace DreamGuard.BE.API.Controllers
 
         //GetAllWithPaging (User)
         [HttpGet]
-        public async Task<IActionResult> GetAllProductByCategoryAsync([FromQuery]int cateId, int pageNumber, double? maxPrice, string? color, int? maxAgeGroup)
+        public async Task<IActionResult> GetAllProductByCategoryAsync([FromQuery]int cateId, int pageNumber, decimal? maxPrice, string? color, int? maxAgeGroup)
         {
             var result = await _productService.GetAllProductByCategoryAsync(cateId, pageNumber, maxPrice, color, maxAgeGroup);
             if (!result.Succeeded)
@@ -100,7 +100,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Create product with name " + product.Name + " successfully");
+            return Ok(result.Message);
         }
         //Update
         [HttpPut]
@@ -116,7 +116,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Update product id '" + product.Id + "' successfully");
+            return Ok(result.Message);
         }
         //Update status
         [HttpPut("{id}")]
@@ -132,7 +132,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(string.Format("Update product id '{0}' status to '{1}' successfully", id, status));
+            return Ok(result.Message);
         }
     }
 }

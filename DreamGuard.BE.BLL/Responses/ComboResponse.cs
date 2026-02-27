@@ -14,8 +14,8 @@ namespace DreamGuard.BE.BLL.Responses
         public int? AgeGroup { get; set; }
         public string Color { get; set; } = string.Empty;
         public string Size { get; set; } = string.Empty;
-        public double BasePrice { get; set; }
-        public double SalePrice { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
         public double AverageRating { get; set; }
         public Guid? ComboParentId { get; set; }

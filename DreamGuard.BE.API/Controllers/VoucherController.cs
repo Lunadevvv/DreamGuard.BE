@@ -65,7 +65,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
 
 		[HttpPut("{voucherId}")]
@@ -80,7 +80,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
 
         [HttpDelete("{voucherId}")]
@@ -95,7 +95,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
     }
 }

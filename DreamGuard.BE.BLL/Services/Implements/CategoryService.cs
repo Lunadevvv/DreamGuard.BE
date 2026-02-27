@@ -58,7 +58,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             catch (Exception ex)
             {
-                return Result<List<CategoryResponse>>.Failure($"Error retrieving categories: {ex.Message}", 500);
+                return Result<List<CategoryResponse>>.Failure("An error occurred while retrieving categories.", 500);
             }
         }
 

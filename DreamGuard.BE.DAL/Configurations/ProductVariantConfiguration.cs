@@ -16,6 +16,7 @@ namespace DreamGuard.BE.DAL.Configurations
         {
             builder.HasKey(e => e.Id);
             builder.Property(e => e.Sku).IsRequired().HasMaxLength(100);
+            builder.HasIndex(e => e.Sku).IsUnique();
             builder.Property(e => e.BasePrice).IsRequired();
             builder.Property(e => e.SalePrice).IsRequired();
             builder.Property(e => e.CreatedAt).HasColumnType("TIMESTAMPTZ");

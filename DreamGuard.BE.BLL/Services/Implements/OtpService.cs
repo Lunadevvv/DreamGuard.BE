@@ -45,10 +45,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //}
 
             //Generate OTP code
-            var otpCode = new Random().Next(100000, 999999).ToString();
+            var otpCode = Random.Shared.Next(100000, 999999).ToString();
             var otpHash = string.Empty;
             var salt = Array.Empty<byte>();
-            Console.WriteLine($"Generated OTP Code: {otpCode}");
             try
             {
                 //Hash Otp Code

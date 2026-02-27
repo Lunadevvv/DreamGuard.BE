@@ -80,7 +80,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(new { Message = "Image deleted successfully." });
+            return Ok(result.Message);
         }
     }
 }

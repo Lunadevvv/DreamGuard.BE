@@ -12,8 +12,8 @@ namespace DreamGuard.BE.DAL.Models
     {
         public Guid Id { get; set; }
         public string? Sku { get; set; }
-        public required double BasePrice { get; set; }
-        public required double SalePrice { get; set; }
+        public required decimal BasePrice { get; set; }
+        public required decimal SalePrice { get; set; }
         public double? Weight { get; set; }
         public ProductAttribute? Attributes { get; set; }
         public string Size { get; set; } = string.Empty;

@@ -14,8 +14,8 @@ namespace DreamGuard.BE.BLL.Responses
         public string Material { get; set; } = string.Empty;
         public int? AgeGroup { get; set; }
         public double AverageRating { get; set; }
-        public double MaxPrice { get; set; } = 0.0;
-        public double MinPrice { get; set; } = 0.0;
+        public decimal MaxPrice { get; set; }
+        public decimal MinPrice { get; set; }
         public string CategoryName { get; set; } = string.Empty;
         public int VariantCount { get; set; }
         public ProductStatus Status { get; set; }

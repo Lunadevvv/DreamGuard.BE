@@ -91,14 +91,17 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
 
         [Authorize]
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout()
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _identityService.LogoutAsync(userId);
             if (!result.Succeeded)
             {
@@ -108,7 +111,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
 
         [HttpPost("RefreshToken")]

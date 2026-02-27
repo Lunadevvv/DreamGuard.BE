@@ -173,7 +173,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     "Sale price cannot be greater than base price.", 400);
             }
 
-            if (await _variantRepository.IsVariantSkuUniqueAsync(request.Sku))
+            if (await _variantRepository.IsVariantSkuUniqueAsync(request.Sku, id))
             {
                 return Result<ProductVariantResponse>.Failure("SKU must be unique.", 400);
             }

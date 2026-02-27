@@ -7,6 +7,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
@@ -18,20 +19,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IComboRepository _comboRepository;
         private readonly IProductVariantRepository _variantRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
         public ComboService(
             IComboRepository comboRepository,
             IProductVariantRepository variantRepository,
+            IUnitOfWork unitOfWork,
             IMapper mapper)
         {
             _comboRepository = comboRepository;
             _variantRepository = variantRepository;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
 
         public async Task<Result<PaginatedList<ComboResponse>>> GetAllCombosAsync(
-            int pageNumber, double? maxPrice, int? maxAgeGroup, string? color)
+            int pageNumber, decimal? maxPrice, int? maxAgeGroup, string? color)
         {
             var combos = await _comboRepository.GetAllCombosAsync(
                 pageNumber, maxPrice, maxAgeGroup, color);
@@ -216,27 +220,38 @@ namespace DreamGuard.BE.BLL.Services.Implements
             combo.CreatedAt = DateTime.UtcNow;
             combo.AverageRating = 0;
 
-            var res = await _comboRepository.CreateAsync(combo);
-            if (res < 0)
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return Result<ComboResponse>.Failure("Failed to create combo.", 400);
-            }
-
-            // Create ComboProductVariant entries for child combo
-            if (request.ComboParentId != null && request.Items != null && request.Items.Any())
-            {
-                var comboItems = request.Items.Select(i => new ComboProductVariant
+                var res = await _comboRepository.CreateAsync(combo);
+                if (res < 0)
                 {
-                    Id = Guid.NewGuid(),
-                    ComboId = combo.Id,
-                    ProductVariantId = i.ProductVariantId,
-                    Quantity = i.Quantity
-                }).ToList();
+                    await transaction.RollbackAsync();
+                    return Result<ComboResponse>.Failure("Failed to create combo.", 400);
+                }
 
-                await _comboRepository.AddComboProductVariantsAsync(comboItems);
+                // Create ComboProductVariant entries for child combo
+                if (request.ComboParentId != null && request.Items != null && request.Items.Any())
+                {
+                    var comboItems = request.Items.Select(i => new ComboProductVariant
+                    {
+                        Id = Guid.NewGuid(),
+                        ComboId = combo.Id,
+                        ProductVariantId = i.ProductVariantId,
+                        Quantity = i.Quantity
+                    }).ToList();
+
+                    await _comboRepository.AddComboProductVariantsAsync(comboItems);
+                }
+
+                await transaction.CommitAsync();
+                return Result<ComboResponse>.Success(MapToComboResponse(combo));
             }
-
-            return Result<ComboResponse>.Success(MapToComboResponse(combo));
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result<ComboResponse>.Failure("Failed to create combo with products.", 500);
+            }
         }
 
         public async Task<Result<ComboResponse>> UpdateComboInfoAsync(
@@ -329,19 +344,29 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             // Remove existing and replace with new items
-            await _comboRepository.RemoveComboProductVariantsAsync(id);
-
-            var comboItems = request.Items.Select(i => new ComboProductVariant
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                Id = Guid.NewGuid(),
-                ComboId = id,
-                ProductVariantId = i.ProductVariantId,
-                Quantity = i.Quantity
-            }).ToList();
+                await _comboRepository.RemoveComboProductVariantsAsync(id);
 
-            await _comboRepository.AddComboProductVariantsAsync(comboItems);
+                var comboItems = request.Items.Select(i => new ComboProductVariant
+                {
+                    Id = Guid.NewGuid(),
+                    ComboId = id,
+                    ProductVariantId = i.ProductVariantId,
+                    Quantity = i.Quantity
+                }).ToList();
 
-            return Result<bool>.Success(true);
+                await _comboRepository.AddComboProductVariantsAsync(comboItems);
+
+                await transaction.CommitAsync();
+                return Result<bool>.Success(true);
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result<bool>.Failure("Failed to update combo products.", 500);
+            }
         }
 
         public async Task<Result<bool>> UpdateComboStatusAsync(Guid id, ProductStatus status)
@@ -356,7 +381,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var res = await _comboRepository.UpdateAsync(combo);
             if (res < 0)
             {
-                return Result<bool>.Failure("Failed to delete combo.", 400);
+                return Result<bool>.Failure("Failed to update combo status.", 400);
+            }
+
+            // Cascade: when parent combo is Hidden, also hide all child combos
+            if (status == ProductStatus.Hidden && combo.ComboParentId == null)
+            {
+                var parentWithChildren = await _comboRepository.GetComboWithChildrenAsync(id, null, null);
+                if (parentWithChildren?.ComboChildrens != null)
+                {
+                    foreach (var child in parentWithChildren.ComboChildrens)
+                    {
+                        child.Status = ProductStatus.Hidden;
+                        await _comboRepository.UpdateAsync(child);
+                    }
+                }
             }
 
             return Result<bool>.Success(true);

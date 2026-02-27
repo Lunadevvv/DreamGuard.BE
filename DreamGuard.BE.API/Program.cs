@@ -197,23 +197,6 @@ namespace DreamGuard.BE.API
 
             builder.Services.AddHttpContextAccessor();
 
-            //Add DI for BLL and DAL
-            builder.Services.AddScoped<IIdentityService, IdentityService>();
-            builder.Services.AddScoped<IAuthRepository, AuthRepository>();
-            builder.Services.AddScoped<IOtpRepository, OtpRepository>();
-            builder.Services.AddScoped<IOtpService, OtpService>();
-            builder.Services.AddScoped<IBrevoEmailService, BrevoEmailService>();
-            builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-            builder.Services.AddScoped<IBabyProfileRepository, BabyProfileRepository>();
-            builder.Services.AddScoped<IBabyProfileService, BabyProfileService>();
-            builder.Services.AddScoped<IAddressRepository, AddressRepository>();
-            builder.Services.AddScoped<IAddressService, AddressService>();
-            builder.Services.AddScoped<IUserVoucherRepository, UserVoucherRepository>();
-            builder.Services.AddScoped<IVoucherRepository, VoucherRepository>();
-            builder.Services.AddScoped<IVoucherService, VoucherService>();
-            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
-            builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
-
             var app = builder.Build();
             //Use exception handler
             app.UseExceptionHandler(appError =>

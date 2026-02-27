@@ -33,12 +33,12 @@ namespace DreamGuard.BE.BLL.Requests
         public string Color { get; set; } = string.Empty;
         public string Size { get; set; } = string.Empty;
         [Required(ErrorMessage = "BasePrice is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "BasePrice must be a non-negative value.")]
-        public double BasePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "BasePrice must be a non-negative value.")]
+        public decimal BasePrice { get; set; }
 
         [Required(ErrorMessage = "SalePrice is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "SalePrice must be a non-negative value.")]
-        public double SalePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "SalePrice must be a non-negative value.")]
+        public decimal SalePrice { get; set; }
 
         public string Description { get; set; } = string.Empty;
 
@@ -81,12 +81,12 @@ namespace DreamGuard.BE.BLL.Requests
         public string Color { get; set; } = string.Empty;
         public string Size { get; set; } = string.Empty;
         [Required(ErrorMessage = "BasePrice is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "BasePrice must be a non-negative value.")]
-        public double BasePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "BasePrice must be a non-negative value.")]
+        public decimal BasePrice { get; set; }
 
         [Required(ErrorMessage = "SalePrice is required.")]
-        [Range(0, double.MaxValue, ErrorMessage = "SalePrice must be a non-negative value.")]
-        public double SalePrice { get; set; }
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "SalePrice must be a non-negative value.")]
+        public decimal SalePrice { get; set; }
 
         public string Description { get; set; } = string.Empty;
 

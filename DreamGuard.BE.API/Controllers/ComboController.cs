@@ -28,7 +28,7 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllCombosAsync(
             [FromQuery] int pageNumber,
-            [FromQuery] double? maxPrice,
+            [FromQuery] decimal? maxPrice,
             [FromQuery] int? maxAgeGroup,
             [FromQuery] string? color)
         {
@@ -124,7 +124,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Combo product list updated successfully.");
+            return Ok(result.Message);
         }
 
         [HttpDelete("{id}")]
@@ -140,7 +140,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Combo deleted successfully.");
+            return Ok(result.Message);
         }
     }
 }
