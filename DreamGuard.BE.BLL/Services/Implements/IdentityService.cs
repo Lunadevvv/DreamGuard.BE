@@ -111,7 +111,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(newUser, Role.User);
-                await _brevoEmailService.SendCustomEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
+                await _brevoEmailService.SendEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
                 var registerResponse = new RegisterResponse
                 {
                     UserId = newUser.Id,

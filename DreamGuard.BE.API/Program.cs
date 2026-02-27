@@ -150,6 +150,13 @@ namespace DreamGuard.BE.API
                 });
             });
 
+            // Brevo HttpClient
+            builder.Services.AddHttpClient("brevo", client =>
+            {
+                client.BaseAddress = new Uri(builder.Configuration.GetSection("BrevoOptions").Get<BrevoOptions>().BaseUrl ?? "https://api.brevo.com/v3/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             //Add DbContext
             var connectionString = builder.Configuration.GetConnectionString("DreamGuardConnection");
             builder.Services.AddDbContext<DreamGuardContext>(options =>

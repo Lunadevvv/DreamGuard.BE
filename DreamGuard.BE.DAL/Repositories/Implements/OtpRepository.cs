@@ -19,7 +19,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task CleanupExpiredOtpsAsync()
         {
             var expiredOtps = await _context.Otps
-                .Where(o => o.ExpiredAt <= DateTime.UtcNow)
+                .Where(o => o.ExpiredAt <= DateTime.UtcNow || o.IsUsed)
                 .ToListAsync();
 
             _context.Otps.RemoveRange(expiredOtps);
@@ -39,17 +39,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<Otp> GetOtpByPhoneAsync(string phoneNumber)
+        public async Task<Otp?> GetOtpByPhoneAsync(string phoneNumber)
         {
             var otp = await _context.Otps
                 .Where(o => o.Phone == phoneNumber && !o.IsUsed && o.ExpiredAt > DateTime.UtcNow)
                 .OrderByDescending(o => o.CreatedAt)
                 .FirstOrDefaultAsync();
-
-            if(otp == null)
-            {
-                throw new KeyNotFoundException("Mã OTP này đã hết hạn.");
-            }
+                
             return otp;
         }
 
