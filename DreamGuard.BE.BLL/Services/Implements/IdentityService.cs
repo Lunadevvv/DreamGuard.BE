@@ -1,12 +1,15 @@
 ﻿using DreamGuard.BE.BLL.Common;
+using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
-using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -17,29 +20,29 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DreamGuard.BE.BLL.Services
+namespace DreamGuard.BE.BLL.Services.Implements
 {
     public class IdentityService : IIdentityService
     {
         private readonly IAuthRepository _authRepository;
         private readonly UserManager<User> _userManager;
-        private readonly IConfiguration _config;
         private readonly IBrevoEmailService _brevoEmailService;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public IdentityService(UserManager<User> userManager, IConfiguration config, IBrevoEmailService brevoEmailService, IAuthRepository authRepository, IHttpContextAccessor httpContextAccessor)
+        private readonly JwtOptions _jwtOptions;
+        public IdentityService(UserManager<User> userManager, IBrevoEmailService brevoEmailService, IAuthRepository authRepository, IHttpContextAccessor httpContextAccessor, IOptions<JwtOptions> jwtOptions)
         {
             _userManager = userManager;
-            _config = config;
             _brevoEmailService = brevoEmailService;
             _authRepository = authRepository;
             _httpContextAccessor = httpContextAccessor;
+            _jwtOptions = jwtOptions.Value;
         }
         public async Task<Result<LoginResponse>> LoginAsync(string phone, string password)
         {
             var user = await _authRepository.GetUserByPhoneAsync(phone);
             if(user == null)
-                return Result<LoginResponse>.Failure("User không tồn tại", 404);
-            if(await _userManager.CheckPasswordAsync(user, password) && user.EmailConfirmed)
+                return Result<LoginResponse>.Failure("User không tồn tại", 401);
+            if(await _userManager.CheckPasswordAsync(user, password))
             {
                 var role = await _userManager.GetRolesAsync(user);
                 var accessToken = GenerateJSONWebToken(user, role[0] ?? Role.User);
@@ -51,13 +54,13 @@ namespace DreamGuard.BE.BLL.Services
                     RoleName = role[0] ?? Role.User
                 };
                 user.RefreshToken = loginResponse.RefreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7);
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7);
                 await _userManager.UpdateAsync(user);
-                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_config["Jwt:AccessTokenValidityInMinutes"] != null ? Convert.ToDouble(_config["Jwt:AccessTokenValidityInMinutes"]) : 15));
-                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7));
+                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenValidityInMinutes > 0 ? _jwtOptions.AccessTokenValidityInMinutes : 15));
+                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<LoginResponse>.Success(loginResponse);
             }
-            return Result<LoginResponse>.Failure("Sai tài khoản hoặc mật khẩu", 404); ;
+            return Result<LoginResponse>.Failure("Sai tài khoản hoặc mật khẩu", 401); ;
         }
 
         public async Task<Result<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken)
@@ -74,10 +77,10 @@ namespace DreamGuard.BE.BLL.Services
                     RefreshToken = newRefreshToken
                 };
                 user.RefreshToken = refreshTokenResponse.RefreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7);
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7);
                 await _userManager.UpdateAsync(user);
-                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_config["Jwt:AccessTokenValidityInMinutes"] != null ? Convert.ToDouble(_config["Jwt:AccessTokenValidityInMinutes"]) : 15));
-                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_config["Jwt:RefreshTokenValidityInDays"] != null ? Convert.ToInt32(_config["Jwt:RefreshTokenValidityInDays"]) : 7));
+                WriteAuthTokenAsHttpOnlyCookie("AccessToken", accessToken, DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenValidityInMinutes > 0 ? _jwtOptions.AccessTokenValidityInMinutes : 15));
+                WriteAuthTokenAsHttpOnlyCookie("RefreshToken", newRefreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<RefreshTokenResponse>.Success(refreshTokenResponse);
             }
             return Result<RefreshTokenResponse>.Failure("User không tồn tại", 404);
@@ -97,16 +100,18 @@ namespace DreamGuard.BE.BLL.Services
                 Email = email,
                 FirstName = firstName,
                 LastName = lastName,
-                UserName = firstName + lastName,
+                UserName = phoneNumber,
                 PhoneNumber = phoneNumber,
                 Gender = gender,
                 DateOfBirth = dateOfBirth,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true
             };
             var result = await _userManager.CreateAsync(newUser, password);
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(newUser, Role.User);
-                await _brevoEmailService.SendCustomEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
+                await _brevoEmailService.SendEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
                 var registerResponse = new RegisterResponse
                 {
                     UserId = newUser.Id,
@@ -120,18 +125,18 @@ namespace DreamGuard.BE.BLL.Services
 
         private string GenerateJSONWebToken(User account, string roleName)
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(_config["Jwt:Issuer"]
-                    , _config["Jwt:Audience"]
+            var token = new JwtSecurityToken(_jwtOptions.Issuer
+                    , _jwtOptions.Audience
                     , new Claim[]
                     {
                     new(ClaimTypes.Name, account.UserName),
-                    new(ClaimTypes.NameIdentifier, account.Id),
+                    new(ClaimTypes.NameIdentifier, account.Id.ToString()),
                     new(ClaimTypes.Role, roleName),
                     },
-                    expires: DateTime.UtcNow.AddMinutes(_config["Jwt:AccessTokenValidityInMinutes"] != null ? Convert.ToDouble(_config["Jwt:AccessTokenValidityInMinutes"]) : 15),
+                    expires: DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenValidityInMinutes > 0 ? _jwtOptions.AccessTokenValidityInMinutes : 15),
                     signingCredentials: credentials
                 );
 
@@ -147,9 +152,9 @@ namespace DreamGuard.BE.BLL.Services
             return Convert.ToBase64String(randomNumber);
         }
 
-        public async Task<Result> LogoutAsync(string userId)
+        public async Task<Result> LogoutAsync(Guid userId)
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
             {
                 return Result.Failure("User không tồn tại", 404);
@@ -171,7 +176,7 @@ namespace DreamGuard.BE.BLL.Services
             // 4. Xóa cookies
             DeleteAuthCookie("AccessToken");
             DeleteAuthCookie("RefreshToken");
-            return Result.Success();
+            return Result.Success("Log out successfully");
         }
 
         //viết token vào cookie gửi lên client

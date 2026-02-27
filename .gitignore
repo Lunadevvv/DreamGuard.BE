@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# App secrets
+appsettings.Development.json
+
 # User-specific files
 *.rsuser
 *.suo
@@ -323,12 +326,8 @@ _Pvt_Extensions
 .paket/paket.exe
 paket-files/
 
-# ASP.NET Core - Keep appsettings.json in source control
-# Only ignore environment-specific configuration files
-appsettings.Development.json
-appsettings.Production.json
-appsettings.Staging.json
-appsettings.Local.json
+# ASP.NET Core - Ignore all appsettings files
+appsettings*.json
 
 # FAKE - F# Make
 .fake/

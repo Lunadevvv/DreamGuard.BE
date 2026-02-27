@@ -11,9 +11,10 @@ namespace DreamGuard.BE.BLL.Common
         public bool Succeeded { get; init; }
         public string? Error { get; init; }
         public int StatusCode { get; init; }
+        public string Message { get; init; } = string.Empty;
 
-        public static Result Success() =>
-            new() { Succeeded = true, StatusCode = 200 };
+        public static Result Success(string message) =>
+            new() { Succeeded = true, Message = message, StatusCode = 200 };
 
         public static Result Failure(string error, int statusCode) =>
             new() { Succeeded = false, Error = error, StatusCode = statusCode };

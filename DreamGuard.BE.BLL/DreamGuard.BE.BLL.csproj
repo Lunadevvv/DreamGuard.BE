@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DreamGuard.BE.DAL\DreamGuard.BE.DAL.csproj" />
+	  <PackageReference Include="AutoMapper" Version="13.0.1" />
+	  <PackageReference Include="CloudinaryDotNet" Version="1.28.0" />
+	  <ProjectReference Include="..\DreamGuard.BE.DAL\DreamGuard.BE.DAL.csproj" />
   </ItemGroup>
 
 </Project>

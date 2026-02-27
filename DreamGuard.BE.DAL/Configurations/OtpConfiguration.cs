@@ -13,7 +13,7 @@ namespace DreamGuard.BE.DAL.Configurations
         public void Configure(EntityTypeBuilder<Otp> builder)
         {
             builder.HasKey(e => e.OtpId);
-            builder.Property(e => e.Phone).HasMaxLength(10);
+            builder.Property(e => e.Phone).HasMaxLength(15);
             builder.Property(e => e.CreatedAt).HasColumnType("TIMESTAMPTZ");
             builder.Property(e => e.ExpiredAt).HasColumnType("TIMESTAMPTZ");
             builder.ToTable("Otps");

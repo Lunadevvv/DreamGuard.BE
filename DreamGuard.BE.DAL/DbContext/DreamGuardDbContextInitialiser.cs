@@ -28,8 +28,8 @@ namespace DreamGuard.BE.DAL.DbContext
     {
         private readonly DreamGuardContext _context;
         private readonly UserManager<User> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        public DreamGuardDbContextInitialiser(DreamGuardContext context, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
+        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+        public DreamGuardDbContextInitialiser(DreamGuardContext context, UserManager<User> userManager, RoleManager<IdentityRole<Guid>> roleManager)
         {
             _context = context;
             _userManager = userManager;
@@ -39,7 +39,7 @@ namespace DreamGuard.BE.DAL.DbContext
         {
             try
             {
-                await _context.Database.EnsureDeletedAsync();
+                // await _context.Database.EnsureDeletedAsync();
                 await _context.Database.EnsureCreatedAsync();
             }
             catch (Exception ex)
@@ -63,11 +63,11 @@ namespace DreamGuard.BE.DAL.DbContext
         public async Task TrySeedAsync()
         {
             // Default roles
-            var adminRole = new IdentityRole(Role.Admin);
-            var managerRole = new IdentityRole(Role.Manager);
-            var sellerRole = new IdentityRole(Role.Seller);
-            var cleaningStaffRole = new IdentityRole(Role.CleaningStaff);
-            var userRole = new IdentityRole(Role.User);
+            var adminRole = new IdentityRole<Guid>(Role.Admin);
+            var managerRole = new IdentityRole<Guid>(Role.Manager);
+            var sellerRole = new IdentityRole<Guid>(Role.Seller);
+            var cleaningStaffRole = new IdentityRole<Guid>(Role.CleaningStaff);
+            var userRole = new IdentityRole<Guid>(Role.User);
             if (_roleManager.Roles.All(r => r.Name != adminRole.Name))
             {
                 await _roleManager.CreateAsync(adminRole);

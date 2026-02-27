@@ -1,9 +1,7 @@
-﻿using DreamGuard.BE.API.Dtos;
-using DreamGuard.BE.API.Requests;
-using DreamGuard.BE.BLL.Services;
+﻿using DreamGuard.BE.BLL.Requests;
+using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
-using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
@@ -93,14 +91,17 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok($"Gửi mã OTP về {sendOtpRequest.email} thành công");
+            return Ok(result.Message);
         }
 
         [Authorize]
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _identityService.LogoutAsync(userId);
             if (!result.Succeeded)
             {
@@ -110,7 +111,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Đăng xuất thành công");
+            return Ok(result.Message);
         }
 
         [HttpPost("RefreshToken")]
