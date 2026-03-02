@@ -157,6 +157,24 @@ namespace DreamGuard.BE.API
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            //CORS
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend",
+                    policy =>
+                    {
+                        policy.WithOrigins(
+                            "http://localhost:5173",
+                            "https://localhost:5173",
+                            "https://dream-guard.vercel.app/"
+                        )
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials() // QUAN TRỌNG: Cho phép cookies
+                            .SetIsOriginAllowedToAllowWildcardSubdomains(); // Hỗ trợ SignalR
+                    });
+            });
+
             //Add DbContext
             var connectionString = builder.Configuration.GetConnectionString("DreamGuardConnection");
             builder.Services.AddDbContext<DreamGuardContext>(options =>
@@ -239,6 +257,8 @@ namespace DreamGuard.BE.API
             }
 
             app.UseHttpsRedirection();
+            // CORS phải được đặt TRƯỚC Authentication/Authorization
+            app.UseCors("AllowFrontend");
             // Use authentication and authorization
             app.UseAuthentication();
             app.UseAuthorization();
