@@ -79,7 +79,7 @@ namespace DreamGuard.BE.API.Controllers
             return Ok("Xác thực OTP thành công");
         }
 
-        [HttpPost("send-otp")]
+        [HttpPost("register-otp")]
         public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest sendOtpRequest)
         {
             var result = await _otpService.GenerateRegisterOtpAsync(sendOtpRequest.phone, sendOtpRequest.email);
