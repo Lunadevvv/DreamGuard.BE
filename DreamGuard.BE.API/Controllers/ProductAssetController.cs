@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -22,9 +23,9 @@ namespace DreamGuard.BE.API.Controllers
 
         //Upload image for product
         [HttpPost("upload/{productId}")]
-        public async Task<IActionResult> UploadImage(Guid productId, [FromForm]IFormFile file)
+        public async Task<IActionResult> UploadImage(Guid productId, [FromForm]UploadProductImageRequest request)
         {
-            var result = await _cloudinaryService.UploadImageAsync(productId, file);
+            var result = await _cloudinaryService.UploadImageAsync(productId, request.File);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -38,9 +39,9 @@ namespace DreamGuard.BE.API.Controllers
 
         //Upload image for product without save to database
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadImageWithoutSaveDb([FromForm] IFormFile file)
+        public async Task<IActionResult> UploadImageWithoutSaveDb([FromForm] UploadProductImageRequest request)
         {
-            var result = await _cloudinaryService.UploadImageWithoutSaveDbAsync(file);
+            var result = await _cloudinaryService.UploadImageWithoutSaveDbAsync(request.File);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -54,9 +55,9 @@ namespace DreamGuard.BE.API.Controllers
 
         //Update image for product
         [HttpPut("{assetId}")]
-        public async Task<IActionResult> UpdateImage(Guid assetId, [FromForm]IFormFile file)
+        public async Task<IActionResult> UpdateImage(Guid assetId, [FromForm]UploadProductImageRequest request)
         {
-            var result = await _cloudinaryService.UpdateImageAsync(assetId, file);
+            var result = await _cloudinaryService.UpdateImageAsync(assetId, request.File);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

@@ -9,6 +9,5 @@ namespace DreamGuard.BE.BLL.Requests
     public class UploadProductImageRequest
     {
         public IFormFile File { get; set; }
-        public Guid ProductId { get; set; }
     }
 }
