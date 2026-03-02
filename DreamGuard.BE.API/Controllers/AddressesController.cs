@@ -26,7 +26,10 @@ namespace DreamGuard.BE.API.Controllers
      
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _addressService.GetAllAsync(userId, pageNumber);
             if (!result.Succeeded)
             {
@@ -41,7 +44,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet("{addressId}")]
         public async Task<IActionResult> GetByIdAsync(Guid addressId)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _addressService.GetByIdAsync(userId, addressId);
             if (!result.Succeeded)
             {
@@ -56,7 +62,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAsync([FromBody] AddressCreateRequest AddressRequest)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var Address = _mapper.Map<Address>(AddressRequest);
             Address.UserId = userId;
             var result = await _addressService.CreateAsync(Address);
@@ -68,12 +77,15 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
 		[HttpPut("{addressId}")]
 		public async Task<IActionResult> UpdateAsync(Guid addressId, [FromBody] AddressUpdateRequest AddressRequest)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _addressService.UpdateAsync(userId, addressId, AddressRequest);
             if (!result.Succeeded)
             {
@@ -83,12 +95,15 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
         [HttpDelete("{addressId}")]
         public async Task<IActionResult> RemoveAsync(Guid addressId)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _addressService.RemoveAsync(userId, addressId);
             if (!result.Succeeded)
             {
@@ -98,7 +113,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
     }
 }

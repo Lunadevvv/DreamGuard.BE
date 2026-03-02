@@ -1,4 +1,5 @@
-﻿using DreamGuard.BE.DAL.Models;
+﻿using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,13 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<Otp> Otps { get; set; }
         public DbSet<BabyProfile> BabyProfiles { get; set; }
         public DbSet<Address> Addresses { get; set; }
+        public DbSet<Category> Categories { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<ProductVariant> ProductVariants { get; set; }
+        public DbSet<ProductAsset> ProductAssets { get; set; }
+        public DbSet<Inventory> Inventories { get; set; }
+        public DbSet<Combo> Combos { get; set; }
+        public DbSet<ComboProductVariant> ComboProductVariants { get; set; }
         public DbSet<Voucher> Vouchers { get; set; }
         public DbSet<UserVoucher> UserVouchers { get; set; }
 

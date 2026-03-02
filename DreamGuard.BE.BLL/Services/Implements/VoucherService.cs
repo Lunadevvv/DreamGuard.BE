@@ -125,6 +125,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Voucher not found", 404);
             }
+            if (!voucher.IsActive)
+            {
+                return Result.Failure("Voucher is not active", 400);
+            }
+            if (voucher.StartDate > DateTime.UtcNow)
+            {
+                return Result.Failure("Voucher is not yet available", 400);
+            }
+            if (voucher.EndDate < DateTime.UtcNow)
+            {
+                return Result.Failure("Voucher has expired", 400);
+            }
+            var alreadyClaimed = await _userVoucherRepo.ExistsAsync(userId, voucher.VoucherId);
+            if (alreadyClaimed)
+            {
+                return Result.Failure("You have already claimed this voucher", 400);
+            }
             var userVoucher = new UserVoucher
             {
                 UserId = userId,

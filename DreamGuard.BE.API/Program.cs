@@ -1,7 +1,9 @@
-﻿using DreamGuard.BE.BLL;
+﻿using CloudinaryDotNet;
+using DreamGuard.BE.BLL;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.Models;
@@ -10,9 +12,11 @@ using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Data;
@@ -37,6 +41,8 @@ namespace DreamGuard.BE.API
                 {
                     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
+                    //chuyển đổi Enum thành String khi nhận/xuất JSON
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 })
                 .ConfigureApiBehaviorOptions(options =>
                 {
@@ -56,19 +62,28 @@ namespace DreamGuard.BE.API
                     };
                 });
 
+            //Register options
+            builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+            builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
+            builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
+            builder.Services.Configure<OtpOptions>(builder.Configuration.GetSection("OtpOptions"));
+            
             //Add authentication with JWT
+
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                    ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                    ValidIssuer = jwtSettings.Issuer,
+                    ValidAudience = jwtSettings.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
                 };
 
                 options.Events = new JwtBearerEvents
@@ -135,6 +150,13 @@ namespace DreamGuard.BE.API
                 });
             });
 
+            // Brevo HttpClient
+            builder.Services.AddHttpClient("brevo", client =>
+            {
+                client.BaseAddress = new Uri(builder.Configuration.GetSection("BrevoOptions").Get<BrevoOptions>().BaseUrl ?? "https://api.brevo.com/v3/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             //Add DbContext
             var connectionString = builder.Configuration.GetConnectionString("DreamGuardConnection");
             builder.Services.AddDbContext<DreamGuardContext>(options =>
@@ -147,29 +169,40 @@ namespace DreamGuard.BE.API
             builder.Services.AddIdentityCore<User>()
                 .AddRoles<IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<DreamGuardContext>();
-            //Add BrevoKey
-            builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
-            //Add BLL services
+
+            // Cloudinary configuration
+            builder.Services.AddSingleton(sp =>
+            {
+                // Lấy config đã được bind chuẩn ra khỏi DI Container
+                var config = sp.GetRequiredService<IOptions<CloudinaryOptions>>().Value;
+
+                // Khởi tạo Account bằng các thuộc tính (an toàn, có gợi ý code)
+                var account = new Account(
+                    config.CloudName,
+                    config.ApiKey,
+                    config.ApiSecret
+                );
+
+                return new Cloudinary(account);
+            });
+
+            // CẤU HÌNH GIỚI HẠN DUNG LƯỢNG REQUEST
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 52428800; // 50MB
+                options.ValueLengthLimit = 52428800;
+                options.MultipartHeadersLengthLimit = 52428800;
+            });
+
+            builder.WebHost.ConfigureKestrel(serverOptions =>
+            {
+                serverOptions.Limits.MaxRequestBodySize = 52428800; // 50MB
+            });
+
             builder.AddBLLServices();
+            builder.AddDALServices();
 
             builder.Services.AddHttpContextAccessor();
-
-            //Add DI for BLL and DAL
-            builder.Services.AddScoped<IIdentityService, IdentityService>();
-            builder.Services.AddScoped<IAuthRepository, AuthRepository>();
-            builder.Services.AddScoped<IOtpRepository, OtpRepository>();
-            builder.Services.AddScoped<IOtpService, OtpService>();
-            builder.Services.AddScoped<IBrevoEmailService, BrevoEmailService>();
-            builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-            builder.Services.AddScoped<IBabyProfileRepository, BabyProfileRepository>();
-            builder.Services.AddScoped<IBabyProfileService, BabyProfileService>();
-            builder.Services.AddScoped<IAddressRepository, AddressRepository>();
-            builder.Services.AddScoped<IAddressService, AddressService>();
-            builder.Services.AddScoped<IUserVoucherRepository, UserVoucherRepository>();
-            builder.Services.AddScoped<IVoucherRepository, VoucherRepository>();
-            builder.Services.AddScoped<IVoucherService, VoucherService>();
-            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
-            builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
 
             var app = builder.Build();
             //Use exception handler

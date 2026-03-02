@@ -27,7 +27,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _voucherService.GetAllAsync(userId, pageNumber);
             if (!result.Succeeded)
             {
@@ -42,7 +45,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet("{voucherId}")]
         public async Task<IActionResult> GetByIdAsync(Guid voucherId)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _voucherService.GetByIdAsync(userId, voucherId);
             if (!result.Succeeded)
             {
@@ -57,7 +63,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpPost("ClaimVoucher")]
         public async Task<IActionResult> ClaimVoucherAsync([FromBody] VoucherClaimRequest voucherClaimRequest)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _voucherService.ClaimVoucherAsync(userId, voucherClaimRequest.Code);
             if (!result.Succeeded)
             {
@@ -67,7 +76,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
     }
 }

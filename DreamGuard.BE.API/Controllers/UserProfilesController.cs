@@ -26,7 +26,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetByIdAsync()
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _UserProfileService.GetByIdAsync(userId);
             if (!result.Succeeded)
             {
@@ -42,7 +45,10 @@ namespace DreamGuard.BE.API.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateAsync([FromBody] UserProfileUpdateRequest UserProfileRequest)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _UserProfileService.UpdateAsync(userId, UserProfileRequest);
             if (!result.Succeeded)
             {
@@ -52,12 +58,15 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
         [HttpPost("ChangePhoneNumberRequest")]
         public async Task<IActionResult> ChangePhoneNumberRequestAsync()
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _UserProfileService.ChangePhoneNumberRequestAsync(userId);
             if (!result.Succeeded)
             {
@@ -67,12 +76,15 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
         [HttpPost("ChangePhoneNumber")]
         public async Task<IActionResult> ChangePhoneNumberAsync([FromBody]ChangePhoneNumberRequest changePhoneNumberRequest)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _UserProfileService.ChangePhoneNumberAsync(userId, changePhoneNumberRequest);
             if (!result.Succeeded)
             {
@@ -82,7 +94,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result);
+            return Ok(result.Message);
         }
     }
 }

@@ -39,7 +39,7 @@ namespace DreamGuard.BE.DAL.DbContext
         {
             try
             {
-                await _context.Database.EnsureDeletedAsync();
+                // await _context.Database.EnsureDeletedAsync();
                 await _context.Database.EnsureCreatedAsync();
             }
             catch (Exception ex)

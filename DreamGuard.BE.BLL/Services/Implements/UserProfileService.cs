@@ -8,6 +8,7 @@ using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;
 using System.Collections.Generic;
@@ -55,9 +56,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
-                return Result.Failure($"{result.Errors}", 400);
+                return Result.Failure(string.Join(", ", result.Errors.Select(e => e.Description)), 400);
             }
-            return Result.Success($"{result}");
+            return Result.Success("Profile updated successfully");
         }
         public async Task<Result> ChangePhoneNumberRequestAsync(Guid userId)
         {
@@ -85,11 +86,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure($"{otpResult.Error}", 400);
             }
+            var existingUser = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.PhoneNumber == changePhoneNumberRequest.PhoneNumber && u.Id != userId);
+            if (existingUser != null)
+            {
+                return Result.Failure("Phone number is already in use by another account", 400);
+            }
             user.PhoneNumber = changePhoneNumberRequest.PhoneNumber;
+            user.UserName = changePhoneNumberRequest.PhoneNumber;
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
-                return Result.Failure($"{result.Errors}", 400);
+                return Result.Failure(string.Join(", ", result.Errors.Select(e => e.Description)), 400);
             }
             return Result.Success($"PhoneNumber changed successfully");
         }

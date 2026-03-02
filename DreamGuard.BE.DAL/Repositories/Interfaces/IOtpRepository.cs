@@ -9,7 +9,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IOtpRepository
     {
         Task<bool> GenerateOtpAsync(Otp otp);
-        Task<Otp> GetOtpByPhoneAsync(string phoneNumber);
+        Task<Otp?> GetOtpByPhoneAsync(string phoneNumber);
         Task CleanupExpiredOtpsAsync();
         Task VerifiedOtpAsync(Otp otp);
     }
