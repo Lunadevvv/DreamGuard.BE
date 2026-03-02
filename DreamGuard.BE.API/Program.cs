@@ -254,9 +254,9 @@ namespace DreamGuard.BE.API
                 app.UseSwagger();
                 app.UseSwaggerUI();
                 await app.Initialise();
+                app.UseHttpsRedirection();
             }
 
-            app.UseHttpsRedirection();
             // CORS phải được đặt TRƯỚC Authentication/Authorization
             app.UseCors("AllowFrontend");
             // Use authentication and authorization
