@@ -30,6 +30,8 @@ namespace DreamGuard.BE.DAL
             builder.Services.AddScoped<IAddressRepository, AddressRepository>();
             builder.Services.AddScoped<IUserVoucherRepository, UserVoucherRepository>();
             builder.Services.AddScoped<IVoucherRepository, VoucherRepository>();
+            builder.Services.AddScoped<ICartRepository, CartRepository>();
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
         }
     }
