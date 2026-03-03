@@ -1,0 +1,24 @@
+using System;
+using System.Text.Json.Serialization;
+
+namespace DreamGuard.BE.DAL.Models
+{
+    public class OrderItem
+    {
+        public Guid Id { get; set; }
+        public Guid OrderId { get; set; }
+        public Guid? ProductVariantId { get; set; }
+        public Guid? ComboId { get; set; }
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal TotalPrice { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public Order? Order { get; set; }
+        [JsonIgnore]
+        public ProductVariant? ProductVariant { get; set; }
+        [JsonIgnore]
+        public Combo? Combo { get; set; }
+    }
+}

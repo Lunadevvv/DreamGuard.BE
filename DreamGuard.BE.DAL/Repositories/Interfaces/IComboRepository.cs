@@ -20,5 +20,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<bool> SlugExistsAsync(string slug, Guid? excludeId = null);
         Task RemoveComboProductVariantsAsync(Guid comboId);
         Task AddComboProductVariantsAsync(List<ComboProductVariant> items);
+        Task<Combo?> GetComboByIdForUpdateAsync(Guid id);
+        Task<Combo?> GetComboWithProductsForUpdateAsync(Guid id);
     }
 }

@@ -60,5 +60,21 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await _context.ProductVariants
                 .AnyAsync(v => v.Sku == sku && (!excludeVariantId.HasValue || v.Id != excludeVariantId.Value));
         }
+
+        public async Task<ProductVariant?> GetVariantByIdForUpdateAsync(Guid id)
+        {
+            return await _context.ProductVariants
+                .AsTracking()
+                .FirstOrDefaultAsync(v => v.Id == id);
+        }
+
+        public async Task<List<ProductVariant>> GetVariantsByProductIdForStockCheckAsync(Guid productId)
+        {
+            return await _context.ProductVariants
+                .Include(v => v.Inventory)
+                .Where(v => v.ProductId == productId)
+                .AsNoTracking()
+                .ToListAsync();
+        }
     }
 }

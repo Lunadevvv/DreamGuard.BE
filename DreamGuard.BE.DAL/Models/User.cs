@@ -21,6 +21,8 @@ namespace DreamGuard.BE.DAL.Models
         public ICollection<BabyProfile> BabyProfiles { get; set; } = new List<BabyProfile>();
         public ICollection<Address> Addresses { get; set; } = new List<Address>();
         public ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
+        public Cart? Cart { get; set; }
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
 
     }
 }

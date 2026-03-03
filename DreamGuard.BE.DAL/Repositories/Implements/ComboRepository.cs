@@ -56,6 +56,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             var query = await _context.Combos
                 .Include(c => c.ComboChildrens.Where(ch => ch.Status == ProductStatus.Published))
+                    .ThenInclude(ch => ch.ComboProductVariants)
+                        .ThenInclude(cpv => cpv.ProductVariant!)
+                            .ThenInclude(pv => pv.Inventory)
                 .AsSplitQuery()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id);
@@ -80,6 +83,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(c => c.ComboProductVariants)
                     .ThenInclude(cpv => cpv.ProductVariant!)
                         .ThenInclude(pv => pv.Product)
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Inventory)
                 .AsSplitQuery()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id);
@@ -108,6 +114,24 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             await _context.ComboProductVariants.AddRangeAsync(items);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Combo?> GetComboByIdForUpdateAsync(Guid id)
+        {
+            return await _context.Combos
+                .AsTracking()
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<Combo?> GetComboWithProductsForUpdateAsync(Guid id)
+        {
+            return await _context.Combos
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Inventory)
+                .AsSplitQuery()
+                .AsTracking()
+                .FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task<PaginatedList<Combo>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status)

@@ -27,6 +27,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal SalePrice { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
         public double AverageRating { get; set; }
+        public int Stock { get; set; }
     }
 
     public class ComboDetailResponse
@@ -44,6 +45,7 @@ namespace DreamGuard.BE.BLL.Responses
         public double AverageRating { get; set; }
         public DateTime CreatedAt { get; set; }
         public Guid? ComboParentId { get; set; }
+        public int? Stock { get; set; }
 
         // Populated only for child combos (ComboParentId != null)
         public List<ComboProductItemResponse>? ProductItems { get; set; }

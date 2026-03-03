@@ -120,7 +120,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         BasePrice = ch.BasePrice,
                         SalePrice = ch.SalePrice,
                         ImageUrl = ch.ImageUrl,
-                        AverageRating = ch.AverageRating
+                        AverageRating = ch.AverageRating,
+                        Stock = CalculateComboStock(ch.ComboProductVariants)
                     }).ToList();
                 response.ProductItems = null;
                 return Result<ComboDetailResponse>.Success(response);
@@ -141,6 +142,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         Quantity = cpv.Quantity
                     }).ToList();
                 response.ChildCombos = null;
+                response.Stock = CalculateComboStock(childCombo!.ComboProductVariants);
                 return Result<ComboDetailResponse>.Success(response);
             }
         }
@@ -437,6 +439,30 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 CreatedAt = c.CreatedAt,
                 ComboParentId = c.ComboParentId
             };
+        }
+
+        private static int CalculateComboStock(List<ComboProductVariant> comboProductVariants)
+        {
+            if (comboProductVariants == null || !comboProductVariants.Any())
+            {
+                return 0;
+            }
+
+            int minStock = int.MaxValue;
+
+            foreach (var cpv in comboProductVariants)
+            {
+                if (cpv.Quantity <= 0)
+                {
+                    continue;
+                }
+
+                int inventoryQuantity = cpv.ProductVariant?.Inventory?.Quantity ?? 0;
+                int possibleSets = inventoryQuantity / cpv.Quantity;
+                minStock = Math.Min(minStock, possibleSets);
+            }
+
+            return minStock == int.MaxValue ? 0 : minStock;
         }
     }
 }
