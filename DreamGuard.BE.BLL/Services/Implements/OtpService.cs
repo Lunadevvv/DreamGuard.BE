@@ -32,7 +32,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             await _otpRepository.CleanupExpiredOtpsAsync();
         }
 
-        public async Task<Result> GenerateAndSendOtpAsync(string phoneNumber, string email)
+        public async Task<Result> GenerateRegisterOtpAsync(string phoneNumber, string email)
         {
             await CleanupExpiredOtpsAsync();
 
@@ -42,6 +42,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Phone number is registered", 400);
             }
+
+            return await GenerateAndSendOtpAsync(phoneNumber, email);
+        }
+
+        public async Task<Result> GenerateAndSendOtpAsync(string phoneNumber, string email)
+        {
+            await CleanupExpiredOtpsAsync();
 
             //Check existing OTP for the phone number
             var existingOtp = await _otpRepository.GetOtpByPhoneAsync(phoneNumber);
