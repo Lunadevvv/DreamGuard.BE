@@ -22,5 +22,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task AddComboProductVariantsAsync(List<ComboProductVariant> items);
         Task<Combo?> GetComboByIdForUpdateAsync(Guid id);
         Task<Combo?> GetComboWithProductsForUpdateAsync(Guid id);
+        Task<List<Combo>> GetAllChildrenOfParentAsync(Guid parentId);
     }
 }

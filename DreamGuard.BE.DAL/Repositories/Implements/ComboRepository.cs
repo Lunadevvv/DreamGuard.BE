@@ -134,6 +134,14 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
+        public async Task<List<Combo>> GetAllChildrenOfParentAsync(Guid parentId)
+        {
+            return await _context.Combos
+                .Where(c => c.ComboParentId == parentId)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task<PaginatedList<Combo>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status)
         {
             var query = _context.Combos

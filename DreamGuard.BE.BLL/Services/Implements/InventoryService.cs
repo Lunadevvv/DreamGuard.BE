@@ -36,7 +36,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Quantity must be greater than 0.", 400);
             }
 
-            var inventory = await _inventoryRepository.GetInventoryByVariantIdAsync(productVariantId);
+            var inventory = await _inventoryRepository.GetInventoryByVariantIdForUpdateAsync(productVariantId);
 
             if (inventory == null)
             {
@@ -62,7 +62,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Quantity must be greater than 0.", 400);
             }
 
-            var inventory = await _inventoryRepository.GetInventoryByVariantIdAsync(productVariantId);
+            var inventory = await _inventoryRepository.GetInventoryByVariantIdForUpdateAsync(productVariantId);
 
             if (inventory == null)
             {

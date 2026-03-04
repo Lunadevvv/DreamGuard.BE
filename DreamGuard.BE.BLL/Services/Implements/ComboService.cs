@@ -246,6 +246,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     await _comboRepository.AddComboProductVariantsAsync(comboItems);
                 }
 
+                // Auto-recalculate parent prices after child creation
+                if (request.ComboParentId != null)
+                {
+                    var allChildren = await _comboRepository.GetAllChildrenOfParentAsync(request.ComboParentId.Value);
+                    if (allChildren.Any())
+                    {
+                        var parent = await _comboRepository.GetComboByIdAsync(request.ComboParentId.Value);
+                        parent!.BasePrice = allChildren.Min(c => c.BasePrice);
+                        parent.SalePrice = allChildren.Min(c => c.SalePrice);
+                        await _comboRepository.UpdateAsync(parent);
+                    }
+                }
+
                 await transaction.CommitAsync();
                 return Result<ComboResponse>.Success(MapToComboResponse(combo));
             }
@@ -271,24 +284,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     "Sale price cannot be greater than base price.", 400);
             }
 
-            //Validate parent's base price with children's base price
-            if(combo.ComboParentId == null && combo.ComboChildrens != null && combo.ComboChildrens.Any())
-            {
-                var maxChildBasePrice = combo.ComboChildrens.Max(c => c.BasePrice);
-                if (request.BasePrice < maxChildBasePrice)
-                {
-                    return Result<ComboResponse>.Failure(
-                        $"Parent combo's base price cannot be less than the maximum base price of its child combos ({maxChildBasePrice}).", 400);
-                }
-
-                // If parent combo's sale price is updated, validate with children's sale price
-                if (request.SalePrice < combo.ComboChildrens.Max(c => c.SalePrice))
-                {                    
-                    return Result<ComboResponse>.Failure(
-                        $"Parent combo's sale price cannot be less than the maximum sale price of its child combos ({combo.ComboChildrens.Max(c => c.SalePrice)}).", 400);
-                }
-            }
-
             if (await _comboRepository.SlugExistsAsync(request.Slug, id))
             {
                 return Result<ComboResponse>.Failure(
@@ -301,6 +296,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (res < 0)
             {
                 return Result<ComboResponse>.Failure("Failed to update combo.", 400);
+            }
+
+            // Auto-recalculate parent prices when a child combo's price is updated
+            if (combo.ComboParentId != null)
+            {
+                var allChildren = await _comboRepository.GetAllChildrenOfParentAsync(combo.ComboParentId.Value);
+                if (allChildren.Any())
+                {
+                    var parent = await _comboRepository.GetComboByIdAsync(combo.ComboParentId.Value);
+                    parent!.BasePrice = allChildren.Min(c => c.BasePrice);
+                    parent.SalePrice = allChildren.Min(c => c.SalePrice);
+                    await _comboRepository.UpdateAsync(parent);
+                }
             }
 
             return Result<ComboResponse>.Success(MapToComboResponse(combo));
@@ -379,6 +387,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<bool>.Failure("Combo not found.", 404);
             }
 
+            // Validate: parent combo can only be Published if it has child combos with at least one Published
+            if (status == ProductStatus.Published && combo.ComboParentId == null)
+            {
+                var allChildren = await _comboRepository.GetAllChildrenOfParentAsync(id);
+                if (!allChildren.Any())
+                {
+                    return Result<bool>.Failure(
+                        "Cannot publish a parent combo that has no child combos.", 400);
+                }
+                if (!allChildren.Any(c => c.Status == ProductStatus.Published))
+                {
+                    return Result<bool>.Failure(
+                        "Cannot publish a parent combo without at least one published child combo.", 400);
+                }
+            }
+
             combo.Status = status;
             var res = await _comboRepository.UpdateAsync(combo);
             if (res < 0)
@@ -386,17 +410,26 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<bool>.Failure("Failed to update combo status.", 400);
             }
 
-            // Cascade: when parent combo is Hidden, also hide all child combos
+            // Cascade: when parent combo is Hidden, hide ALL child combos (regardless of current status)
             if (status == ProductStatus.Hidden && combo.ComboParentId == null)
             {
-                var parentWithChildren = await _comboRepository.GetComboWithChildrenAsync(id, null, null);
-                if (parentWithChildren?.ComboChildrens != null)
+                var allChildren = await _comboRepository.GetAllChildrenOfParentAsync(id);
+                foreach (var child in allChildren)
                 {
-                    foreach (var child in parentWithChildren.ComboChildrens)
-                    {
-                        child.Status = ProductStatus.Hidden;
-                        await _comboRepository.UpdateAsync(child);
-                    }
+                    child.Status = ProductStatus.Hidden;
+                    await _comboRepository.UpdateAsync(child);
+                }
+            }
+
+            // Auto-hide parent when all children become Hidden
+            if (status == ProductStatus.Hidden && combo.ComboParentId != null)
+            {
+                var allSiblings = await _comboRepository.GetAllChildrenOfParentAsync(combo.ComboParentId.Value);
+                if (allSiblings.Any() && allSiblings.All(c => c.Status == ProductStatus.Hidden))
+                {
+                    var parent = await _comboRepository.GetComboByIdAsync(combo.ComboParentId.Value);
+                    parent!.Status = ProductStatus.Hidden;
+                    await _comboRepository.UpdateAsync(parent);
                 }
             }
 
