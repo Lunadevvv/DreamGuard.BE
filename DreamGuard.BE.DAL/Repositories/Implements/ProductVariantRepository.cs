@@ -41,6 +41,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<ProductVariant?> GetVariantByIdAsync(Guid id)
         {
             return await _context.ProductVariants
+                .Include(v => v.Inventory)
                 .FirstOrDefaultAsync(v => v.Id == id);
         }
 

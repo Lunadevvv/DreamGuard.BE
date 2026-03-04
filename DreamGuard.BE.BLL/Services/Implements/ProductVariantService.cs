@@ -198,6 +198,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<bool>.Failure("Variant not found.", 404);
             }
 
+            //check stock
+            if (variant.Inventory != null)
+            {
+                if ((status == ProductStatus.Published || status == ProductStatus.Hidden) && variant.Inventory.Quantity <= 0)
+                {
+                    return Result<bool>.Failure("Cannot activate or hide variant with zero stock.", 400);
+                }
+            }
+
             variant.Status = status;
 
             var res = await _variantRepository.UpdateAsync(variant);
