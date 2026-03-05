@@ -24,6 +24,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<Inventory?> GetInventoryByVariantIdForUpdateAsync(Guid productVariantId)
         {
             return await _context.Inventories
+                .Include(i => i.ProductVariant)
                 .AsTracking()
                 .FirstOrDefaultAsync(i => i.ProductVariantId == productVariantId);
         }

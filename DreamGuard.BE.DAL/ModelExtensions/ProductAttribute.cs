@@ -15,5 +15,6 @@ namespace DreamGuard.BE.DAL.ModelExtensions
         [Range(1, 50, ErrorMessage = "Thickness must be between 0 and 50 cm.")]
         public double? Thickness { get; set; }
         public string? Color { get; set; }
+        public string? HexColor { get; set; }
     }
 }

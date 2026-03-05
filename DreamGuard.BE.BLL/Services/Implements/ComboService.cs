@@ -403,22 +403,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
             }
 
+            // Validate: child combo cannot be Published if out of stock
+            if (status == ProductStatus.Published && combo.ComboParentId != null)
+            {
+                var comboWithProducts = await _comboRepository.GetComboWithProductsAsync(id);
+                int stock = CalculateComboStock(comboWithProducts!.ComboProductVariants);
+                if (stock <= 0)
+                {
+                    return Result<bool>.Failure(
+                        "Cannot publish a child combo that is out of stock.", 400);
+                }
+            }
+
             combo.Status = status;
             var res = await _comboRepository.UpdateAsync(combo);
             if (res < 0)
             {
                 return Result<bool>.Failure("Failed to update combo status.", 400);
-            }
-
-            // Cascade: when parent combo is Hidden, hide ALL child combos (regardless of current status)
-            if (status == ProductStatus.Hidden && combo.ComboParentId == null)
-            {
-                var allChildren = await _comboRepository.GetAllChildrenOfParentAsync(id);
-                foreach (var child in allChildren)
-                {
-                    child.Status = ProductStatus.Hidden;
-                    await _comboRepository.UpdateAsync(child);
-                }
             }
 
             // Auto-hide parent when all children become Hidden

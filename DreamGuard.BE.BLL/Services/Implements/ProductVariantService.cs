@@ -252,7 +252,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 IsNew = v.IsNew,
                 Status = v.Status,
                 CreatedAt = v.CreatedAt,
-                ProductId = v.ProductId
+                ProductId = v.ProductId,
+                StockQuantity = v.Inventory?.Quantity ?? 0,
+                StockStatus = GetStockStatus(v.Inventory?.Quantity ?? 0, v.Inventory?.LowStockThreshold ?? 10)
             };
         }
 

@@ -20,9 +20,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<List<ProductVariant>> GetVariantsByProductIdAsync(Guid productId, string? size, string? color)
         {
             var query = await _context.ProductVariants
+                .Include(v => v.Inventory)
                 .Where(v => v.ProductId == productId && v.Status != ProductStatus.Draft && v.Status != ProductStatus.Hidden)
                 .OrderByDescending(v => v.CreatedAt)
                 .AsNoTracking()
+                .AsSplitQuery()
                 .ToListAsync();
 
             if (!string.IsNullOrEmpty(size))
