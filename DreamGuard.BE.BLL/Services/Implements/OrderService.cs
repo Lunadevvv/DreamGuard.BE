@@ -23,7 +23,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IInventoryRepository _inventoryRepository;
         private readonly IAddressRepository _addressRepository;
         private readonly IUserVoucherRepository _userVoucherRepository;
-        private readonly IStockService _stockService;
+        private readonly IInventoryService _inventoryService;
         private readonly IUnitOfWork _unitOfWork;
 
         public OrderService(
@@ -34,7 +34,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IInventoryRepository inventoryRepository,
             IAddressRepository addressRepository,
             IUserVoucherRepository userVoucherRepository,
-            IStockService stockService,
+            IInventoryService inventoryService,
             IUnitOfWork unitOfWork)
         {
             _orderRepository = orderRepository;
@@ -44,7 +44,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _inventoryRepository = inventoryRepository;
             _addressRepository = addressRepository;
             _userVoucherRepository = userVoucherRepository;
-            _stockService = stockService;
+            _inventoryService = inventoryService;
             _unitOfWork = unitOfWork;
         }
 
@@ -66,7 +66,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
-            {
+            {   
                 var orderItems = new List<OrderItem>();
                 decimal subTotal = 0;
 
@@ -92,7 +92,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         }
 
                         // Deduct stock
-                        var deductResult = await _stockService.DeductVariantStockAsync(
+                        var deductResult = await _inventoryService.DeductVariantStockAsync(
                             cartItem.ProductVariantId.Value, cartItem.Quantity);
                         if (!deductResult.Succeeded)
                         {
@@ -134,7 +134,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         }
 
                         // Deduct combo stock
-                        var deductResult = await _stockService.DeductComboStockAsync(
+                        var deductResult = await _inventoryService.DeductComboStockAsync(
                             cartItem.ComboId.Value, cartItem.Quantity);
                         if (!deductResult.Succeeded)
                         {
@@ -387,7 +387,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     if (item.ProductVariantId.HasValue)
                     {
-                        var result = await _stockService.RestoreVariantStockAsync(
+                        var result = await _inventoryService.RestoreVariantStockAsync(
                             item.ProductVariantId.Value, item.Quantity);
                         if (!result.Succeeded)
                         {
@@ -397,7 +397,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                     else if (item.ComboId.HasValue)
                     {
-                        var result = await _stockService.RestoreComboStockAsync(
+                        var result = await _inventoryService.RestoreComboStockAsync(
                             item.ComboId.Value, item.Quantity);
                         if (!result.Succeeded)
                         {
