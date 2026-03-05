@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 using System;
 using System.Collections.Generic;
 
-=======
->>>>>>> f8505a93e67414d95cec694c537c9b1f95e0b439
 namespace DreamGuard.BE.BLL.Responses
 {
     public class CartItemResponse
