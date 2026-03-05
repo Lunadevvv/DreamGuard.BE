@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 using System;
 using System.Collections.Generic;
 using DreamGuard.BE.DAL.Constants;
+=======
+using AutoMapper;
+using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Models;
+>>>>>>> f8505a93e67414d95cec694c537c9b1f95e0b439
 
 namespace DreamGuard.BE.BLL.Responses
 {
@@ -9,10 +15,26 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid Id { get; set; }
         public Guid? ProductVariantId { get; set; }
         public Guid? ComboId { get; set; }
+<<<<<<< HEAD
         public string ItemName { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
+=======
+        public string ProductName { get; set; } = string.Empty;
+        public string? Sku { get; set; }
+        public decimal UnitPrice { get; set; }
+        public int Quantity { get; set; }
+        public decimal TotalPrice { get; set; }
+
+        private class Mapping : Profile
+        {
+            public Mapping()
+            {
+                CreateMap<OrderItem, OrderItemResponse>();
+            }
+        }
+>>>>>>> f8505a93e67414d95cec694c537c9b1f95e0b439
     }
 
     public class OrderResponse
