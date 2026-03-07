@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using DreamGuard.BE.DAL.Constants;
 
 namespace DreamGuard.BE.BLL.Requests
 {
@@ -12,5 +13,8 @@ namespace DreamGuard.BE.BLL.Requests
 
         [MaxLength(500)]
         public string? Note { get; set; }
+
+        [Required(ErrorMessage = "PaymentMethod is required.")]
+        public PaymentMethod PaymentMethod { get; set; }
     }
 }

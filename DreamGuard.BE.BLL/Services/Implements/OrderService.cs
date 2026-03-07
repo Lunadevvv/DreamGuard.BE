@@ -24,6 +24,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IAddressRepository _addressRepository;
         private readonly IUserVoucherRepository _userVoucherRepository;
         private readonly IInventoryService _inventoryService;
+        private readonly IPaymentRepository _paymentRepository;
+        private readonly IVnPayService _vnPayService;
         private readonly IUnitOfWork _unitOfWork;
 
         public OrderService(
@@ -35,6 +37,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IAddressRepository addressRepository,
             IUserVoucherRepository userVoucherRepository,
             IInventoryService inventoryService,
+            IPaymentRepository paymentRepository,
+            IVnPayService vnPayService,
             IUnitOfWork unitOfWork)
         {
             _orderRepository = orderRepository;
@@ -45,10 +49,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _addressRepository = addressRepository;
             _userVoucherRepository = userVoucherRepository;
             _inventoryService = inventoryService;
+            _paymentRepository = paymentRepository;
+            _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request)
+        public async Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
         {
             // Load cart with items
             var cart = await _cartRepository.GetCartWithItemsAsync(userId);
@@ -66,7 +72,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
-            {   
+            {
                 var orderItems = new List<OrderItem>();
                 decimal subTotal = 0;
 
@@ -248,10 +254,47 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
                 await _orderRepository.AddOrderItemsAsync(orderItems);
 
+                // Create Payment record
+                var payment = new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    OrderCode = order.OrderCode,
+                    POrderId = order.Id,
+                    Status = PaymentStatus.Pending,
+                    Amount = totalAmount,
+                    Description = $"Payment for Order {order.OrderCode}",
+                    PaymentMethod = request.PaymentMethod,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                var paymentCreateResult = await _paymentRepository.CreateAsync(payment);
+                if (paymentCreateResult < 0)
+                {
+                    await transaction.RollbackAsync();
+                    return Result<OrderResponse>.Failure("Failed to create payment.", 500);
+                }
+
                 // Clear cart
                 await _cartRepository.ClearCartItemsAsync(cart.Id);
 
                 await transaction.CommitAsync();
+
+                // Generate VnPay URL after commit (external call, should not be inside transaction)
+                string? paymentUrl = null;
+                if (request.PaymentMethod == PaymentMethod.VnPay)
+                {
+                    var vnPayRequest = new VnPaymentRequest
+                    {
+                        PaymentId = payment.Id.ToString(),
+                        OrderCode = order.OrderCode,
+                        Description = payment.Description,
+                        Amount = (int)totalAmount,
+                        IpAddress = ipAddress,
+                        CreatedDate = payment.CreatedAt
+                    };
+                    paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
+                }
 
                 return Result<OrderResponse>.Success(new OrderResponse
                 {
@@ -261,6 +304,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     SubTotal = order.SubTotal,
                     DiscountAmount = order.DiscountAmount,
                     TotalAmount = order.TotalAmount,
+                    PaymentMethod = request.PaymentMethod,
+                    PaymentUrl = paymentUrl,
                     CreatedAt = order.CreatedAt
                 });
             }
@@ -417,6 +462,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         userVoucher.UsedAt = null;
                         await _userVoucherRepository.UpdateAsync(userVoucher);
                     }
+                }
+
+                // Mark associated payment as Failed
+                var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
+                if (payment != null && payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    await _paymentRepository.UpdateAsync(payment);
                 }
 
                 order.Status = OrderStatus.Cancelled;

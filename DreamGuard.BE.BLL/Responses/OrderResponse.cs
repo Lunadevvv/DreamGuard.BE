@@ -23,6 +23,8 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal SubTotal { get; set; }
         public decimal DiscountAmount { get; set; }
         public decimal TotalAmount { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public string? PaymentUrl { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 

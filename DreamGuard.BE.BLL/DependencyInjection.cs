@@ -33,6 +33,8 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IUserProfileService, UserProfileService>();
             builder.Services.AddScoped<ICartService, CartService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<IVnPayService, VnPayService>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
         }
     }
 }

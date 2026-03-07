@@ -39,5 +39,7 @@ namespace DreamGuard.BE.DAL.Models
         public UserVoucher? UserVoucher { get; set; }
         [JsonIgnore]
         public List<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+        [JsonIgnore]
+        public List<Payment> Payments { get; set; } = new List<Payment>();
     }
 }
