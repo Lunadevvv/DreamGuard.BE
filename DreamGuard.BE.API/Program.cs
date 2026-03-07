@@ -187,7 +187,8 @@ namespace DreamGuard.BE.API
             //Add IdentityUser and IdentityRole
             builder.Services.AddIdentityCore<User>()
                 .AddRoles<IdentityRole<Guid>>()
-                .AddEntityFrameworkStores<DreamGuardContext>();
+                .AddEntityFrameworkStores<DreamGuardContext>()
+                .AddDefaultTokenProviders();
 
             // Cloudinary configuration
             builder.Services.AddSingleton(sp =>

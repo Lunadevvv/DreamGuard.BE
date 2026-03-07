@@ -15,5 +15,8 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken);
         Task<Result<RegisterResponse>> RegisterAsync(string email, string password, string firstName, string lastName, string phoneNumber, string gender, DateOnly dateOfBirth);
         Task<Result> LogoutAsync(Guid userId);
+        Task<Result> ForgotPasswordAsync(string phoneNumber);
+        Task<Result> ResetPasswordAsync(string phoneNumber, string otpCode);
+        Task<Result> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword);
     }
 }
