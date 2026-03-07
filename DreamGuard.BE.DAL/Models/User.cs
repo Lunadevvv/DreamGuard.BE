@@ -23,6 +23,7 @@ namespace DreamGuard.BE.DAL.Models
         public ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
         public Cart? Cart { get; set; }
         public ICollection<Order> Orders { get; set; } = new List<Order>();
+        public ICollection<FavoriteProduct> FavoriteProducts { get; set; } = new List<FavoriteProduct>();
 
     }
 }

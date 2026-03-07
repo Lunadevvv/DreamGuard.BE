@@ -22,6 +22,7 @@ namespace DreamGuard.BE.DAL.Configurations
 
             builder.Property(p => p.CreatedAt).HasColumnType("TIMESTAMPTZ");
             builder.Property(p => p.UpdatedAt).HasColumnType("TIMESTAMPTZ");
+            builder.Property(p => p.ExpiredAt).HasColumnType("TIMESTAMPTZ");
 
             builder.HasOne(p => p.POrder)
                 .WithMany(o => o.Payments)

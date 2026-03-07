@@ -163,5 +163,28 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await PaginatedList<Combo>.CreateAsync(query, pageNumber, 10);
         }
 
+        public async Task<List<Combo>> GetOutOfStockCombosByVariantIdAsync(Guid productVariantId)
+        {
+            var comboIds = await _context.ComboProductVariants
+                .Where(cpv => cpv.ProductVariantId == productVariantId)
+                .Select(cpv => cpv.ComboId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!comboIds.Any())
+                return new List<Combo>();
+
+            return await _context.Combos
+                .Where(c => comboIds.Contains(c.Id)
+                            && c.Status == ProductStatus.OutOfStock
+                            && c.ComboParentId != null)
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Inventory)
+                .AsSplitQuery()
+                .AsTracking()
+                .ToListAsync();
+        }
+
     }
 }

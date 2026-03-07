@@ -15,6 +15,7 @@ namespace DreamGuard.BE.DAL.Models
         public PaymentMethod PaymentMethod { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime ExpiredAt { get; set; }
 
         [JsonIgnore]
         public Order? POrder { get; set; }

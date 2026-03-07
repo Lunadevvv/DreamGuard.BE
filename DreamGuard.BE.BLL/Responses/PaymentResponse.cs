@@ -15,6 +15,7 @@ namespace DreamGuard.BE.BLL.Responses
         public PaymentMethod PaymentMethod { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public DateTime ExpiredAt { get; set; }
     }
 
     public class PaymentSummaryResponse
@@ -35,5 +36,6 @@ namespace DreamGuard.BE.BLL.Responses
         public PaymentStatus Status { get; set; }
         public decimal Amount { get; set; }
         public string? PaymentUrl { get; set; }
+        public DateTime ExpiredAt { get; set; }
     }
 }

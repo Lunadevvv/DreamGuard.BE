@@ -15,5 +15,6 @@ namespace DreamGuard.BE.DAL.Options
         public string Locale { get; set; } = "vn";
         public string CurrCode { get; set; } = "VND";
         public string BaseUrl { get; set; } = string.Empty;
+        public int PaymentExpirationMinutes { get; set; } = 5;
     }
 }

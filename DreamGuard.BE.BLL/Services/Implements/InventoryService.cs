@@ -90,6 +90,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 }
 
+                // Auto-update OutOfStock combos that contain this variant
+                await UpdateComboStatusesAfterStockIncreaseAsync(productVariantId);
+
                 await transaction.CommitAsync();
                 return Result.Success("Inventory updated successfully.");
             }catch (Exception ex)
@@ -361,6 +364,40 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             return minStock == int.MaxValue ? 0 : minStock;
+        }
+
+        private async Task UpdateComboStatusesAfterStockIncreaseAsync(Guid productVariantId)
+        {
+            var outOfStockCombos = await _comboRepository.GetOutOfStockCombosByVariantIdAsync(productVariantId);
+
+            foreach (var combo in outOfStockCombos)
+            {
+                var comboStock = CalculateComboStock(combo);
+                if (comboStock > 0)
+                {
+                    combo.Status = ProductStatus.Published;
+                    await _comboRepository.UpdateAsync(combo);
+
+                    if (combo.ComboParentId.HasValue)
+                    {
+                        await RestoreParentComboStatusIfNeededAsync(combo.ComboParentId.Value);
+                    }
+                }
+            }
+        }
+
+        private async Task RestoreParentComboStatusIfNeededAsync(Guid parentComboId)
+        {
+            var parentCombo = await _comboRepository.GetComboByIdForUpdateAsync(parentComboId);
+            if (parentCombo == null || parentCombo.Status != ProductStatus.OutOfStock)
+                return;
+
+            var allChildren = await _comboRepository.GetAllChildrenOfParentAsync(parentComboId);
+            if (allChildren.Any(c => c.Status == ProductStatus.Published))
+            {
+                parentCombo.Status = ProductStatus.Published;
+                await _comboRepository.UpdateAsync(parentCombo);
+            }
         }
     }
 }

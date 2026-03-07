@@ -9,7 +9,9 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -19,17 +21,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IOrderRepository _orderRepository;
         private readonly IVnPayService _vnPayService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly VnPayOptions _vnPayOptions;
+        private readonly IOrderService _orderService;
 
         public PaymentService(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
             IVnPayService vnPayService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IOptions<VnPayOptions> vnPayOptions,
+            IOrderService orderService)
         {
             _paymentRepository = paymentRepository;
             _orderRepository = orderRepository;
             _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
+            _vnPayOptions = vnPayOptions.Value;
+            _orderService = orderService;
         }
 
         public async Task<Result<CreatePaymentResponse>> CreatePaymentAsync(Guid orderId, PaymentMethod method, string ipAddress)
@@ -62,7 +70,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Description = $"Payment for Order {order.OrderCode}",
                 PaymentMethod = method,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                ExpiredAt = DateTime.UtcNow.AddMinutes(_vnPayOptions.PaymentExpirationMinutes)
             };
 
             var createResult = await _paymentRepository.CreateAsync(payment);
@@ -95,7 +104,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PaymentMethod = method,
                 Status = payment.Status,
                 Amount = payment.Amount,
-                PaymentUrl = paymentUrl
+                PaymentUrl = paymentUrl,
+                ExpiredAt = payment.ExpiredAt
             });
         }
 
@@ -149,6 +159,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _paymentRepository.UpdateAsync(payment);
 
                 await transaction.CommitAsync();
+
+                // Auto-cancel order when payment fails (runs in separate transaction)
+                if (payment.Status == PaymentStatus.Failed && payment.POrderId.HasValue)
+                {
+                    await _orderService.UpdateOrderStatusAsync(payment.POrderId.Value, OrderStatus.Cancelled);
+                }
 
                 return Result<PaymentResponse>.Success(MapToResponse(payment));
             }
@@ -276,6 +292,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
 
                 await transaction.CommitAsync();
+
+                // Auto-cancel order when payment is marked as Failed
+                if (newStatus == PaymentStatus.Failed && payment.POrderId.HasValue)
+                {
+                    await _orderService.UpdateOrderStatusAsync(payment.POrderId.Value, OrderStatus.Cancelled);
+                }
+
                 return Result.Success($"Payment status updated to '{newStatus}'.");
             }
             catch (Exception)
