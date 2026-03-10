@@ -17,10 +17,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IProductRepository _productRepository;
         private readonly IProductVariantRepository _variantRepository;
-        public ProductService(IProductRepository productRepository, IProductVariantRepository variantRepository)
+        private readonly IProductVariantService _variantService;
+        public ProductService(IProductRepository productRepository, IProductVariantRepository variantRepository, IProductVariantService variantService)
         {
             _productRepository = productRepository;
             _variantRepository = variantRepository;
+            _variantService = variantService;
         }
 
         public async Task<Result<bool>> CreateProductAsync(Product product)
@@ -158,6 +160,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<ProductDetailResponse>.Failure("Product not found.", 404);
             }
 
+            var variantsResult = await _variantService.GetVariantsByProductIdAsync(prod.Id, null, null);
+            if (!variantsResult.Succeeded)
+            {
+                return Result<ProductDetailResponse>.Failure("Failed to retrieve product variants.", variantsResult.StatusCode);
+            }
+
             // Map product to ProductDetailResponse
             var productDetailResponse = new ProductDetailResponse
             {
@@ -171,19 +179,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 WarrantyPolicyDay = prod.WarrantyPolicyDay,
                 ReturnPolicyDay = prod.ReturnPolicyDay,
                 Status = prod.Status,
-                Variants = prod.Variants.Select(v => new ProductVariantResponse
-                {
-                    Id = v.Id,
-                    Sku = v.Sku,
-                    BasePrice = v.BasePrice,
-                    SalePrice = v.SalePrice,
-                    Weight = v.Weight,
-                    Attributes = v.Attributes,
-                    IsNew = v.IsNew,
-                    Status = v.Status,
-                    CreatedAt = v.CreatedAt,
-                    ProductId = v.ProductId
-                }).ToList(),
+                Variants = variantsResult.Data!,
                 ImageUrls = prod.Assets.Select(a => a.Url).ToList()
             };
 
