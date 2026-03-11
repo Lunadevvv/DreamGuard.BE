@@ -325,11 +325,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<OrderDetailResponse>.Failure("Order not found.", 404);
             }
 
-            if (order.UserId != userId)
-            {
-                return Result<OrderDetailResponse>.Failure("Order not found.", 404);
-            }
-
             return Result<OrderDetailResponse>.Success(MapToDetailResponse(order));
         }
 
