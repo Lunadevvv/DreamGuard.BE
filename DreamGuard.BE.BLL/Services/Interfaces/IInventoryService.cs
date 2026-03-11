@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.DAL.Models;
@@ -9,9 +7,18 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IInventoryService
     {
-        Task<Result> AddInventoryStockAsync(Guid productVariantId, int quantity);
-        Task<Result> ReduceInventoryStockAsync(Guid productVariantId, int quantity);
+        // CRUD
         Task<Result> CreateInventoryAsync(Inventory inventory);
         Task<Result> UpdateInventoryAsync(Inventory inventory);
+
+        // Admin manual stock management
+        Task<Result> AddInventoryStockAsync(Guid productVariantId, int quantity);
+        Task<Result> ReduceInventoryStockAsync(Guid productVariantId, int quantity);
+
+        // Order stock operations
+        Task<Result> DeductVariantStockAsync(Guid productVariantId, int quantity);
+        Task<Result> DeductComboStockAsync(Guid comboId, int orderQuantity);
+        Task<Result> RestoreVariantStockAsync(Guid productVariantId, int quantity);
+        Task<Result> RestoreComboStockAsync(Guid comboId, int orderQuantity);
     }
 }

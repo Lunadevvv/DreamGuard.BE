@@ -56,6 +56,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             var query = await _context.Combos
                 .Include(c => c.ComboChildrens.Where(ch => ch.Status == ProductStatus.Published))
+                    .ThenInclude(ch => ch.ComboProductVariants)
+                        .ThenInclude(cpv => cpv.ProductVariant!)
+                            .ThenInclude(pv => pv.Inventory)
                 .AsSplitQuery()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id);
@@ -80,6 +83,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(c => c.ComboProductVariants)
                     .ThenInclude(cpv => cpv.ProductVariant!)
                         .ThenInclude(pv => pv.Product)
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Inventory)
                 .AsSplitQuery()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id);
@@ -110,6 +116,32 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             await _context.SaveChangesAsync();
         }
 
+        public async Task<Combo?> GetComboByIdForUpdateAsync(Guid id)
+        {
+            return await _context.Combos
+                .AsTracking()
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<Combo?> GetComboWithProductsForUpdateAsync(Guid id)
+        {
+            return await _context.Combos
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Inventory)
+                .AsSplitQuery()
+                .AsTracking()
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<List<Combo>> GetAllChildrenOfParentAsync(Guid parentId)
+        {
+            return await _context.Combos
+                .Where(c => c.ComboParentId == parentId)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task<PaginatedList<Combo>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status)
         {
             var query = _context.Combos
@@ -129,6 +161,29 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
 
             return await PaginatedList<Combo>.CreateAsync(query, pageNumber, 10);
+        }
+
+        public async Task<List<Combo>> GetOutOfStockCombosByVariantIdAsync(Guid productVariantId)
+        {
+            var comboIds = await _context.ComboProductVariants
+                .Where(cpv => cpv.ProductVariantId == productVariantId)
+                .Select(cpv => cpv.ComboId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!comboIds.Any())
+                return new List<Combo>();
+
+            return await _context.Combos
+                .Where(c => comboIds.Contains(c.Id)
+                            && c.Status == ProductStatus.OutOfStock
+                            && c.ComboParentId != null)
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Inventory)
+                .AsSplitQuery()
+                .AsTracking()
+                .ToListAsync();
         }
 
     }

@@ -76,5 +76,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
             return await PaginatedList<Product>.CreateAsync(query, pageNumber, 10);
         }
+
+        public async Task<Product?> GetProductByIdForUpdateAsync(Guid id)
+        {
+            return await _context.Products
+                .AsTracking()
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
     }
 }

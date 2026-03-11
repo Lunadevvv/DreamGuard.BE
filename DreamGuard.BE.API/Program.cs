@@ -67,6 +67,7 @@ namespace DreamGuard.BE.API
             builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.BrevoOptionsKey));
             builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
             builder.Services.Configure<OtpOptions>(builder.Configuration.GetSection("OtpOptions"));
+            builder.Services.Configure<VnPayOptions>(builder.Configuration.GetSection("VnpayOptions"));
             
             //Add authentication with JWT
 
@@ -166,7 +167,7 @@ namespace DreamGuard.BE.API
                         policy.WithOrigins(
                             "http://localhost:5173",
                             "https://localhost:5173",
-                            "https://dream-guard.vercel.app/"
+                            "https://dream-guard.vercel.app"
                         )
                             .AllowAnyHeader()
                             .AllowAnyMethod()
@@ -186,7 +187,8 @@ namespace DreamGuard.BE.API
             //Add IdentityUser and IdentityRole
             builder.Services.AddIdentityCore<User>()
                 .AddRoles<IdentityRole<Guid>>()
-                .AddEntityFrameworkStores<DreamGuardContext>();
+                .AddEntityFrameworkStores<DreamGuardContext>()
+                .AddDefaultTokenProviders();
 
             // Cloudinary configuration
             builder.Services.AddSingleton(sp =>

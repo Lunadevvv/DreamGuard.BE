@@ -20,6 +20,8 @@ namespace DreamGuard.BE.BLL.Responses
         public ProductStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
         public Guid ProductId { get; set; }
+        public int StockQuantity { get; set; }
+        public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
     }
 
     public class ProductVariantGroupResponse
