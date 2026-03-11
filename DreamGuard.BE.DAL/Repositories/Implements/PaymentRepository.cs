@@ -31,6 +31,14 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(p => p.POrderId == orderId);
         }
 
+        public async Task<Payment?> GetPaymentByOrderIdForUpdateAsync(Guid orderId)
+        {
+            return await _context.Payments
+                .Include(p => p.POrder)
+                .AsTracking()
+                .FirstOrDefaultAsync(p => p.POrderId == orderId);
+        }
+
         public async Task<Payment?> GetPaymentByOrderCodeAsync(string orderCode)
         {
             return await _context.Payments

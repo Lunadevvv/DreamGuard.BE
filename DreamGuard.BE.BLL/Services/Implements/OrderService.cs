@@ -466,7 +466,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
 
                 // Mark associated payment as Failed
-                var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
+                var payment = await _paymentRepository.GetPaymentByOrderIdForUpdateAsync(order.Id);
                 if (payment != null && payment.Status == PaymentStatus.Pending)
                 {
                     payment.Status = PaymentStatus.Failed;
