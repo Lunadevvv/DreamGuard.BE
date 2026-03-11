@@ -145,7 +145,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var userVoucher = new UserVoucher
             {
                 UserId = userId,
-                VoucherId = voucher.VoucherId
+                VoucherId = voucher.VoucherId,
+                IsUsed = false,
+                ExpiredAt = voucher.EndDate
+
             };
             var result = await _userVoucherRepo.CreateAsync(userVoucher);
             return Result.Success($"{result}");

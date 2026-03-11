@@ -205,6 +205,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     // Calculate discount
                     discountAmount = subTotal * voucher.DiscountValue;
                     discountAmount = Math.Max(voucher.MinDiscountAmount, Math.Min(discountAmount, voucher.MaxDiscountAmount));
+                    discountAmount = Math.Min(discountAmount, subTotal); // Discount cannot exceed subtotal
 
                     // Mark voucher as used
                     userVoucher.IsUsed = true;
