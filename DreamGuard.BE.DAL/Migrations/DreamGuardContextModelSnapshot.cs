@@ -103,6 +103,64 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.ToTable("BabyProfiles", (string)null);
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Cart", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Carts", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.CartItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<Guid>("CartId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComboId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ProductVariantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CartId");
+
+                    b.HasIndex("ComboId");
+
+                    b.HasIndex("ProductVariantId");
+
+                    b.ToTable("CartItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CartItem_ItemType", "(\"ProductVariantId\" IS NOT NULL AND \"ComboId\" IS NULL) OR (\"ProductVariantId\" IS NULL AND \"ComboId\" IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Category", b =>
                 {
                     b.Property<int>("CateId")
@@ -226,6 +284,31 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.ToTable("ComboProductVariants");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.FavoriteProduct", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("FavoriteProducts", (string)null);
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Inventory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -244,12 +327,151 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TIMESTAMPTZ");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProductVariantId")
                         .IsUnique();
 
                     b.ToTable("Inventories", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Order", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("OrderCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Province")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ReceiverName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Street")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UserVoucherId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Ward")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderCode")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserVoucherId");
+
+                    b.ToTable("Orders", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.OrderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComboId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ProductVariantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComboId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ProductVariantId");
+
+                    b.ToTable("OrderItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderItem_ItemType", "(\"ProductVariantId\" IS NOT NULL AND \"ComboId\" IS NULL) OR (\"ProductVariantId\" IS NULL AND \"ComboId\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Otp", b =>
@@ -287,6 +509,57 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasKey("OtpId");
 
                     b.ToTable("Otps", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("ExpiredAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<string>("OrderCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("POrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderCode");
+
+                    b.HasIndex("POrderId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Product", b =>
@@ -765,6 +1038,42 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Cart", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.User", "User")
+                        .WithOne("Cart")
+                        .HasForeignKey("DreamGuard.BE.DAL.Models.Cart", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.CartItem", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Cart", "Cart")
+                        .WithMany("CartItems")
+                        .HasForeignKey("CartId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.Combo", "Combo")
+                        .WithMany()
+                        .HasForeignKey("ComboId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.ProductVariant", "ProductVariant")
+                        .WithMany()
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Cart");
+
+                    b.Navigation("Combo");
+
+                    b.Navigation("ProductVariant");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Category", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.Category", "CateParent")
@@ -804,6 +1113,25 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("ProductVariant");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.FavoriteProduct", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.User", "User")
+                        .WithMany("FavoriteProducts")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Inventory", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.ProductVariant", "ProductVariant")
@@ -813,6 +1141,59 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("ProductVariant");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Order", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.User", "User")
+                        .WithMany("Orders")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.UserVoucher", "UserVoucher")
+                        .WithMany()
+                        .HasForeignKey("UserVoucherId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserVoucher");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.OrderItem", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Combo", "Combo")
+                        .WithMany()
+                        .HasForeignKey("ComboId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.Order", "Order")
+                        .WithMany("OrderItems")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.ProductVariant", "ProductVariant")
+                        .WithMany()
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Combo");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("ProductVariant");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Payment", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Order", "POrder")
+                        .WithMany("Payments")
+                        .HasForeignKey("POrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("POrder");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Product", b =>
@@ -917,6 +1298,11 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Cart", b =>
+                {
+                    b.Navigation("CartItems");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Category", b =>
                 {
                     b.Navigation("ChildCategoryList");
@@ -929,6 +1315,13 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("ComboChildrens");
 
                     b.Navigation("ComboProductVariants");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Order", b =>
+                {
+                    b.Navigation("OrderItems");
+
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Product", b =>
@@ -950,6 +1343,12 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("Addresses");
 
                     b.Navigation("BabyProfiles");
+
+                    b.Navigation("Cart");
+
+                    b.Navigation("FavoriteProducts");
+
+                    b.Navigation("Orders");
 
                     b.Navigation("UserVouchers");
                 });

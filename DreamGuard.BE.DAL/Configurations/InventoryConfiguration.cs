@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using DreamGuard.BE.DAL.Models;
-using Microsoft.AspNetCore.Hosting.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -23,6 +18,8 @@ namespace DreamGuard.BE.DAL.Configurations
                 .WithOne(pv => pv.Inventory)
                 .HasForeignKey<Inventory>(i => i.ProductVariantId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Property<uint>("xmin").IsRowVersion();
 
             builder.ToTable("Inventories");
         }

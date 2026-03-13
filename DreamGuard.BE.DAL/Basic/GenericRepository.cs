@@ -42,7 +42,12 @@ namespace DreamGuard.BE.DAL.Basic
         {
             try
             {
-                _context.Update(entity);
+                var entry = _context.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    _context.Set<T>().Attach(entity);
+                    entry.State = EntityState.Modified;
+                }
                 return await _context.SaveChangesAsync();
             }
             catch (Exception ex)

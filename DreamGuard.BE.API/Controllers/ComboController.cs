@@ -124,7 +124,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result.Message);
+            return Ok($"Update combo products successfully. Combo now has {request.Items.Count} product variants.");
         }
 
         [HttpDelete("{id}")]
@@ -140,7 +140,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result.Message);
+            return Ok($"Update combo status successfully to {status}.");
         }
     }
 }

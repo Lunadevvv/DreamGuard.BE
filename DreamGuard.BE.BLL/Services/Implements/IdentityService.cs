@@ -29,14 +29,27 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IBrevoEmailService _brevoEmailService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JwtOptions _jwtOptions;
-        public IdentityService(UserManager<User> userManager, IBrevoEmailService brevoEmailService, IAuthRepository authRepository, IHttpContextAccessor httpContextAccessor, IOptions<JwtOptions> jwtOptions)
+        private readonly IOtpService _otpService;
+        public IdentityService(
+            UserManager<User> userManager, 
+            IBrevoEmailService brevoEmailService, 
+            IAuthRepository authRepository, 
+            IHttpContextAccessor httpContextAccessor, 
+            IOptions<JwtOptions> jwtOptions,
+            IOtpService otpService)
         {
             _userManager = userManager;
             _brevoEmailService = brevoEmailService;
             _authRepository = authRepository;
             _httpContextAccessor = httpContextAccessor;
             _jwtOptions = jwtOptions.Value;
+            _otpService = otpService;
         }
+
+        public IdentityService()
+        {
+        }
+
         public async Task<Result<LoginResponse>> LoginAsync(string phone, string password)
         {
             var user = await _authRepository.GetUserByPhoneAsync(phone);
@@ -223,6 +236,89 @@ namespace DreamGuard.BE.BLL.Services.Implements
             };
 
             httpContext.Response.Cookies.Delete(cookieName, cookieOptions);
+        }
+
+        public async Task<Result> ForgotPasswordAsync(string phoneNumber)
+        {
+            var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
+            if (user == null)
+            {
+                return Result.Failure("This phone number doesn't exist", 404);
+            }
+
+            var result = await _otpService.GenerateAndSendOtpAsync(phoneNumber, user.Email);
+            if (!result.Succeeded)
+            {
+                return Result.Failure(result.Error, result.StatusCode);
+            }
+
+            return Result.Success("OTP has been sent to your phone number");
+        }
+
+        public async Task<Result> ResetPasswordAsync(string phoneNumber, string otpCode)
+        {
+            var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
+            if (user == null)
+            {
+                return Result.Failure("This phone number doesn't exist", 404);
+            }
+
+            // Kiểm tra OTP
+            var otpResult = await _otpService.VerifyOtpAsync(phoneNumber, user.Email, otpCode);
+            if (!otpResult.Succeeded)
+            {
+                return Result.Failure("Invalid or expired OTP", 400);
+            }
+
+            // OTP hợp lệ, gửi về mail cho người dùng 1 mật khẩu random mới để họ đăng nhập vào app và đổi mật khẩu
+            var newPassword = GenerateRandomPassword();
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetResult = await _userManager.ResetPasswordAsync(user, token, newPassword);
+            if (!resetResult.Succeeded)
+            {
+                return Result.Failure("Failed to reset password. Please try again.", 500);
+            }
+
+            await _brevoEmailService.SendEmailAsync(user.Email, "Password Reset", $"Your password has been reset. Your new temporary password is: {newPassword}. Please log in and change your password immediately.");
+
+            return Result.Success("Password has been reset and sent to your email");
+        }
+
+        private string GenerateRandomPassword()
+        {
+            const int length = 8;
+            const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789!@#$%^&*?_-";
+            StringBuilder res = new StringBuilder();
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                byte[] uintBuffer = new byte[sizeof(uint)];
+
+                while (res.Length < length)
+                {
+                    rng.GetBytes(uintBuffer);
+                    uint num = BitConverter.ToUInt32(uintBuffer, 0);
+                    res.Append(validChars[(int)(num % (uint)validChars.Length)]);
+                }
+            }
+
+            return res.ToString();
+        }
+
+        public async Task<Result> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null)
+            {
+                return Result.Failure("User doesn't exist", 404);
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+            if (!result.Succeeded)
+            {
+                return Result.Failure("Current password is incorrect or new password doesn't meet requirements", 400);
+            }
+
+            return Result.Success("Password has been changed successfully");
         }
     }
 }

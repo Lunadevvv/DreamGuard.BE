@@ -35,6 +35,12 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<ComboProductVariant> ComboProductVariants { get; set; }
         public DbSet<Voucher> Vouchers { get; set; }
         public DbSet<UserVoucher> UserVouchers { get; set; }
+        public DbSet<Cart> Carts { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Staff> Staffs { get; set; }
         public DbSet<ServiceOrder> ServiceOrders { get; set; }

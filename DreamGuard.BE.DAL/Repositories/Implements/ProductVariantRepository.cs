@@ -20,9 +20,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<List<ProductVariant>> GetVariantsByProductIdAsync(Guid productId, string? size, string? color)
         {
             var query = await _context.ProductVariants
+                .Include(v => v.Inventory)
                 .Where(v => v.ProductId == productId && v.Status != ProductStatus.Draft && v.Status != ProductStatus.Hidden)
                 .OrderByDescending(v => v.CreatedAt)
                 .AsNoTracking()
+                .AsSplitQuery()
                 .ToListAsync();
 
             if (!string.IsNullOrEmpty(size))
@@ -41,6 +43,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<ProductVariant?> GetVariantByIdAsync(Guid id)
         {
             return await _context.ProductVariants
+                .Include(v => v.Inventory)
                 .FirstOrDefaultAsync(v => v.Id == id);
         }
 
@@ -59,6 +62,22 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             return await _context.ProductVariants
                 .AnyAsync(v => v.Sku == sku && (!excludeVariantId.HasValue || v.Id != excludeVariantId.Value));
+        }
+
+        public async Task<ProductVariant?> GetVariantByIdForUpdateAsync(Guid id)
+        {
+            return await _context.ProductVariants
+                .AsTracking()
+                .FirstOrDefaultAsync(v => v.Id == id);
+        }
+
+        public async Task<List<ProductVariant>> GetVariantsByProductIdForStockCheckAsync(Guid productId)
+        {
+            return await _context.ProductVariants
+                .Include(v => v.Inventory)
+                .Where(v => v.ProductId == productId)
+                .AsNoTracking()
+                .ToListAsync();
         }
     }
 }
