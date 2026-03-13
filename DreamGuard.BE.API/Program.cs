@@ -13,6 +13,7 @@ using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,13 @@ namespace DreamGuard.BE.API
 
                 options.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Cookies["AccessToken"];
+                        context.Token = accessToken;
+                        return Task.CompletedTask;
+                    },
+
                     OnChallenge = context =>
                     {
                         context.HandleResponse();
@@ -225,6 +233,12 @@ namespace DreamGuard.BE.API
             builder.Services.AddHttpContextAccessor();
 
             var app = builder.Build();
+
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
+
             //Use exception handler
             app.UseExceptionHandler(appError =>
             {

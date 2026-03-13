@@ -7,18 +7,12 @@ using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -193,8 +187,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
 
         //viết token vào cookie gửi lên client
-        public void WriteAuthTokenAsHttpOnlyCookie(string cookieName, string token,
-            DateTime expiration)
+        public void WriteAuthTokenAsHttpOnlyCookie(string cookieName, string token, DateTime expiration)
         {
             var httpContext = _httpContextAccessor.HttpContext;
             if (httpContext == null) return;
@@ -205,12 +198,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //thêm mới cookie hoặc cập nhật cookie nếu đã tồn tại
             httpContext.Response.Cookies.Append(cookieName, token, new CookieOptions
             {
-                HttpOnly = true, // ngăn javascript truy cập cookie này
+                HttpOnly = true,
                 Expires = expiration,
                 IsEssential = true,
-                Secure = isProduction, // true cho production, false cho development
-                SameSite = SameSiteMode.None,
-                Path = "/" // Đảm bảo cookie available cho toàn bộ application
+                Secure = true, // ✅ LUÔN true — vì SameSite=None yêu cầu Secure
+                SameSite = isProduction 
+                    ? SameSiteMode.None   // Cross-site (FE và BE khác domain)
+                    : SameSiteMode.Lax,   // Dev thì dùng Lax cho an toàn
+                Path = "/"
             });
         }
 
@@ -226,13 +221,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = isProduction,
-                SameSite = SameSiteMode.None,
+                Secure = true, // ✅ LUÔN true
+                SameSite = isProduction 
+                    ? SameSiteMode.None 
+                    : SameSiteMode.Lax,
                 Path = "/",
                 Expires = DateTime.UtcNow.AddDays(-1),
                 IsEssential = true
             };
-
             httpContext.Response.Cookies.Delete(cookieName, cookieOptions);
         }
 
