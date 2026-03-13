@@ -8,6 +8,7 @@ namespace DreamGuard.BE.DAL.Basic
 {
     public interface IUnitOfWork
     {
-        Task<IDbContextTransaction> BeginTransactionAsync();
+        Task<IDbContextTransaction> BeginTransactionAsync(); 
+        Task<int> SaveChangeAsync();
     }
 }

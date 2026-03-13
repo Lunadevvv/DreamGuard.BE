@@ -208,7 +208,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 HttpOnly = true, // ngăn javascript truy cập cookie này
                 Expires = expiration,
                 IsEssential = true,
-                Secure = isProduction, // true cho production, false cho development
+                //Secure = isProduction, // true cho production, false cho development
+                //browser luôn yêu cầu để gửi cookie secure = true, samesite = none, trên dev thì secure = true luôn vì đang chạy https thì đâu có sao 
+                Secure = true,
                 SameSite = SameSiteMode.None,
                 Path = "/" // Đảm bảo cookie available cho toàn bộ application
             });
