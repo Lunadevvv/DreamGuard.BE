@@ -16,7 +16,7 @@ namespace DreamGuard.BE.DAL.Models
         public int EstimatedDuration { get; set; } = 0; // in minutes
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; } = null;
-        public ICollection<ServicePackage> ServicePackages { get; set; } = new List<ServicePackage>();
+        public ICollection<ServicePackageMapping> ServicePackageMappings { get; set; } = new List<ServicePackageMapping>();
         public ICollection<ServiceAsset> ServiceAssets { get; set; } = new List<ServiceAsset>();
         public ICollection<ServiceOrder> ServiceOrders { get; set; } = new List<ServiceOrder>();
     }

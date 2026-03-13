@@ -13,7 +13,7 @@ namespace DreamGuard.BE.DAL.Models
 
         public Guid CustomerId { get; set; }
 
-        public Guid ServiceId { get; set; }
+        public Guid ServicePackageMappingId { get; set; }
 
         public string OrderCode { get; set; } = string.Empty;
 
@@ -35,8 +35,7 @@ namespace DreamGuard.BE.DAL.Models
 
         public DateTime? UpdatedAt { get; set; } = null;
         public Customer Customer { get; set; } = null!;
-        public Service Service { get; set; } = null!;
-        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public ServicePackageMapping ServicePackageMapping { get; set; } = null!;
         public ServiceTask? ServiceTask { get; set; } = null;
     }
 }

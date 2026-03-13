@@ -16,10 +16,6 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.ToTable("Services");
 
             builder.HasKey(e => e.ServiceId);
-            // 1 - N ServicePackages
-            builder.HasMany(e => e.ServicePackages)
-                   .WithOne(p => p.Service)
-                   .HasForeignKey(p => p.ServiceId);
             // 1 - N ServiceAssets
             builder.HasMany(e => e.ServiceAssets)
                    .WithOne(e => e.Service)

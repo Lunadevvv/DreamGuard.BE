@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace DreamGuard.BE.DAL.Models
@@ -12,6 +13,8 @@ namespace DreamGuard.BE.DAL.Models
         public Guid ServiceId { get; set; }
         public string Url { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
+        public string PublicId { get; set; } = string.Empty;
+        [JsonIgnore]
         public Service Service { get; set; } = null!;
 
     }

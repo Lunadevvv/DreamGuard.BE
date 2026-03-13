@@ -15,5 +15,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<ProductAssetResponse>> UploadImageWithoutSaveDbAsync(IFormFile file);
         Task<Result<ProductAssetResponse>> UpdateImageAsync(Guid assetId, IFormFile file);
         Task<Result<bool>> DeleteImageAsync(Guid assetId);
+        Task<Result<bool>> DeleteImageAsync(string publicId);
+        Task<Result<ImageResponse>> UploadImageAsync(IFormFile file, string folderName);
     }
 }

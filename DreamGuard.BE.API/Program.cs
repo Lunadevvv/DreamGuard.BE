@@ -116,6 +116,12 @@ namespace DreamGuard.BE.API
 
                         var jsonResponse = JsonSerializer.Serialize(errorResponse);
                         return context.Response.WriteAsync(jsonResponse);
+                    },
+
+                    OnMessageReceived = context =>
+                    {
+                        context.Token = context.Request.Cookies["AccessToken"];
+                        return Task.CompletedTask;
                     }
                 };
             });
