@@ -4,6 +4,8 @@ namespace DreamGuard.BE.DAL.Constants
     {
         Pending = 0,
         Paid = 1,
-        Failed = 2
+        Failed = 2,
+        COD = 3,
+        CODPaid = 4,
     }
 }

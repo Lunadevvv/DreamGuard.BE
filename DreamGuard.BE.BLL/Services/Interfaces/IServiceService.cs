@@ -13,9 +13,9 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IServiceService 
     {
-        Task<Result<PaginatedList<ServiceResponse>>> GetAllByAdminAsync(int pageNumber, bool isActive);
+        Task<Result<PaginatedList<ServiceResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, bool isActive);
         Task<Result<List<ServicePackageResponse>>> GetPackagesByServiceIdAsync(Guid serviceId);
-        Task<Result<PaginatedList<ServiceResponse>>> GetAllAsync(int pageNumber);
+        Task<Result<PaginatedList<ServiceResponse>>> GetAllAsync(int pageNumber, int pageSize);
         Task<Result<ServiceResponse>> GetByIdAsync(Guid serviceId);
         Task<Result> CreateAsync(ServiceCreateRequest service);
         Task<Result> AddImagesAsync(Guid serviceId, ImageUploadRequest files);
@@ -24,5 +24,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> ToggleActiveAsync(Guid serviceId);
         Task<Result> AssignPackagesAsync(Guid serviceId, AssignServicePackagesRequest assignServicePackagesRequest);
         Task<Result> RemovePackagesAsync(Guid serviceId, RemoveServicePackagesRequest removeServicePackagesRequest);
+        Task<Result<List<ServicePackageMappingResponse>>> GetMappingsByServiceIdAsync(Guid serviceId);
     }
 }

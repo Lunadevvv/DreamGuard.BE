@@ -63,6 +63,29 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        [HttpPost("StaffRegister")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
+        public async Task<IActionResult> StaffRegister([FromBody] StaffRegisterRequest staffRegisterRequest)
+        {
+            var result = await _identityService
+                .StaffRegisterAsync(staffRegisterRequest.Email,
+                staffRegisterRequest.Password,
+                staffRegisterRequest.FirstName,
+                staffRegisterRequest.LastName,
+                staffRegisterRequest.PhoneNumber,
+                staffRegisterRequest.Gender,
+                staffRegisterRequest.DateOfBirth,
+                staffRegisterRequest.Address);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
 
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest verifyOtpRequest)

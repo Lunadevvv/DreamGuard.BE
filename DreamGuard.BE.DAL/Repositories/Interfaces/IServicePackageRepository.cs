@@ -12,7 +12,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IServicePackageRepository : IGenericRepository<ServicePackage>
     {
         Task<ServicePackage?> GetByIdAsync(Guid id);
-        Task<PaginatedList<ServicePackage>> GetAllAdminAsync(int pageNumber, bool isActive);
+        Task<PaginatedList<ServicePackage>> GetAllAdminAsync(int pageNumber, int pageSize, bool isActive);
         Task<List<ServicePackage>> GetByListIdAsync(List<Guid> servicePackageIds);
         Task<List<ServicePackage>> GetAllByServiceIdAsync(Guid serviceId);
     }

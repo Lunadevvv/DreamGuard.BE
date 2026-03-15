@@ -21,9 +21,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _cloudinaryService = cloudinaryService;
         }
 
-        public async Task<Result<PaginatedList<ServicePackageResponse>>> GetAllByAdminAsync(int pageNumber, bool isActive)
+        public async Task<Result<PaginatedList<ServicePackageResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, bool isActive)
         {
-            var servicePackage = await _repo.GetAllAdminAsync(pageNumber, isActive);
+            var servicePackage = await _repo.GetAllAdminAsync(pageNumber, pageSize, isActive);
             if (servicePackage == null || servicePackage.TotalCount == 0)
             {
                 return Result<PaginatedList<ServicePackageResponse>>.Failure("No service package found", 404);

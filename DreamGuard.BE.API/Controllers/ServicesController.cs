@@ -24,6 +24,21 @@ namespace DreamGuard.BE.API.Controllers
             _mapper = mapper;
         }
 
+        [HttpGet("{serviceId}/service-package-mapping")]
+        public async Task<IActionResult> GetPackageMappingsByServiceIdAsync(Guid serviceId)
+        {
+            var result = await _serviceService.GetMappingsByServiceIdAsync(serviceId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpGet("{serviceId}/service-package")]
         public async Task<IActionResult> GetPackageByServiceIdAsync(Guid serviceId)
         {
@@ -40,9 +55,9 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
+        public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
         {
-            var result = await _serviceService.GetAllAsync(pageNumber);
+            var result = await _serviceService.GetAllAsync(pageNumber, pageSize);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -54,11 +69,11 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpGet("Admin")]
+        [HttpGet("AdminSearchService")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> GetAllByAdminAsync(int pageNumber = 1, bool isActive = true)
+        public async Task<IActionResult> SearchServiceByAdminAsync([FromQuery]SearchServiceByAdminRequest searchRequest)
         {
-            var result = await _serviceService.GetAllByAdminAsync(pageNumber, isActive);
+            var result = await _serviceService.GetAllByAdminAsync(searchRequest.pageNumber, searchRequest.pageSize, searchRequest.isActive);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

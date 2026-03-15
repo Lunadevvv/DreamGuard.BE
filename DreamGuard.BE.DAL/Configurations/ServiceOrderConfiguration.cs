@@ -24,6 +24,10 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.HasOne(so => so.ServicePackageMapping)
                    .WithMany(so => so.ServiceOrders)
                    .HasForeignKey(so => so.ServicePackageMappingId);
+            // 1-n: ServiceOrder - Payment
+            builder.HasMany(so => so.Payments)
+                   .WithOne(p => p.ServiceOrder)
+                   .HasForeignKey(p => p.SoId);
         }
     }
 }

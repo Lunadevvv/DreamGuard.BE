@@ -209,10 +209,27 @@ namespace DreamGuard.BE.BLL.Services.Implements
         //upload image xài chung 
         public async Task<Result<ImageResponse>> UploadImageAsync(IFormFile file, string folderName)
         {
+
             //Check if file is null or empty
             if (file == null || file.Length == 0)
             {
                 return Result<ImageResponse>.Failure("No file uploaded.", 400);
+            }
+
+            //Check if file type is allowed
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/jpg" };
+
+            if (!allowedTypes.Contains(file.ContentType))
+            {
+                return Result<ImageResponse>.Failure("Invalid file type. Only images are allowed.", 400);
+            }
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
+            {
+                return Result<ImageResponse>.Failure("Invalid file extension.", 400);
             }
 
             //Check if file size exceeds the limit

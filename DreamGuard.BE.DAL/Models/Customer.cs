@@ -8,7 +8,7 @@ namespace DreamGuard.BE.DAL.Models
 {
     public class Customer
     {
-        public Guid CustomerId { get; set; }
+        public Guid CustomerId { get; set; } = Guid.NewGuid();
         public string FullName { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
         public string AvatarUrl { get; set; } = string.Empty;   

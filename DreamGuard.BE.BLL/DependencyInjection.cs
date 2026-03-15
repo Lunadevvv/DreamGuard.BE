@@ -38,6 +38,11 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IFavoriteProductService, FavoriteProductService>();
             builder.Services.AddScoped<IServiceService, ServiceService>();
             builder.Services.AddScoped<IServicePackageService, ServicePackageService>();
+            builder.Services.AddScoped<ICustomerService, CustomerService>();
+            builder.Services.AddScoped<IServiceOrderService, ServiceOrderService>();
+            builder.Services.AddScoped<IStaffService, StaffService>();
+            builder.Services.AddScoped<IServiceTaskService, ServiceTaskService>();
+            builder.Services.AddScoped<IServiceEvidenceService, ServiceEvidenceService>();
         }
     }
 }

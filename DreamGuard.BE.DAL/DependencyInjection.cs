@@ -39,6 +39,11 @@ namespace DreamGuard.BE.DAL
             builder.Services.AddScoped<IServiceAssetRepository, ServiceAssetRepository>();
             builder.Services.AddScoped<IServicePackageRepository, ServicePackageRepository>();
             builder.Services.AddScoped<IServicePackageMappingRepository, ServicePackageMappingRepository>();
+            builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+            builder.Services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
+            builder.Services.AddScoped<IStaffRepository, StaffRepository>();
+            builder.Services.AddScoped<IServiceTaskRepository, ServiceTaskRepository>();
+            builder.Services.AddScoped<IServiceEvidenceRepository, ServiceEvidenceRepository>();
         }
     }
 }

@@ -7,6 +7,7 @@ namespace DreamGuard.BE.DAL.Models
     public class Payment
     {
         public Guid Id { get; set; }
+        public Guid? SoId { get; set; }
         public string OrderCode { get; set; } = string.Empty;
         public Guid? POrderId { get; set; }
         public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
@@ -19,5 +20,7 @@ namespace DreamGuard.BE.DAL.Models
 
         [JsonIgnore]
         public Order? POrder { get; set; }
+        [JsonIgnore]
+        public ServiceOrder? ServiceOrder { get; set; }
     }
 }

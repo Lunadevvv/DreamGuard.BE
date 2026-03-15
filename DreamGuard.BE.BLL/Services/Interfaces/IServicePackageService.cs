@@ -13,7 +13,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IServicePackageService
     {
-        Task<Result<PaginatedList<ServicePackageResponse>>> GetAllByAdminAsync(int pageNumber, bool isActive);
+        Task<Result<PaginatedList<ServicePackageResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, bool isActive);
         Task<Result<ServicePackageResponse>> GetByIdAsync(Guid servicePackageId);
 
         

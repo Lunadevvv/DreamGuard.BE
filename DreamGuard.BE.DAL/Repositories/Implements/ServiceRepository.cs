@@ -31,12 +31,26 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 throw new Exception($"Error retrieving service with ID {id}");
             }
         }
-        public async Task<PaginatedList<Service>> GetAllAdminAsync(int pageNumber, bool isActive)
+        public async Task<List<ServicePackageMapping>> GetMappingsByServiceIdAsync(Guid serviceId)
+        {
+            try
+            {
+                return await _context.ServicePackageMappings
+                    .Include(spm => spm.Service)
+                    .Include(spm => spm.ServicePackage)
+                    .Where(spm => spm.ServiceId == serviceId).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving service-package mapping for service ID {serviceId}");
+            }
+        }
+        public async Task<PaginatedList<Service>> GetAllAdminAsync(int pageNumber, int pageSize, bool isActive)
         {
             try
             {
                 var query = _context.Services.Where(s => s.IsActive == isActive).Include(s => s.ServiceAssets);
-                return await PaginatedList<Service>.CreateAsync(query, pageNumber, 4);
+                return await PaginatedList<Service>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
             {
@@ -44,12 +58,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<PaginatedList<Service>> GetAllAsync(int pageNumber, bool isActive)
+        public async Task<PaginatedList<Service>> GetAllAsync(int pageNumber, int pageSize)
         {
             try
             {
-                var query = _context.Services.Where(s => s.IsActive == isActive).Include(s => s.ServiceAssets);
-                return await PaginatedList<Service>.CreateAsync(query, pageNumber, 4);
+                var query = _context.Services.Where(s => s.IsActive).Include(s => s.ServiceAssets);
+                return await PaginatedList<Service>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
             {

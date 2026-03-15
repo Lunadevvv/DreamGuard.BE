@@ -89,5 +89,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
 
             return await PaginatedList<Payment>.CreateAsync(query, pageNumber, 10);
         }
+
+
     }
 }

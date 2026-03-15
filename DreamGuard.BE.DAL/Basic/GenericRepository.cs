@@ -84,6 +84,10 @@ namespace DreamGuard.BE.DAL.Basic
         {
             _context.Set<T>().Add(entity);
         }
+        public void UpdateEntity(T entity)
+        {
+            _context.Set<T>().Update(entity);
+        }
         public void RemoveEntity(T entity)
         {
             _context.Set<T>().Remove(entity);

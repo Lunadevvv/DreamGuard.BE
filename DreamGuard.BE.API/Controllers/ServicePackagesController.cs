@@ -27,9 +27,9 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpGet("Admin")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> GetAllByAdminAsync(int pageNumber = 1, bool isActive = true)
+        public async Task<IActionResult> GetAllByAdminAsync(int pageNumber = 1, int pageSize = 4, bool isActive = true)
         {
-            var result = await _servicePackage.GetAllByAdminAsync(pageNumber, isActive);
+            var result = await _servicePackage.GetAllByAdminAsync(pageNumber, pageSize, isActive);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

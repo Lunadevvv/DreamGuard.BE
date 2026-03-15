@@ -21,7 +21,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IServiceAssetRepository _serviceAssetRepository;
         private readonly IServicePackageMappingRepository _servicePackageMappingRepository;
         private readonly IServicePackageRepository _servicePackageRepository;
-      
+   
+        
+
         public ServiceService(IServiceRepository repo, IMapper mapper, ICloudinaryService cloudinaryService, IUnitOfWork unitOfWork, IServiceAssetRepository serviceAssetRepository, IServicePackageMappingRepository servicePackageMappingRepository, IServicePackageRepository servicePackageRepository)
         {
             _repo = repo;
@@ -31,6 +33,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _serviceAssetRepository = serviceAssetRepository;
             _servicePackageMappingRepository = servicePackageMappingRepository;
             _servicePackageRepository = servicePackageRepository;
+        }
+
+
+        public async Task<Result<List<ServicePackageMappingResponse>>> GetMappingsByServiceIdAsync(Guid serviceId)
+        {
+            var servicePackageMapping = await _repo.GetMappingsByServiceIdAsync(serviceId);
+            if (!servicePackageMapping.Any())
+            {
+                return Result<List<ServicePackageMappingResponse>>.Failure("Service mapping not found", 404);
+            }
+            var servicePackageResponse = _mapper.Map<List<ServicePackageMappingResponse>>(servicePackageMapping);
+            return Result<List<ServicePackageMappingResponse>>.Success(servicePackageResponse);
         }
         public async Task<Result<List<ServicePackageResponse>>> GetPackagesByServiceIdAsync(Guid serviceId)
         {
@@ -42,9 +56,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var servicePackageResponse = _mapper.Map<List<ServicePackageResponse>>(servicePackage);
             return Result<List<ServicePackageResponse>>.Success(servicePackageResponse);
         }
-        public async Task<Result<PaginatedList<ServiceResponse>>> GetAllAsync(int pageNumber)
+        public async Task<Result<PaginatedList<ServiceResponse>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var services = await _repo.GetAllAsync(pageNumber);
+            var services = await _repo.GetAllAsync(pageNumber, pageSize);
             if (services == null || services.TotalCount == 0)
             {
                 return Result<PaginatedList<ServiceResponse>>.Failure("No services found", 404);
@@ -54,9 +68,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<ServiceResponse>>.Success(paginatedResult);
         }
 
-        public async Task<Result<PaginatedList<ServiceResponse>>> GetAllByAdminAsync(int pageNumber, bool isActive)
+        public async Task<Result<PaginatedList<ServiceResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, bool isActive)
         {
-            var services = await _repo.GetAllAdminAsync(pageNumber, isActive);
+            var services = await _repo.GetAllAdminAsync(pageNumber, pageSize, isActive);
             if (services == null || services.TotalCount == 0)
             {
                 return Result<PaginatedList<ServiceResponse>>.Failure("No services found", 404);
@@ -89,6 +103,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             foreach (var file in service.Files)
             {
                 var uploadImageResult = await _cloudinaryService.UploadImageAsync(file, "SERVICE_FOLDER");
+                if (!uploadImageResult.Succeeded)
+                {
+                    return Result.Failure($"Failed to upload image: {uploadImageResult.Error}", 500);
+                }
                 var asset = new ServiceAsset
                 {
                     ServiceId = newService.ServiceId,

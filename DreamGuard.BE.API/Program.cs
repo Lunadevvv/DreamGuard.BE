@@ -264,6 +264,10 @@ namespace DreamGuard.BE.API
                 await app.Initialise();
                 app.UseHttpsRedirection();
             }
+            //test production environment with swagger and database initialization
+            //app.UseSwagger();
+            //app.UseSwaggerUI();
+            //await app.Initialise();
 
             // CORS phải được đặt TRƯỚC Authentication/Authorization
             app.UseCors("AllowFrontend");

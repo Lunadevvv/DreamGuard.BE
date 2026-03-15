@@ -1,4 +1,5 @@
 ﻿using DreamGuard.BE.BLL.Common;
+using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
@@ -30,13 +31,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JwtOptions _jwtOptions;
         private readonly IOtpService _otpService;
+        private readonly ICustomerService _customerService;
+        private readonly IStaffService _staffService;
         public IdentityService(
             UserManager<User> userManager, 
-            IBrevoEmailService brevoEmailService, 
-            IAuthRepository authRepository, 
-            IHttpContextAccessor httpContextAccessor, 
+            IBrevoEmailService brevoEmailService,
+            IAuthRepository authRepository,
+            IHttpContextAccessor httpContextAccessor,
             IOptions<JwtOptions> jwtOptions,
-            IOtpService otpService)
+            IOtpService otpService,
+            ICustomerService customerService,
+            IStaffService staffService)
         {
             _userManager = userManager;
             _brevoEmailService = brevoEmailService;
@@ -44,6 +49,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _httpContextAccessor = httpContextAccessor;
             _jwtOptions = jwtOptions.Value;
             _otpService = otpService;
+            _customerService = customerService;
+            _staffService = staffService;
         }
 
         public IdentityService()
@@ -123,6 +130,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var result = await _userManager.CreateAsync(newUser, password);
             if (result.Succeeded)
             {
+
+                CustomerCreateRequest customerCreateRequest = new CustomerCreateRequest
+                {
+                    FullName = $"{firstName} {lastName}",
+                    Address = "",
+                    DateOfBirth = dateOfBirth,
+                    Gender = gender,
+                    User = newUser
+                };
+                await _customerService.CreateAsync(customerCreateRequest);
+
                 await _userManager.AddToRoleAsync(newUser, Role.User);
                 await _brevoEmailService.SendEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
                 var registerResponse = new RegisterResponse
@@ -132,8 +150,56 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 };
                 return Result<RegisterResponse>.Success(registerResponse);
             }
-            //chỗ này chỉ lấy lỗi đầu tiên, :v thật ra tính đổi cái result.error sang list mà lười quá huhu T_T
+        
             return Result<RegisterResponse>.Failure(result.Errors.First().Description, 400);            
+        }
+        public async Task<Result<RegisterResponse>> StaffRegisterAsync(string email, string password, string firstName, string lastName, string phoneNumber, string gender, DateOnly dateOfBirth, string address)
+        {
+            var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
+            //kiểm tra số điện thoại đã được đăng ký chưa
+            if (user != null)
+            {
+                return Result<RegisterResponse>.Failure("Số điện thoại đã được đăng ký", 400);
+            }
+            //đăng ký user
+            User newUser = new User
+            {
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName,
+                UserName = phoneNumber,
+                PhoneNumber = phoneNumber,
+                Gender = gender,
+                DateOfBirth = dateOfBirth,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+            };
+            var result = await _userManager.CreateAsync(newUser, password);
+            if (result.Succeeded)
+            {
+
+                StaffCreateRequest staffCreateRequest = new StaffCreateRequest
+                {
+                    FullName = $"{firstName} {lastName}",
+                    Address = address,
+                    DateOfBirth = dateOfBirth,
+                    Gender = gender,
+                    User = newUser
+                    
+                };
+                await _staffService.CreateAsync(staffCreateRequest);
+
+                await _userManager.AddToRoleAsync(newUser, Role.CleaningStaff);
+                await _brevoEmailService.SendEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
+                var registerResponse = new RegisterResponse
+                {
+                    UserId = newUser.Id,
+                    Message = "Đăng ký thành công"
+                };
+                return Result<RegisterResponse>.Success(registerResponse);
+            }
+
+            return Result<RegisterResponse>.Failure(result.Errors.First().Description, 400);
         }
 
         private string GenerateJSONWebToken(User account, string roleName)

@@ -41,12 +41,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 throw new Exception($"Error retrieving List ServicePackage");
             }
         }
-        public async Task<PaginatedList<ServicePackage>> GetAllAdminAsync(int pageNumber, bool isActive)
+        public async Task<PaginatedList<ServicePackage>> GetAllAdminAsync(int pageNumber, int pageSize, bool isActive)
         {
             try
             {
                 var query = _context.ServicePackages.Where(s => s.IsActive == isActive);
-                return await PaginatedList<ServicePackage>.CreateAsync(query, pageNumber, 4);
+                return await PaginatedList<ServicePackage>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
             {
