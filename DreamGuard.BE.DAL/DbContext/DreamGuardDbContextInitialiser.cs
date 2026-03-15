@@ -39,7 +39,7 @@ namespace DreamGuard.BE.DAL.DbContext
         {
             try
             {
-                // await _context.Database.EnsureDeletedAsync();
+                //await _context.Database.EnsureDeletedAsync();
                 await _context.Database.EnsureCreatedAsync();
             }
             catch (Exception ex)
@@ -90,7 +90,8 @@ namespace DreamGuard.BE.DAL.DbContext
             }
 
             // Default users
-            var administrator = new User { PhoneNumber = "0357968555", UserName = "Admin", Email = "admin@gmail.com", DateOfBirth = new DateOnly(2004, 01, 07), Gender = Gender.Male, EmailConfirmed = true};
+            //0357968555
+            var administrator = new User { PhoneNumber = "0768608545", UserName = "Admin", Email = "admin@gmail.com", DateOfBirth = new DateOnly(2004, 01, 07), Gender = Gender.Male, EmailConfirmed = true};
 
             if (_userManager.Users.All(u => u.UserName != administrator.UserName))
             {

@@ -79,5 +79,14 @@ namespace DreamGuard.BE.DAL.Basic
                 throw new Exception($"Error retrieving entity by ID: {ex.Message}");
             }
         }
+
+        public void AddEntity(T entity)
+        {
+            _context.Set<T>().Add(entity);
+        }
+        public void RemoveEntity(T entity)
+        {
+            _context.Set<T>().Remove(entity);
+        }
     }
 }

@@ -55,7 +55,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<ProductAssetResponse>.Failure("No file uploaded.", 400);
             }
 
-            if(file.Length > MAX_FILE_SIZE)
+            if (file.Length > MAX_FILE_SIZE)
             {
                 return Result<ProductAssetResponse>.Failure("File size exceeds the maximum limit of 5MB.", 400);
             }
@@ -74,7 +74,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 File = new FileDescription(file.FileName, stream),
                 PublicId = asset.PublicId,
                 Overwrite = true,
-                Invalidate = true, 
+                Invalidate = true,
                 Transformation = new Transformation().Quality("auto").FetchFormat("auto"),
                 // Folder = CLOUDINARY_FOLDER
             };
@@ -116,7 +116,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             //Check if file size exceeds the limit
-            if(file.Length > MAX_FILE_SIZE)
+            if (file.Length > MAX_FILE_SIZE)
             {
                 return Result<ProductAssetResponse>.Failure("File size exceeds the maximum limit of 5MB.", 400);
             }
@@ -174,7 +174,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             //Check if file size exceeds the limit
-            if(file.Length > MAX_FILE_SIZE)
+            if (file.Length > MAX_FILE_SIZE)
             {
                 return Result<ProductAssetResponse>.Failure("File size exceeds the maximum limit of 5MB.", 400);
             }
@@ -204,6 +204,56 @@ namespace DreamGuard.BE.BLL.Services.Implements
             };
 
             return Result<ProductAssetResponse>.Success(response);
+        }
+
+        //upload image xài chung 
+        public async Task<Result<ImageResponse>> UploadImageAsync(IFormFile file, string folderName)
+        {
+            //Check if file is null or empty
+            if (file == null || file.Length == 0)
+            {
+                return Result<ImageResponse>.Failure("No file uploaded.", 400);
+            }
+
+            //Check if file size exceeds the limit
+            if (file.Length > MAX_FILE_SIZE)
+            {
+                return Result<ImageResponse>.Failure("File size exceeds the maximum limit of 5MB.", 400);
+            }
+
+            //Upload file to Cloudinary
+            using var stream = file.OpenReadStream();
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                Transformation = new Transformation().Quality("auto").FetchFormat("auto"),
+                Folder = folderName
+            };
+
+            //Get result from Cloudinary
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+            if (uploadResult.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                return Result<ImageResponse>.Failure("Failed to upload image to Cloudinary.", 400);
+            }
+            return Result<ImageResponse>.Success(new ImageResponse
+            {
+                Url = uploadResult.SecureUrl.ToString(),
+                PublicId = uploadResult.PublicId,
+            });
+        }
+        //delete image xài chung
+        public async Task<Result<bool>> DeleteImageAsync(string publicId)
+        {
+            // Delete from Cloudinary
+            var deletionParams = new DeletionParams(publicId);
+            var deletionResult = await _cloudinary.DestroyAsync(deletionParams);
+            if (deletionResult.Result != "ok")
+            {
+                return Result<bool>.Failure("Failed to delete image from Cloudinary.", 400);
+            }
+            return Result<bool>.Success(true);
         }
     }
 }

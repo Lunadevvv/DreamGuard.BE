@@ -20,5 +20,10 @@ namespace DreamGuard.BE.DAL.Basic
         {
             return await _context.Database.BeginTransactionAsync();
         }
+
+        public async Task<int> SaveChangeAsync()
+        {
+            return await _context.SaveChangesAsync();
+        }
     }
 }

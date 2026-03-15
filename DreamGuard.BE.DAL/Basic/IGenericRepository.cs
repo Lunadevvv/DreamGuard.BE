@@ -18,6 +18,8 @@ namespace DreamGuard.BE.DAL.Basic
         Task<bool> RemoveAsync(T entity);
 
         Task<T> GetByIdAsync(Guid id);
+        void AddEntity(T entity);
+        void RemoveEntity(T entity);
 
     }
 }
