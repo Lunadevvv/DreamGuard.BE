@@ -1,6 +1,7 @@
 ﻿using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.DAL.ModelExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     {
         Task<Result> UpdateAsync(Guid staffId, StaffUpdateRequest staffUpdateRequest);
         Task<Result<StaffResponse>> GetByIdAsync(Guid StaffId);
+        Task<Result<PaginatedList<StaffResponse>>> GetAllAsync(int pageNumber, int pageSize);
         Task<Result> CreateAsync(StaffCreateRequest StaffCreateRequest);
     }
 }

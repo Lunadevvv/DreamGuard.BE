@@ -17,13 +17,25 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public ServicePackageMappingRepository(DreamGuardContext context) : base(context)
         {
         }
-        public async Task<bool> CheckMappingExistAsync(Guid serviceId, List<Guid> servicePackageIds)
+        public async Task<bool> CheckMappingExistAsync(Guid productTypeId, List<Guid> servicePackageIds)
         {
-            return await _context.ServicePackageMappings.AnyAsync(spm => servicePackageIds.Contains(spm.ServicePackageId) && spm.ServiceId == serviceId);
+            return await _context.ServicePackageMappings.AnyAsync(spm => servicePackageIds.Contains(spm.ServicePackageId) && spm.ProductTypeId == productTypeId);
         }
-        public async Task<List<ServicePackageMapping>> GetListByIdAsync(Guid serviceId, List<Guid> servicePackageIds)
+        public async Task<List<ServicePackageMapping>> GetListByIdAsync(Guid productTypeId, List<Guid> servicePackageIds)
         {
-            return await _context.ServicePackageMappings.Where(spm => servicePackageIds.Contains(spm.ServicePackageId) && spm.ServiceId == serviceId).ToListAsync();
+            return await _context.ServicePackageMappings.Where(spm => servicePackageIds.Contains(spm.ServicePackageId) && spm.ProductTypeId == productTypeId).ToListAsync();
+        }
+        public async Task<PaginatedList<ServicePackageMapping>> GetAllByAdminAsync(int pageNumber, int pageSize)
+        {
+            try
+            {
+                var query = _context.ServicePackageMappings;
+                return await PaginatedList<ServicePackageMapping>.CreateAsync(query, pageNumber, pageSize);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving service package mappings for admin");
+            }
         }
     }
 }

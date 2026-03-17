@@ -25,6 +25,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = $"{Role.CleaningStaff}")]
         public async Task<IActionResult> GetByIdAsync()
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -42,8 +43,24 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        [HttpGet("GetAllAsync")]
+        [Authorize(Roles = $"{Role.Admin}")]
+        public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
+        {
+            var result = await _staffService.GetAllAsync(pageNumber, pageSize);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
 
         [HttpPut]
+        [Authorize(Roles = $"{Role.CleaningStaff}")]
         public async Task<IActionResult> UpdateAsync([FromBody] StaffUpdateRequest staffRequest)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Http;
 using System;
@@ -19,7 +20,7 @@ namespace DreamGuard.BE.BLL.Requests
         [Range(0, double.MaxValue, ErrorMessage = "Price must be a non-negative value.")]
         public decimal Price { get; set; }
         [Required]
-        public bool? IsActive { get; set; }
+        public ServicePackageStatus? Status { get; set; }
         [Range(0, int.MaxValue, ErrorMessage = "Duration must be a non-negative integer.")]
         public int Duration { get; set; }
         [Required]

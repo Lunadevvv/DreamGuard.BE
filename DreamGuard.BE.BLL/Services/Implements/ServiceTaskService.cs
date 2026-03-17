@@ -9,6 +9,7 @@ using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using System.Security.Cryptography.X509Certificates;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -98,7 +99,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             var serviceTaskDetailResponse = _mapper.Map<ServiceTask, ServiceTaskDetailResponse>(serviceTask);
             serviceTaskDetailResponse.PackageName = serviceTask.ServiceOrder.ServicePackageMapping.ServicePackage.PackageName;
-            serviceTaskDetailResponse.ServiceName = serviceTask.ServiceOrder.ServicePackageMapping.Service.ServiceName;
+            serviceTaskDetailResponse.ProductTypeName = serviceTask.ServiceOrder.ServicePackageMapping.ProductType.ProductTypeName;
             return Result<ServiceTaskDetailResponse>.Success(serviceTaskDetailResponse);
         }
 
@@ -158,6 +159,31 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _repo.UpdateEntity(serviceTask);
             _soRepo.UpdateEntity(serviceOrder);
             var result = await _unitOfWork.SaveChangeAsync();
+            return Result.Success($"{result}");
+        }
+        public async Task<Result> UpdateForcedCancelledStatusAsync(Guid serviceTaskId, Guid staffId, string staffNote)
+        {
+            var serviceTask = await _repo.GetByIdWithSoAsync(serviceTaskId);
+            if (serviceTask == null)
+            {
+                return Result.Failure("Service task not found.", 404);
+            }
+            if (serviceTask.StaffId != staffId)
+            {
+                return Result.Failure("You are not assigned to this service task.", 403);
+            }
+            if (serviceTask.Status != ServiceTaskStatus.Processing)
+            {
+                return Result.Failure("Service task is not in Processing status.", 400);
+            }
+            var serviceOrder = serviceTask.ServiceOrder;
+            if (serviceOrder.Status != OrderServiceStatus.Processing && serviceOrder.Status != OrderServiceStatus.ForcedCancelled)
+            {
+                return Result.Failure("Service order must be Processing before force cancel service task.", 400);
+            }
+            serviceTask.Status = ServiceTaskStatus.ForcedCancelled;
+            serviceTask.StaffNote = staffNote;
+            var result = await _repo.UpdateAsync(serviceTask);
             return Result.Success($"{result}");
         }
         public async Task<Result> UpdateCheckedOutStatusAsync(Guid serviceTaskId, Guid staffId)

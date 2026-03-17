@@ -15,6 +15,7 @@ namespace DreamGuard.BE.DAL.Models
         public string Status { get; set; } = ServiceTaskStatus.Pending;
         public DateTime? CheckIn { get; set; }
         public DateTime? CheckOut { get; set; }
+        public string StaffNote { get; set; } = string.Empty;
         public Staff Staff { get; set; } = null!;
         public ServiceOrder ServiceOrder { get; set; } = null!;
         public ICollection<ServiceEvidence> ServiceEvidences { get; set; } = new List<ServiceEvidence>();

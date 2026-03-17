@@ -23,6 +23,7 @@ namespace DreamGuard.BE.API.Controllers
             _service = service;
             _mapper = mapper;
         }
+
         [HttpGet("{serviceTaskId}")]
         [Authorize(Roles = $"{Role.Admin}, {Role.CleaningStaff}")]
         public async Task<IActionResult> GetByIdAsync(Guid serviceTaskId)
@@ -38,6 +39,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpGet("{serviceTaskId}/detail")]
         [Authorize(Roles = $"{Role.Admin}, {Role.CleaningStaff}")]
         public async Task<IActionResult> GetDetailByIdAsync(Guid serviceTaskId)
@@ -53,6 +55,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpGet("AdminSearchServiceTask")]
         [Authorize(Roles = Role.Admin)]
         public async Task<IActionResult> AdminSearchServiceTask([FromQuery]AdminSearchServiceTaskRequest searchRequest, int pageSize = 4, int pageNumber = 1)
@@ -68,6 +71,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpGet("GetByStaffId")]
         [Authorize(Roles = Role.CleaningStaff)]
         public async Task<IActionResult> GetByStaffId(int pageNumber = 1, int pageSize = 4)
@@ -103,7 +107,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceTaskId}/updateCompletedStatus")]
+        [HttpPatch("{serviceTaskId}/updateCompletedStatus")]
         [Authorize(Roles = Role.CleaningStaff)]
         public async Task<IActionResult> UpdateCompletedStatusAsync(Guid serviceTaskId)
         {
@@ -122,7 +126,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceTaskId}/updateCheckedOutStatus")]
+        [HttpPatch("{serviceTaskId}/updateCheckedOutStatus")]
         [Authorize(Roles = Role.CleaningStaff)]
         public async Task<IActionResult> UpdateCheckedOutStatusAsync(Guid serviceTaskId)
         {
@@ -141,7 +145,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceTaskId}/updateProcessingStatus")]
+        [HttpPatch("{serviceTaskId}/updateProcessingStatus")]
         [Authorize(Roles = Role.CleaningStaff)]
         public async Task<IActionResult> UpdateProcessingStatusAsync(Guid serviceTaskId)
         {
@@ -160,7 +164,28 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceTaskId}/updateCheckedInStatus")]
+
+        [HttpPatch("{serviceTaskId}/updateForcedCancelledStatus")]
+        [Authorize(Roles = Role.CleaningStaff)]
+        public async Task<IActionResult> UpdateForcedCancelledStatusAsync(Guid serviceTaskId, ForcedCancelledRequest request)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _service.UpdateForcedCancelledStatusAsync(serviceTaskId, staffId, request.StaffNote);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        [HttpPatch("{serviceTaskId}/updateCheckedInStatus")]
         [Authorize(Roles = Role.CleaningStaff)]
         public async Task<IActionResult> UpdateCheckedInStatusAsync(Guid serviceTaskId)
         {

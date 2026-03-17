@@ -133,7 +133,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceOrderId}/cancel")]
+        [HttpPatch("{serviceOrderId}/cancel")]
         public async Task<IActionResult> CancelPendingServiceOrderAsync(Guid serviceOrderId)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
@@ -151,7 +151,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceOrderId}/manager-cancel")]
+        [HttpPatch("{serviceOrderId}/manager-cancel")]
         [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> ManagerCancelConfirmedServiceOrderAsync(Guid serviceOrderId)
         {
@@ -166,7 +166,24 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceOrderId}/confirm")]
+
+        [HttpPatch("{serviceOrderId}/manager-force-cancel")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
+        public async Task<IActionResult> ManagerCancelProcessingServiceOrderAsync(Guid serviceOrderId)
+        {
+            var result = await _serviceOrderService.ManagerCancelProcessingServiceOrderAsync(serviceOrderId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        [HttpPatch("{serviceOrderId}/confirm")]
         [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> ConfirmPendingServiceOrderAsync(Guid serviceOrderId)
         {
@@ -181,7 +198,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpPut("{serviceOrderId}/reject")]
+        [HttpPatch("{serviceOrderId}/reject")]
         [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> RejectPendingServiceOrderAsync(Guid serviceOrderId)
         {

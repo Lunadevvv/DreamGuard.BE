@@ -14,20 +14,20 @@ namespace DreamGuard.BE.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ServicesController : ControllerBase
+    public class ProductTypesController : ControllerBase
     {
-        private readonly IServiceService _serviceService;
+        private readonly IProductTypeService _productTypeService;
         private readonly IMapper _mapper;
-        public ServicesController(IServiceService serviceService, IMapper mapper)
+        public ProductTypesController(IProductTypeService productTypeService, IMapper mapper)
         {
-            _serviceService = serviceService;
+            _productTypeService = productTypeService;
             _mapper = mapper;
         }
 
-        [HttpGet("{serviceId}/service-package-mapping")]
-        public async Task<IActionResult> GetPackageMappingsByServiceIdAsync(Guid serviceId)
+        [HttpGet("{productTypeId}/service-package-mapping")]
+        public async Task<IActionResult> GetPackageMappingsByProductTypeIdAsync(Guid productTypeId)
         {
-            var result = await _serviceService.GetMappingsByServiceIdAsync(serviceId);
+            var result = await _productTypeService.GetMappingsByProductTypeIdAsync(productTypeId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -39,10 +39,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpGet("{serviceId}/service-package")]
-        public async Task<IActionResult> GetPackageByServiceIdAsync(Guid serviceId)
+        [HttpGet("{productTypeId}/service-package")]
+        public async Task<IActionResult> GetPackageByProductTypeIdAsync(Guid productTypeId)
         {
-            var result = await _serviceService.GetPackagesByServiceIdAsync(serviceId);
+            var result = await _productTypeService.GetPackagesByProductTypeIdAsync(productTypeId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -57,7 +57,7 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
         {
-            var result = await _serviceService.GetAllAsync(pageNumber, pageSize);
+            var result = await _productTypeService.GetAllAsync(pageNumber, pageSize);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -69,11 +69,11 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpGet("AdminSearchService")]
+        [HttpGet("AdminSearchProductType")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> SearchServiceByAdminAsync([FromQuery]SearchServiceByAdminRequest searchRequest)
+        public async Task<IActionResult> SearchProductTypeByAdminAsync([FromQuery]SearchProductTypeByAdminRequest searchRequest)
         {
-            var result = await _serviceService.GetAllByAdminAsync(searchRequest.pageNumber, searchRequest.pageSize, searchRequest.isActive);
+            var result = await _productTypeService.GetAllByAdminAsync(searchRequest.pageNumber, searchRequest.pageSize, searchRequest.isActive);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -85,10 +85,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpGet("{serviceId}")]
-        public async Task<IActionResult> GetByIdAsync(Guid serviceId)
+        [HttpGet("{productTypeId}")]
+        public async Task<IActionResult> GetByIdAsync(Guid productTypeId)
         {
-            var result = await _serviceService.GetByIdAsync(serviceId);
+            var result = await _productTypeService.GetByIdAsync(productTypeId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -102,39 +102,9 @@ namespace DreamGuard.BE.API.Controllers
      
         [HttpPost]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> CreateAsync([FromForm] ServiceCreateRequest serviceRequest)
+        public async Task<IActionResult> CreateAsync([FromForm] ProductTypeCreateRequest serviceRequest)
         {
-            var result = await _serviceService.CreateAsync(serviceRequest);
-            if (!result.Succeeded)
-            {
-                return StatusCode(result.StatusCode, new ErrorResponse
-                {
-                    ErrorCode = result.StatusCode,
-                    Message = new List<string> { result.Error }
-                });
-            }
-            return Ok(result.Message);
-        }
-        [HttpPost("{serviceId}/assets")]
-        [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> AddImages(Guid serviceId, [FromForm] ImageUploadRequest files)
-        {
-            var result = await _serviceService.AddImagesAsync(serviceId, files);
-            if (!result.Succeeded)
-            {
-                return StatusCode(result.StatusCode, new ErrorResponse
-                {
-                    ErrorCode = result.StatusCode,
-                    Message = new List<string> { result.Error }
-                });
-            }
-            return Ok(result.Message);
-        }
-        [HttpDelete("{serviceId}/assets/{assetId}")]
-        [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> DeleteImage(Guid serviceId, Guid assetId)
-        {
-            var result = await _serviceService.DeleteImageAsync(serviceId, assetId);
+            var result = await _productTypeService.CreateAsync(serviceRequest);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -146,11 +116,11 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut("{serviceId}")]
+        [HttpPut("{productTypeId}")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> UpdateAsync(Guid serviceId, [FromBody] ServiceUpdateRequest serviceRequest)
+        public async Task<IActionResult> UpdateAsync(Guid productTypeId, [FromBody] ProductTypeUpdateRequest serviceRequest)
         {
-            var result = await _serviceService.UpdateAsync(serviceId, serviceRequest);
+            var result = await _productTypeService.UpdateAsync(productTypeId, serviceRequest);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -162,11 +132,11 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
 
-        [HttpDelete("{serviceId}")]
+        [HttpDelete("{productTypeId}")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> ToggleActiveAsync(Guid serviceId)
+        public async Task<IActionResult> ToggleActiveAsync(Guid productTypeId)
         {
-            var result = await _serviceService.ToggleActiveAsync(serviceId);
+            var result = await _productTypeService.ToggleActiveAsync(productTypeId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -178,11 +148,11 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPost("{serviceId}/packages")]
+        [HttpPost("{productTypeId}/packages")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> AssignPackages(Guid serviceId, AssignServicePackagesRequest request)
+        public async Task<IActionResult> AssignPackages(Guid productTypeId, AssignServicePackagesRequest request)
         {
-            var result = await _serviceService.AssignPackagesAsync(serviceId, request);
+            var result = await _productTypeService.AssignPackagesAsync(productTypeId, request);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -193,11 +163,11 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
-        [HttpDelete("{serviceId}/packages")]
+        [HttpDelete("{productTypeId}/packages")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> RemovePackages(Guid serviceId, RemoveServicePackagesRequest request)
+        public async Task<IActionResult> RemovePackages(Guid productTypeId, RemoveServicePackagesRequest request)
         {
-            var result = await _serviceService.RemovePackagesAsync(serviceId, request);
+            var result = await _productTypeService.RemovePackagesAsync(productTypeId, request);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

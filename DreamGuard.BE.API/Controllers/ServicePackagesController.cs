@@ -27,9 +27,9 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpGet("Admin")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> GetAllByAdminAsync(int pageNumber = 1, int pageSize = 4, bool isActive = true)
+        public async Task<IActionResult> GetAllByAdminAsync(int pageNumber = 1, int pageSize = 4, ServicePackageStatus status = ServicePackageStatus.Active)
         {
-            var result = await _servicePackage.GetAllByAdminAsync(pageNumber, pageSize, isActive);
+            var result = await _servicePackage.GetAllByAdminAsync(pageNumber, pageSize, status);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -121,11 +121,11 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
 
-        [HttpDelete("{servicePackageId}")]
+        [HttpPatch("{servicePackageId}")]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> ToggleActiveAsync(Guid servicePackageId)
+        public async Task<IActionResult> UpdateServicePackageStatusAsync(Guid servicePackageId, ServicePackageStatus status)
         {
-            var result = await _servicePackage.ToggleActiveAsync(servicePackageId);
+            var result = await _servicePackage.UpdateServicePackageStatusAsync(servicePackageId, status);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

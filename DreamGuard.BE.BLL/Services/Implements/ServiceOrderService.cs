@@ -4,6 +4,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
@@ -26,7 +27,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IMapper _mapper;
         private readonly IServiceOrderRepository _serviceOrderRepo;
         private readonly IPaymentRepository _paymentRepository;
-        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository)
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IServiceTaskRepository _serviceTaskRepository;
+        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository, IUnitOfWork unitOfWork, IServiceTaskRepository serviceTaskRepository)
         {
             _servicePackageMappingRepository = servicePackageMappingRepository;
             _customerRepository = customerRepository;
@@ -35,6 +38,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _mapper = mapper;
             _serviceOrderRepo = serviceOrderRepo;
             _paymentRepository = paymentRepository;
+            _unitOfWork = unitOfWork;
+            _serviceTaskRepository = serviceTaskRepository;
         }
         public async Task<Result<OrderServiceResponse>> ReOrderServiceAsync(Guid SoId, Guid customerId, string ipAddress)
         {
@@ -121,10 +126,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ServicePackageMappingId = serviceOrderRequest.ServicePackageMappingId,
                 CustomNote = serviceOrderRequest.CustomNote,
                 Address = serviceOrderRequest.Address,
-                City = serviceOrderRequest.City,
-                District = serviceOrderRequest.District,
-                Ward = serviceOrderRequest.Ward,
-                Street = serviceOrderRequest.Street,
                 PhoneNumber = serviceOrderRequest.PhoneNumber,
                 AppointmentDate = DateTime.UtcNow.AddDays(3), //default appointment date after 3 days, staff contact customer to confirm exact date
                 Status = OrderServiceStatus.Pending,
@@ -327,7 +328,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             if (serviceOrder.ServiceTask != null)
             {
-                return Result.Failure("Cannot cancel order that has been assigned to staff", 400);
+                var serviceTask = serviceOrder.ServiceTask;
+                serviceTask.Status = ServiceTaskStatus.Cancelled;
+                _serviceTaskRepository.UpdateEntity(serviceTask);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
@@ -338,6 +341,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 serviceOrder.Status = OrderServiceStatus.Cancelled;
             }
+            serviceOrder.UpdatedAt = DateTime.UtcNow;
+            _serviceOrderRepo.UpdateEntity(serviceOrder);
+            var result = await _unitOfWork.SaveChangeAsync();           
+            return Result.Success($"{result}");
+        }
+        public async Task<Result> ManagerCancelProcessingServiceOrderAsync(Guid serviceOrderId)
+        {
+            var serviceOrder = await _serviceOrderRepository.GetByIdWithServiceTask(serviceOrderId);
+            if (serviceOrder == null)
+            {
+                return Result.Failure("Service order not found", 404);
+            }
+            if (serviceOrder.Status != OrderServiceStatus.Processing)
+            {
+                return Result.Failure("Only processing order can be cancelled by manager", 400);
+            }
+            serviceOrder.Status = OrderServiceStatus.ForcedCancelled;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
             return Result.Success($"{result}");

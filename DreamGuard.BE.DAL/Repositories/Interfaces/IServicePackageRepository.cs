@@ -1,4 +1,5 @@
 ﻿using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using System;
@@ -12,8 +13,8 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IServicePackageRepository : IGenericRepository<ServicePackage>
     {
         Task<ServicePackage?> GetByIdAsync(Guid id);
-        Task<PaginatedList<ServicePackage>> GetAllAdminAsync(int pageNumber, int pageSize, bool isActive);
+        Task<PaginatedList<ServicePackage>> GetAllAdminAsync(int pageNumber, int pageSize, ServicePackageStatus status);
         Task<List<ServicePackage>> GetByListIdAsync(List<Guid> servicePackageIds);
-        Task<List<ServicePackage>> GetAllByServiceIdAsync(Guid serviceId);
+        Task<List<ServicePackage>> GetAllByProductTypeIdAsync(Guid productTypeId);
     }
 }

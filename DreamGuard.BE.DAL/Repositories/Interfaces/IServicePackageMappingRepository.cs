@@ -11,7 +11,8 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IServicePackageMappingRepository : IGenericRepository<ServicePackageMapping>
     {
-        Task<bool> CheckMappingExistAsync(Guid serviceId, List<Guid> servicePackageIds);
-        Task<List<ServicePackageMapping>> GetListByIdAsync(Guid serviceId, List<Guid> servicePackageIds);
+        Task<bool> CheckMappingExistAsync(Guid productTypeId, List<Guid> servicePackageIds);
+        Task<List<ServicePackageMapping>> GetListByIdAsync(Guid productTypeId, List<Guid> servicePackageIds);
+        Task<PaginatedList<ServicePackageMapping>> GetAllByAdminAsync(int pageNumber, int pageSize);
     }
 }

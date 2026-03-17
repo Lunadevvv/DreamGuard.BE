@@ -9,12 +9,14 @@ using System.Threading.Tasks;
 
 namespace DreamGuard.BE.DAL.Configurations
 {
-    public class ServiceAssetConfiguration : IEntityTypeConfiguration<ServiceAsset>
+    public class ProductTypProductTypeConfiguration : IEntityTypeConfiguration<ProductType>
     {
-        public void Configure(EntityTypeBuilder<ServiceAsset> builder)
+        public void Configure(EntityTypeBuilder<ProductType> builder)
         {
-            builder.HasKey(x => x.Id);
-            builder.ToTable("ServiceAssets");
+            builder.ToTable("ProductTypes");
+
+            builder.HasKey(e => e.ProductTypeId);
+
         }
     }
 }

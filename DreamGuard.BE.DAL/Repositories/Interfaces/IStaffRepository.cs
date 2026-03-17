@@ -11,6 +11,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IStaffRepository : IGenericRepository<Staff>
     {
-        
+        Task<PaginatedList<Staff>> GetAllByAdminAsync(int pageNumber, int pageSize);
     }
 }

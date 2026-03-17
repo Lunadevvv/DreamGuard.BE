@@ -17,6 +17,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string Status { get; set; }
         public DateTime CheckIn { get; set; }
         public DateTime CheckOut { get; set; }
+        public string StaffNote { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

@@ -44,7 +44,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                             .ThenInclude(spm => spm.ServicePackage)
                     .Include(st => st.ServiceOrder)
                         .ThenInclude(so => so.ServicePackageMapping)
-                            .ThenInclude(spm => spm.Service)
+                            .ThenInclude(spm => spm.ProductType)
                     .Include(st => st.ServiceOrder)
                         .ThenInclude(so => so.Payments)
                     .FirstOrDefaultAsync(st => st.ServiceTaskId == serviceTaskId);

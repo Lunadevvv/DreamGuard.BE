@@ -23,13 +23,6 @@ namespace DreamGuard.BE.BLL.Requests
         [Required]
         public string Address { get; set; }
         [Required]
-        public string City { get; set; }
-        [Required]
-        public string District { get; set; }
-        [Required]
-        public string Ward { get; set; }
-        [Required]
-        public string Street { get; set; }
         public string CustomNote { get; set; }
         [Required]
         public PaymentMethod PaymentMethod { get; set; }

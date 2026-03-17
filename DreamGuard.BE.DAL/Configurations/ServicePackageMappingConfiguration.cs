@@ -21,9 +21,9 @@ namespace DreamGuard.BE.DAL.Configurations
                    .WithMany(sp => sp.ServicePackageMappings)
                    .HasForeignKey(sp => sp.ServicePackageId);
             // n-1: ServicePackageMapping - Service
-            builder.HasOne(sp => sp.Service)
+            builder.HasOne(sp => sp.ProductType)
                    .WithMany(s => s.ServicePackageMappings)
-                   .HasForeignKey(sp => sp.ServiceId);
+                   .HasForeignKey(sp => sp.ProductTypeId);
         }
     }
 }

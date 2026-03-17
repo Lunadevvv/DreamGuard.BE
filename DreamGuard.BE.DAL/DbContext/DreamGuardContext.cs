@@ -44,8 +44,7 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Staff> Staffs { get; set; }
         public DbSet<ServiceOrder> ServiceOrders { get; set; }
-        public DbSet<Service> Services { get; set; }
-        public DbSet<ServiceAsset> ServiceAssets { get; set; }
+        public DbSet<ProductType> ProductTypes { get; set; }
         public DbSet<ServicePackage> ServicePackages { get; set; }
         public DbSet<ServicePackageMapping> ServicePackageMappings { get; set; }
         public DbSet<ServiceTask> ServiceTasks { get; set; }

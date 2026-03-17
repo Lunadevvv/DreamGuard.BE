@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Requests
 {
-    public class SearchServiceByAdminRequest
+    public class SearchProductTypeByAdminRequest
     { 
         public int pageNumber { get; set; } = 1;
         public int pageSize { get; set; } = 4;

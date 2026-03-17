@@ -17,12 +17,13 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<OrderServiceResponse>> OrderServiceAsync(ServiceOrderCreateRequest serviceOrderRequest, Guid customerId, string ipAddress);
         Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(int pageNumber, int pageSize);
         Task<Result<PaginatedList<ServiceOrderAdminResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServiceOrderSearchRequest searchRequest);
-        Task<Result<ServiceOrderResponse>> GetByIdAsync(Guid serviceId);
+        Task<Result<ServiceOrderResponse>> GetByIdAsync(Guid serviceOrderId);
         Task<Result> UpdateServiceOrderAsync(Guid serviceOrderId, ServiceOrderUpdateRequest updateRequest);
         Task<Result> RejectPendingServiceOrderAsync(Guid serviceOrderId);
         Task<Result> ConfirmPendingServiceOrderAsync(Guid serviceOrderId);
         Task<Result> CancelPendingServiceOrderAsync(Guid customerId, Guid serviceOrderId);
         Task<Result> ManagerCancelConfirmedServiceOrderAsync(Guid serviceOrderId);
+        Task<Result> ManagerCancelProcessingServiceOrderAsync(Guid serviceOrderId);
         Task<Result<OrderServiceResponse>> ReOrderServiceAsync(Guid SoId, Guid customerId, string ipAddress);
 
     }

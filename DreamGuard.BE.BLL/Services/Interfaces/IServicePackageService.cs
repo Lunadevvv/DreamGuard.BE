@@ -1,6 +1,7 @@
 ﻿using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using System;
@@ -13,7 +14,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IServicePackageService
     {
-        Task<Result<PaginatedList<ServicePackageResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, bool isActive);
+        Task<Result<PaginatedList<ServicePackageResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServicePackageStatus status);
         Task<Result<ServicePackageResponse>> GetByIdAsync(Guid servicePackageId);
 
         
@@ -21,7 +22,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> ReplaceImagesAsync(Guid servicePackageId, PackageImageUploadRequest file);
         Task<Result> DeleteImageAsync(Guid servicePackageId);
         Task<Result> UpdateAsync(Guid servicePackageId, ServicePackageUpdateRequest servicePackageRequest);
-        Task<Result> ToggleActiveAsync(Guid servicePackageId);
+        Task<Result> UpdateServicePackageStatusAsync(Guid servicePackageId, ServicePackageStatus status);
 
 
     }

@@ -8,18 +8,18 @@ using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Responses
 {
-    public class ServicePackageMappingResponse
+    public class ProductTypeResponse
     {
-        public Guid ServicePackageMappingId { get; set; }
-        public Guid ProductTypeId { get; set; }
-        public Guid ServicePackageId { get; set; }
-        public int Duration { get; set; }
+        public Guid ProductTypeId { get; set; } 
+        public string ProductTypeName { get; set; }
         public decimal Price { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
         private class Mapping : Profile
         {
             public Mapping()
             {
-                CreateMap<ServicePackageMapping, ServicePackageMappingResponse>();
+                CreateMap<ProductType, ProductTypeResponse>();
             }
         }
     }

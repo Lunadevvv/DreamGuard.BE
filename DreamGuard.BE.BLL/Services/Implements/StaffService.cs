@@ -30,6 +30,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success($"{result}");
         }
 
+        public async Task<Result<PaginatedList<StaffResponse>>> GetAllAsync(int pageNumber, int pageSize)
+        {
+            var staffs = await _repo.GetAllByAdminAsync(pageNumber, pageSize);
+            var staffResponse = _mapper.Map<List<StaffResponse>>(staffs.Items);
+            var paginatedResult = new PaginatedList<StaffResponse>(staffResponse, staffs.TotalCount, staffs.PageNumber, staffs.PageSize);
+            return Result<PaginatedList<StaffResponse>>.Success(paginatedResult);
+        }
+
         public async Task<Result<StaffResponse>> GetByIdAsync(Guid staffId)
         {
             var result = await _repo.GetByIdAsync(staffId);
