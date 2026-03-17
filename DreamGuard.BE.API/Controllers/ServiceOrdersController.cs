@@ -75,6 +75,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
         {
             var result = await _serviceOrderService.GetAllAsync(pageNumber, pageSize);
@@ -106,9 +107,16 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("{serviceOrderId}")]
+        [Authorize]
         public async Task<IActionResult> GetByIdAsync(Guid serviceOrderId)
         {
-            var result = await _serviceOrderService.GetByIdAsync(serviceOrderId);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            
+            var result = await _serviceOrderService.GetByIdAsync(serviceOrderId, customerId, role!);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -120,9 +128,14 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
         [HttpPut("{serviceOrderId}")]
+        [Authorize]
         public async Task<IActionResult> UpdateServiceOrderAsync(Guid serviceOrderId, [FromBody] ServiceOrderUpdateRequest updateRequest)
         {
-            var result = await _serviceOrderService.UpdateServiceOrderAsync(serviceOrderId, updateRequest);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _serviceOrderService.UpdateServiceOrderAsync(customerId, serviceOrderId, updateRequest);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -134,6 +147,7 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
         [HttpPatch("{serviceOrderId}/cancel")]
+        [Authorize]
         public async Task<IActionResult> CancelPendingServiceOrderAsync(Guid serviceOrderId)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))

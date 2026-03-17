@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -212,12 +211,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var paginatedResult = new PaginatedList<ServiceOrderAdminResponse>(serviceOrderResponse, serviceOrder.TotalCount, serviceOrder.PageNumber, serviceOrder.PageSize);
             return Result<PaginatedList<ServiceOrderAdminResponse>>.Success(paginatedResult);
         }
-        public async Task<Result<ServiceOrderResponse>> GetByIdAsync(Guid serviceOrderId)
+        public async Task<Result<ServiceOrderResponse>> GetByIdAsync(Guid serviceOrderId, Guid customerId, string role)
         {
             var serviceOrder = await _serviceOrderRepository.GetByIdWithPayment(serviceOrderId);
             if (serviceOrder == null)
             {
                 return Result<ServiceOrderResponse>.Failure("service order not found", 404);
+            }
+            if(role != Role.Admin && serviceOrder.CustomerId != customerId)
+            {
+                return Result<ServiceOrderResponse>.Failure("No permission for access this order", 403);
             }
             var serviceOrderResponse = _mapper.Map<ServiceOrderResponse>(serviceOrder);
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
@@ -225,12 +228,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             serviceOrderResponse.PaymentStatus = lastPayment.Status.ToString();
             return Result<ServiceOrderResponse>.Success(serviceOrderResponse);
         }
-        public async Task<Result> UpdateServiceOrderAsync(Guid serviceOrderId, ServiceOrderUpdateRequest updateRequest)
+        public async Task<Result> UpdateServiceOrderAsync(Guid customerId, Guid serviceOrderId, ServiceOrderUpdateRequest updateRequest)
         {
             var serviceOrder = await _serviceOrderRepository.GetByIdAsync(serviceOrderId);
             if (serviceOrder == null)
             {
                 return Result.Failure("Service order not found", 404);
+            }
+            if (serviceOrder.CustomerId != customerId)
+            {
+                return Result.Failure("You are not the owner of this order", 403);
+            }
+            if (serviceOrder.Status == OrderServiceStatus.Completed)
+            {
+                return Result.Failure("Only completed order can be updated", 400);
             }
             _mapper.Map(updateRequest, serviceOrder);
             serviceOrder.UpdatedAt = DateTime.UtcNow;
