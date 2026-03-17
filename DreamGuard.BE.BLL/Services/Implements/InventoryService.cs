@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.BLL.Utilities;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
@@ -236,19 +237,51 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only child combos can have stock deducted.", 400);
             }
 
-            // Deduct stock from each component variant
+            // Validate and deduct stock from each component variant using already-loaded tracked entities
+            var productIdsToCheckOutOfStock = new HashSet<Guid>();
+
             foreach (var cpv in combo.ComboProductVariants)
             {
-                var deductQuantity = cpv.Quantity * orderQuantity;
-                var result = await DeductVariantStockAsync(cpv.ProductVariantId, deductQuantity);
-                if (!result.Succeeded)
+                var inventory = cpv.ProductVariant?.Inventory;
+                if (inventory == null)
                 {
-                    return result;
+                    return Result.Failure($"Inventory not found for variant '{cpv.ProductVariantId}'.", 404);
+                }
+
+                var deductQuantity = cpv.Quantity * orderQuantity;
+                if (inventory.Quantity < deductQuantity)
+                {
+                    return Result.Failure($"Insufficient stock for variant '{cpv.ProductVariantId}'. Available: {inventory.Quantity}, Requested: {deductQuantity}.", 400);
+                }
+
+                inventory.Quantity -= deductQuantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+
+                // Update variant status if out of stock
+                if (inventory.Quantity == 0 && cpv.ProductVariant!.Status == ProductStatus.Published)
+                {
+                    cpv.ProductVariant.Status = ProductStatus.OutOfStock;
+                    productIdsToCheckOutOfStock.Add(cpv.ProductVariant.ProductId);
                 }
             }
 
+            try
+            {
+                await _unitOfWork.SaveChangeAsync();
+
+                // Check if all variants of affected products are out of stock
+                foreach (var productId in productIdsToCheckOutOfStock)
+                {
+                    await UpdateProductStatusIfAllVariantsOutOfStockAsync(productId);
+                }
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure("Concurrent stock update detected. Please retry.", 409);
+            }
+
             // Check if combo is now out of stock
-            var comboStock = CalculateComboStock(combo);
+            var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
             if (comboStock == 0 && combo.Status == ProductStatus.Published)
             {
                 combo.Status = ProductStatus.OutOfStock;
@@ -308,15 +341,49 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Combo not found.", 404);
             }
 
-            // Restore stock for each component variant
+            // Restore stock for each component variant using already-loaded tracked entities
+            var variantIdsToRestoreStatus = new List<(Guid ProductVariantId, Guid ProductId)>();
+
             foreach (var cpv in combo.ComboProductVariants)
             {
-                var restoreQuantity = cpv.Quantity * orderQuantity;
-                var result = await RestoreVariantStockAsync(cpv.ProductVariantId, restoreQuantity);
-                if (!result.Succeeded)
+                var inventory = cpv.ProductVariant?.Inventory;
+                if (inventory == null)
                 {
-                    return result;
+                    return Result.Failure($"Inventory not found for variant '{cpv.ProductVariantId}'.", 404);
                 }
+
+                var previousQuantity = inventory.Quantity;
+                var restoreQuantity = cpv.Quantity * orderQuantity;
+                inventory.Quantity += restoreQuantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+
+                // If was out of stock, mark for status restore
+                if (previousQuantity == 0 && cpv.ProductVariant!.Status == ProductStatus.OutOfStock)
+                {
+                    cpv.ProductVariant.Status = ProductStatus.Published;
+                    variantIdsToRestoreStatus.Add((cpv.ProductVariantId, cpv.ProductVariant.ProductId));
+                }
+            }
+
+            try
+            {
+                await _unitOfWork.SaveChangeAsync();
+
+                // Restore product status if it was OutOfStock
+                var productIdsToRestore = variantIdsToRestoreStatus.Select(v => v.ProductId).Distinct();
+                foreach (var productId in productIdsToRestore)
+                {
+                    var product = await _productRepository.GetProductByIdForUpdateAsync(productId);
+                    if (product != null && product.Status == ProductStatus.OutOfStock)
+                    {
+                        product.Status = ProductStatus.Published;
+                        await _productRepository.UpdateAsync(product);
+                    }
+                }
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure("Concurrent stock update detected. Please retry.", 409);
             }
 
             // If combo was out of stock, restore to Published
@@ -347,42 +414,33 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        private static int CalculateComboStock(Combo combo)
-        {
-            if (combo.ComboProductVariants == null || !combo.ComboProductVariants.Any())
-            {
-                return 0;
-            }
-
-            int minStock = int.MaxValue;
-            foreach (var cpv in combo.ComboProductVariants)
-            {
-                if (cpv.Quantity <= 0) continue;
-                int inventoryQuantity = cpv.ProductVariant?.Inventory?.Quantity ?? 0;
-                int possibleSets = inventoryQuantity / cpv.Quantity;
-                minStock = Math.Min(minStock, possibleSets);
-            }
-
-            return minStock == int.MaxValue ? 0 : minStock;
-        }
-
         private async Task UpdateComboStatusesAfterStockIncreaseAsync(Guid productVariantId)
         {
             var outOfStockCombos = await _comboRepository.GetOutOfStockCombosByVariantIdAsync(productVariantId);
 
+            var parentComboIdsToRestore = new HashSet<Guid>();
+
             foreach (var combo in outOfStockCombos)
             {
-                var comboStock = CalculateComboStock(combo);
+                var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
                 if (comboStock > 0)
                 {
                     combo.Status = ProductStatus.Published;
-                    await _comboRepository.UpdateAsync(combo);
 
                     if (combo.ComboParentId.HasValue)
                     {
-                        await RestoreParentComboStatusIfNeededAsync(combo.ComboParentId.Value);
+                        parentComboIdsToRestore.Add(combo.ComboParentId.Value);
                     }
                 }
+            }
+
+            // Batch save all combo status changes
+            await _unitOfWork.SaveChangeAsync();
+
+            // Restore parent combo statuses (deduplicated)
+            foreach (var parentComboId in parentComboIdsToRestore)
+            {
+                await RestoreParentComboStatusIfNeededAsync(parentComboId);
             }
         }
 

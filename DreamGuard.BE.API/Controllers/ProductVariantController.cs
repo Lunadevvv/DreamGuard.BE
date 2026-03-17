@@ -120,7 +120,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result.Message);
+            return Ok($"Updated variant's status to '{status}' successfully!");
         }
     }
 }

@@ -14,21 +14,29 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public FavoriteProductRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<FavoriteProduct?> GetByUserAndProductAsync(Guid userId, Guid productId)
+        public async Task<FavoriteProduct?> GetByCustomerAndProductAsync(Guid customerId, Guid productId)
         {
             return await _context.FavoriteProducts
                 .AsTracking()
-                .FirstOrDefaultAsync(fp => fp.UserId == userId && fp.ProductId == productId);
+                .FirstOrDefaultAsync(fp => fp.CustomerId == customerId && fp.ProductId == productId);
         }
 
-        public async Task<PaginatedList<FavoriteProduct>> GetFavoritesByUserIdAsync(Guid userId, int pageNumber)
+        public async Task<FavoriteProduct?> GetByCustomerAndComboAsync(Guid customerId, Guid comboId)
+        {
+            return await _context.FavoriteProducts
+                .AsTracking()
+                .FirstOrDefaultAsync(fp => fp.CustomerId == customerId && fp.ComboId == comboId);
+        }
+
+        public async Task<PaginatedList<FavoriteProduct>> GetFavoritesByCustomerIdAsync(Guid customerId, int pageNumber)
         {
             var query = _context.FavoriteProducts
-                .Where(fp => fp.UserId == userId)
+                .Where(fp => fp.CustomerId == customerId)
                 .Include(fp => fp.Product)
                     .ThenInclude(p => p!.Assets)
                 .Include(fp => fp.Product)
                     .ThenInclude(p => p!.Variants)
+                .Include(fp => fp.Combo)
                 .OrderByDescending(fp => fp.CreatedAt)
                 .AsSplitQuery()
                 .AsNoTracking();

@@ -25,6 +25,8 @@ namespace DreamGuard.BE.DAL.Configurations
                     .WithMany(cp => cp.ComboChildrens)
                     .HasForeignKey(cp => cp.ComboParentId)
                     .OnDelete(DeleteBehavior.Restrict);
+            
+            builder.HasIndex(c => c.Slug).IsUnique();
         }
     }
 }

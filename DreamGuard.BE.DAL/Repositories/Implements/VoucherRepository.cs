@@ -28,33 +28,33 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<Voucher> GetByIdAsync(Guid userId, Guid voucherId)
+        public async Task<Voucher> GetByIdAsync(Guid customerId, Guid voucherId)
         {
             try
             {
                 return await _context.UserVouchers
-                    .Where(uv => uv.UserId == userId && uv.VoucherId == voucherId && uv.Voucher.IsActive)
+                    .Where(uv => uv.CustomerId == customerId && uv.VoucherId == voucherId && uv.Voucher.IsActive)
                     .Select(uv => uv.Voucher)
                     .FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving Vouchere for user {userId}: {ex.Message}");
+                throw new Exception($"Error retrieving Vouchere for customer {customerId}: {ex.Message}");
             }
         }
 
-        public async Task<PaginatedList<Voucher>> GetAllAsync(Guid userId, int pageNumber)
+        public async Task<PaginatedList<Voucher>> GetAllAsync(Guid customerId, int pageNumber)
         {
             try
             {
                 var query = _context.UserVouchers
-                    .Where(uv => uv.UserId == userId && uv.Voucher.IsActive)
+                    .Where(uv => uv.CustomerId == customerId && uv.Voucher.IsActive)
                     .Select(uv => uv.Voucher);
                 return await PaginatedList<Voucher>.CreateAsync(query, pageNumber, 4);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving Vouchers for user {userId}: {ex.Message}");
+                throw new Exception($"Error retrieving Vouchers for customer {customerId}: {ex.Message}");
             }
         }
         public async Task<PaginatedList<Voucher>> GetAllByAdminAsync(int pageNumber)

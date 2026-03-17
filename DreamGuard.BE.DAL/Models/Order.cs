@@ -8,7 +8,7 @@ namespace DreamGuard.BE.DAL.Models
     public class Order
     {
         public Guid Id { get; set; }
-        public Guid UserId { get; set; }
+        public Guid CustomerId { get; set; }
         public string OrderCode { get; set; } = string.Empty;
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
@@ -34,7 +34,7 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         [JsonIgnore]
-        public User? User { get; set; }
+        public Customer? Customer { get; set; }
         [JsonIgnore]
         public UserVoucher? UserVoucher { get; set; }
         [JsonIgnore]

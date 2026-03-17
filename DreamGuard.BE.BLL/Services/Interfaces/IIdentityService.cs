@@ -1,4 +1,5 @@
 ﻿using DreamGuard.BE.BLL.Common;
+using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.DAL.Models;
 using System;
@@ -13,7 +14,8 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     {
         Task<Result<LoginResponse>> LoginAsync(string phone, string password);
         Task<Result<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken);
-        Task<Result<RegisterResponse>> RegisterAsync(string email, string password, string firstName, string lastName, string phoneNumber, string gender, DateOnly dateOfBirth);
+        Task<Result<RegisterResponse>> RegisterAsync(string email, string password, string fullName, string phoneNumber, string gender, DateOnly dateOfBirth);
+        Task<Result<RegisterResponse>> CreateStaffAsync(CreateStaffRequest request);
         Task<Result> LogoutAsync(Guid userId);
         Task<Result> ForgotPasswordAsync(string phoneNumber);
         Task<Result> ResetPasswordAsync(string phoneNumber, string otpCode);

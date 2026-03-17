@@ -12,9 +12,9 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IVoucherRepository : IGenericRepository<Voucher>
     {
         Task<Voucher> GetByCodeAsync(string code);
-        Task<PaginatedList<Voucher>> GetAllAsync(Guid userId, int pageNumber);
+        Task<PaginatedList<Voucher>> GetAllAsync(Guid customerId, int pageNumber);
         Task<PaginatedList<Voucher>> GetAllByAdminAsync(int pageNumber);
-        Task<Voucher> GetByIdAsync(Guid userId, Guid voucherId);
+        Task<Voucher> GetByIdAsync(Guid customerId, Guid voucherId);
 
     }
 }

@@ -9,7 +9,7 @@ namespace DreamGuard.BE.DAL.Models
     public class Address
     {
         public Guid AddressId { get; set; } = Guid.NewGuid();
-        public Guid UserId { get; set; }
+        public Guid CustomerId { get; set; }
         public string ReceiverName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Street { get; set; } = string.Empty;  
@@ -19,6 +19,6 @@ namespace DreamGuard.BE.DAL.Models
         public string Province { get; set; } = string.Empty;
 
 
-        public User User { get; set; } = null!;
+        public Customer Customer { get; set; } = null!;
     }
 }

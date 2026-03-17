@@ -9,6 +9,7 @@ using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 
 namespace DreamGuard.BE.BLL.Services.Implements
@@ -18,11 +19,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IProductRepository _productRepository;
         private readonly IProductVariantRepository _variantRepository;
         private readonly IProductVariantService _variantService;
-        public ProductService(IProductRepository productRepository, IProductVariantRepository variantRepository, IProductVariantService variantService)
+        private readonly IUnitOfWork _unitOfWork;
+        public ProductService(IProductRepository productRepository, IProductVariantRepository variantRepository, IProductVariantService variantService, IUnitOfWork unitOfWork)
         {
             _productRepository = productRepository;
             _variantRepository = variantRepository;
             _variantService = variantService;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Result<bool>> CreateProductAsync(Product product)
@@ -86,12 +89,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
             // Cascade: when product is Hidden, also hide all its variants
             if (status == ProductStatus.Hidden)
             {
-                var variants = await _variantRepository.GetVariantsByProductIdAsync(id, null, null);
+                var variants = await _variantRepository.GetVariantsByProductIdForStockCheckAsync(id);
                 foreach (var variant in variants)
                 {
                     variant.Status = ProductStatus.Hidden;
-                    await _variantRepository.UpdateAsync(variant);
                 }
+                await _unitOfWork.SaveChangeAsync();
             }
 
             return Result<bool>.Success(true);

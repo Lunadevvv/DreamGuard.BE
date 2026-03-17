@@ -169,7 +169,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 emailContent
             );
             
-            return Result.Success($"Gửi mã OTP về {email} thành công");
+            return Result.Success($"OTP is sent to {email} successfully");
         }
 
         public async Task<Result<bool>> VerifyOtpAsync(string phoneNumber, string email, string code)

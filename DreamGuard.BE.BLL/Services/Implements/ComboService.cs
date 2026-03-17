@@ -11,6 +11,7 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.BLL.Utilities;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 
 namespace DreamGuard.BE.BLL.Services.Implements
@@ -121,7 +122,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         SalePrice = ch.SalePrice,
                         ImageUrl = ch.ImageUrl,
                         AverageRating = ch.AverageRating,
-                        Stock = CalculateComboStock(ch.ComboProductVariants)
+                        Stock = StockCalculator.CalculateComboStock(ch.ComboProductVariants)
                     }).ToList();
                 response.ProductItems = null;
                 return Result<ComboDetailResponse>.Success(response);
@@ -142,7 +143,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         Quantity = cpv.Quantity
                     }).ToList();
                 response.ChildCombos = null;
-                response.Stock = CalculateComboStock(childCombo!.ComboProductVariants);
+                response.Stock = StockCalculator.CalculateComboStock(childCombo!.ComboProductVariants);
                 return Result<ComboDetailResponse>.Success(response);
             }
         }
@@ -203,15 +204,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         $"Duplicate product variant IDs: {string.Join(", ", duplicateIds)}.", 400);
                 }
 
-                // Validate all product variant IDs exist
-                foreach (var item in request.Items)
+                // Validate all product variant IDs exist using batch query
+                var variantIds = request.Items.Select(i => i.ProductVariantId).ToList();
+                var existingVariants = await _variantRepository.GetVariantsByIdsAsync(variantIds);
+                var existingVariantIds = existingVariants.Select(v => v.Id).ToHashSet();
+                var missingIds = variantIds.Where(id => !existingVariantIds.Contains(id)).ToList();
+                if (missingIds.Any())
                 {
-                    var variant = await _variantRepository.GetVariantByIdAsync(item.ProductVariantId);
-                    if (variant == null)
-                    {
-                        return Result<ComboResponse>.Failure(
-                            $"Product variant '{item.ProductVariantId}' not found.", 404);
-                    }
+                    return Result<ComboResponse>.Failure(
+                        $"Product variant '{missingIds.First()}' not found.", 404);
                 }
             }
 
@@ -342,15 +343,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     $"Duplicate product variant IDs: {string.Join(", ", duplicateIds)}.", 400);
             }
 
-            // Validate all product variant IDs exist
-            foreach (var item in request.Items)
+            // Validate all product variant IDs exist using batch query
+            var variantIds = request.Items.Select(i => i.ProductVariantId).ToList();
+            var existingVariants = await _variantRepository.GetVariantsByIdsAsync(variantIds);
+            var existingVariantIds = existingVariants.Select(v => v.Id).ToHashSet();
+            var missingIds = variantIds.Where(id => !existingVariantIds.Contains(id)).ToList();
+            if (missingIds.Any())
             {
-                var variant = await _variantRepository.GetVariantByIdAsync(item.ProductVariantId);
-                if (variant == null)
-                {
-                    return Result<bool>.Failure(
-                        $"Product variant '{item.ProductVariantId}' not found.", 404);
-                }
+                return Result<bool>.Failure(
+                    $"Product variant '{missingIds.First()}' not found.", 404);
             }
 
             // Remove existing and replace with new items
@@ -407,7 +408,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (status == ProductStatus.Published && combo.ComboParentId != null)
             {
                 var comboWithProducts = await _comboRepository.GetComboWithProductsAsync(id);
-                int stock = CalculateComboStock(comboWithProducts!.ComboProductVariants);
+                int stock = StockCalculator.CalculateComboStock(comboWithProducts!.ComboProductVariants);
                 if (stock <= 0)
                 {
                     return Result<bool>.Failure(
@@ -475,28 +476,56 @@ namespace DreamGuard.BE.BLL.Services.Implements
             };
         }
 
-        private static int CalculateComboStock(List<ComboProductVariant> comboProductVariants)
+        public async Task<Result<ComboDetailResponse>> GetComboBySlugAsync(string slug, string? size, string? color)
         {
-            if (comboProductVariants == null || !comboProductVariants.Any())
+            var combo = await _comboRepository.GetComboBySlugAsync(slug);
+            if (combo == null)
             {
-                return 0;
+                return Result<ComboDetailResponse>.Failure("Combo not found.", 404);
             }
 
-            int minStock = int.MaxValue;
-
-            foreach (var cpv in comboProductVariants)
+            if (combo.ComboParentId == null)
             {
-                if (cpv.Quantity <= 0)
-                {
-                    continue;
-                }
-
-                int inventoryQuantity = cpv.ProductVariant?.Inventory?.Quantity ?? 0;
-                int possibleSets = inventoryQuantity / cpv.Quantity;
-                minStock = Math.Min(minStock, possibleSets);
+                // Parent combo: load children only
+                var parentCombo = await _comboRepository.GetComboWithChildrenAsync(combo.Id, size, color);
+                var response = MapToDetailResponse(parentCombo!);
+                response.ChildCombos = parentCombo!.ComboChildrens
+                    .Select(ch => new ComboChildResponse
+                    {
+                        Id = ch.Id,
+                        Name = ch.Name,
+                        Slug = ch.Slug,
+                        AgeGroup = ch.AgeGroup,
+                        Color = ch.Color,
+                        Size = ch.Size,
+                        BasePrice = ch.BasePrice,
+                        SalePrice = ch.SalePrice,
+                        ImageUrl = ch.ImageUrl,
+                        AverageRating = ch.AverageRating,
+                        Stock = StockCalculator.CalculateComboStock(ch.ComboProductVariants)
+                    }).ToList();
+                response.ProductItems = null;
+                return Result<ComboDetailResponse>.Success(response);
             }
-
-            return minStock == int.MaxValue ? 0 : minStock;
+            else
+            {
+                // Child combo: load product variants with quantities
+                var childCombo = await _comboRepository.GetComboWithProductsAsync(combo.Id);
+                var response = MapToDetailResponse(childCombo!);
+                response.ProductItems = childCombo!.ComboProductVariants
+                    .Select(cpv => new ComboProductItemResponse
+                    {
+                        ProductVariantId = cpv.ProductVariantId,
+                        Sku = cpv.ProductVariant?.Sku,
+                        ProductName = cpv.ProductVariant?.Product?.Name ?? string.Empty,
+                        BasePrice = cpv.ProductVariant?.BasePrice ?? 0,
+                        SalePrice = cpv.ProductVariant?.SalePrice ?? 0,
+                        Quantity = cpv.Quantity
+                    }).ToList();
+                response.ChildCombos = null;
+                response.Stock = StockCalculator.CalculateComboStock(childCombo!.ComboProductVariants);
+                return Result<ComboDetailResponse>.Success(response);
+            }
         }
     }
 }

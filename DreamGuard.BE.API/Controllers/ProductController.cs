@@ -100,7 +100,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result.Message);
+            return Ok($"Create product with slug '{product.Slug}' successfully!");
         }
         //Update
         [HttpPut]
@@ -116,7 +116,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result.Message);
+            return Ok($"Updated product '{product.Slug}' information successfully!");
         }
         //Update status
         [HttpPut("{id}")]
@@ -132,7 +132,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok(result.Message);
+            return Ok($"Updated successfully!");
         }
     }
 }

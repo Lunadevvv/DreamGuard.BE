@@ -21,15 +21,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IAddressRepository _repo;
         private readonly IMapper _mapper;
+        private readonly ICustomerRepository _customerRepository;
 
-        public AddressService(IAddressRepository repo, IMapper mapper)
+        public AddressService(IAddressRepository repo, IMapper mapper, ICustomerRepository customerRepository)
         {
             _mapper = mapper;
             _repo = repo;
+            _customerRepository = customerRepository;
         }
         public async Task<Result<PaginatedList<AddressResponse>>> GetAllAsync(Guid userId, int pageNumber)
         {
-            var addresses = await  _repo.GetAllAsync(userId, pageNumber);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<PaginatedList<AddressResponse>>.Failure("Customer profile not found", 404);
+
+            var customerId = customer.CustomerId;
+
+            var addresses = await  _repo.GetAllAsync(customerId, pageNumber);
             if (addresses == null || addresses.TotalCount == 0)
             {
                 return Result<PaginatedList<AddressResponse>>.Failure("No Addresses found", 404);
@@ -41,7 +49,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result<AddressResponse>> GetByIdAsync(Guid userId, Guid addressId)
         {
-            var address = await _repo.GetByIdAsync(userId, addressId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<AddressResponse>.Failure("Customer profile not found", 404);
+
+            var customerId = customer.CustomerId;
+
+            var address = await _repo.GetByIdAsync(customerId, addressId);
             if (address == null)
             {
                 return Result<AddressResponse>.Failure("address not found", 404);
@@ -50,14 +64,26 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<AddressResponse>.Success(AddressResponse);
 
         }
-        public async Task<Result> CreateAsync(Address Address)
+        public async Task<Result> CreateAsync(Guid userId, Address Address)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found", 404);
+
+            Address.CustomerId = customer.CustomerId;
+
             var result = await _repo.CreateAsync(Address);
-            return Result.Success($"{result}");
+            return Result.Success($"Created new address successfully!");
         }
         public async Task<Result> UpdateAsync(Guid userId, Guid addressId, AddressUpdateRequest addressRequest)
         {
-            var existingAddress = await _repo.GetByIdAsync(userId, addressId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found", 404);
+
+            var customerId = customer.CustomerId;
+
+            var existingAddress = await _repo.GetByIdAsync(customerId, addressId);
             if (existingAddress == null)
             {
                 return Result.Failure("address  not found", 404);
@@ -68,7 +94,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
         public async Task<Result> RemoveAsync(Guid userId, Guid addressId)
         {
-            var Address = await _repo.GetByIdAsync(userId, addressId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found", 404);
+
+            var customerId = customer.CustomerId;
+
+            var Address = await _repo.GetByIdAsync(customerId, addressId);
             if (Address == null)
             {
                 return Result.Failure("address  not found", 404);

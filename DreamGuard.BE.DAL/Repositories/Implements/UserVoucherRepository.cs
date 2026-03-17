@@ -15,10 +15,10 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public UserVoucherRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<bool> ExistsAsync(Guid userId, Guid voucherId)
+        public async Task<bool> ExistsAsync(Guid customerId, Guid voucherId)
         {
             return await _context.UserVouchers
-                .AnyAsync(uv => uv.UserId == userId && uv.VoucherId == voucherId);
+                .AnyAsync(uv => uv.CustomerId == customerId && uv.VoucherId == voucherId);
         }
     }
 }

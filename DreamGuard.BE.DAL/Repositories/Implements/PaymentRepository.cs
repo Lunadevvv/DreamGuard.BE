@@ -47,12 +47,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(p => p.OrderCode == orderCode);
         }
 
-        public async Task<PaginatedList<Payment>> GetPaymentsByUserIdAsync(
-            Guid userId, int pageNumber, PaymentStatus? status)
+        public async Task<PaginatedList<Payment>> GetPaymentsByCustomerIdAsync(
+            Guid customerId, int pageNumber, PaymentStatus? status)
         {
             var query = _context.Payments
                 .Include(p => p.POrder)
-                .Where(p => p.POrder != null && p.POrder.UserId == userId)
+                .Where(p => p.POrder != null && p.POrder.CustomerId == customerId)
                 .OrderByDescending(p => p.CreatedAt)
                 .AsNoTracking();
 

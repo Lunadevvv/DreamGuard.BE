@@ -17,7 +17,7 @@ namespace DreamGuard.BE.DAL.Configurations
 
             builder.HasKey(x => x.AddressId);
 
-            builder.Property(x => x.UserId)
+            builder.Property(x => x.CustomerId)
                    .IsRequired();
         }
     }

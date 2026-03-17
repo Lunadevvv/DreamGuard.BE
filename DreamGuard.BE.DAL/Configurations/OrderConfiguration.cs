@@ -32,17 +32,12 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.Property(o => o.CreatedAt).HasColumnType("TIMESTAMPTZ");
             builder.Property(o => o.UpdatedAt).HasColumnType("TIMESTAMPTZ");
 
-            builder.HasOne(o => o.User)
-                .WithMany(u => u.Orders)
-                .HasForeignKey(o => o.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.HasOne(o => o.UserVoucher)
                 .WithMany()
                 .HasForeignKey(o => o.UserVoucherId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            builder.HasIndex(o => o.UserId);
+            builder.HasIndex(o => o.CustomerId);
             builder.HasIndex(o => o.Status);
         }
     }

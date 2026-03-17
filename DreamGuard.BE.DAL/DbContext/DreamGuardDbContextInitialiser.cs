@@ -91,7 +91,7 @@ namespace DreamGuard.BE.DAL.DbContext
 
             // Default users
             //0357968555
-            var administrator = new User { PhoneNumber = "0768608545", UserName = "Admin", Email = "admin@gmail.com", DateOfBirth = new DateOnly(2004, 01, 07), Gender = Gender.Male, EmailConfirmed = true};
+            var administrator = new User { PhoneNumber = "0768608545", UserName = "Admin", Email = "admin@gmail.com", EmailConfirmed = true };
 
             if (_userManager.Users.All(u => u.UserName != administrator.UserName))
             {
