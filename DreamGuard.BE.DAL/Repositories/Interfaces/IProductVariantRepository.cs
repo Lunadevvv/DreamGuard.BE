@@ -15,5 +15,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<ProductVariant?> GetVariantByIdForUpdateAsync(Guid id);
         Task<List<ProductVariant>> GetVariantsByProductIdForStockCheckAsync(Guid productId);
         Task<bool> IsVariantSkuUniqueAsync(string sku, Guid? excludeVariantId = null);
+        Task<List<ProductVariant>> GetVariantsByIdsAsync(List<Guid> ids);
+        Task<List<ProductVariant>> GetVariantsByIdsForUpdateAsync(List<Guid> ids);
     }
 }

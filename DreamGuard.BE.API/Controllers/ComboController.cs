@@ -77,6 +77,22 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
+        //Get Combo by slug (User)
+        [HttpGet("slug/{slug}")]
+        public async Task<IActionResult> GetComboBySlugAsync(string slug, [FromQuery]string? size, [FromQuery]string? color)
+        {
+            var result = await _comboService.GetComboBySlugAsync(slug, size, color);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpPost]
         [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> CreateComboAsync([FromBody] CreateComboRequest request)

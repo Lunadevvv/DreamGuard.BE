@@ -20,5 +20,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<ComboResponse>> UpdateComboInfoAsync(Guid id, UpdateComboInfoRequest request);
         Task<Result<bool>> UpdateComboProductsAsync(Guid id, UpdateComboProductsRequest request);
         Task<Result<bool>> UpdateComboStatusAsync(Guid id, ProductStatus status);
+        Task<Result<ComboDetailResponse>> GetComboBySlugAsync(string slug, string? size, string? color);
     }
 }

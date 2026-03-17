@@ -44,11 +44,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
-        public async Task<PaginatedList<Order>> GetOrdersByUserIdAsync(
-            Guid userId, int pageNumber, OrderStatus? status)
+        public async Task<PaginatedList<Order>> GetOrdersByCustomerIdAsync(
+            Guid customerId, int pageNumber, OrderStatus? status)
         {
             var query = _context.Orders
-                .Where(o => o.UserId == userId)
+                .Where(o => o.CustomerId == customerId)
                 .Include(o => o.OrderItems)
                 .OrderByDescending(o => o.CreatedAt)
                 .AsSplitQuery()

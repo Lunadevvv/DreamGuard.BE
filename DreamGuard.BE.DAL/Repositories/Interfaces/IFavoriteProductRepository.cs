@@ -8,7 +8,8 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IFavoriteProductRepository : IGenericRepository<FavoriteProduct>
     {
-        Task<FavoriteProduct?> GetByUserAndProductAsync(Guid userId, Guid productId);
-        Task<PaginatedList<FavoriteProduct>> GetFavoritesByUserIdAsync(Guid userId, int pageNumber);
+        Task<FavoriteProduct?> GetByCustomerAndProductAsync(Guid customerId, Guid productId);
+        Task<FavoriteProduct?> GetByCustomerAndComboAsync(Guid customerId, Guid comboId);
+        Task<PaginatedList<FavoriteProduct>> GetFavoritesByCustomerIdAsync(Guid customerId, int pageNumber);
     }
 }

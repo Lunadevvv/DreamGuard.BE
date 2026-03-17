@@ -16,28 +16,28 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public AddressRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<Address> GetByIdAsync(Guid userId, Guid addressId)
+        public async Task<Address> GetByIdAsync(Guid customerId, Guid addressId)
         {
             try
             {
-                return await _context.Addresses.FirstOrDefaultAsync(ad => ad.UserId == userId && ad.AddressId == addressId);
+                return await _context.Addresses.FirstOrDefaultAsync(ad => ad.CustomerId == customerId && ad.AddressId == addressId);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving addresse for user {userId}: {ex.Message}");
+                throw new Exception($"Error retrieving addresse for customer {customerId}: {ex.Message}");
             }
         }
 
-        public async Task<PaginatedList<Address>> GetAllAsync(Guid userId, int pageNumber)
+        public async Task<PaginatedList<Address>> GetAllAsync(Guid customerId, int pageNumber)
         {
             try
             {
-                var query = _context.Addresses.Where(ad => ad.UserId == userId);
+                var query = _context.Addresses.Where(ad => ad.CustomerId == customerId);
                 return await PaginatedList<Address>.CreateAsync(query, pageNumber, 4);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving addresses for user {userId}: {ex.Message}");
+                throw new Exception($"Error retrieving addresses for customer {customerId}: {ex.Message}");
             }
         }
     }

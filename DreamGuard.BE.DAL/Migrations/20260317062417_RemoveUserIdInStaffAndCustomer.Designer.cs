@@ -3,6 +3,7 @@ using System;
 using DreamGuard.BE.DAL.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    partial class DreamGuardContextModelSnapshot : ModelSnapshot
+    [Migration("20260317062417_RemoveUserIdInStaffAndCustomer")]
+    partial class RemoveUserIdInStaffAndCustomer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -257,9 +260,6 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.HasIndex("ComboParentId");
 
-                    b.HasIndex("Slug")
-                        .IsUnique();
-
                     b.ToTable("Combos");
                 });
 
@@ -321,36 +321,23 @@ namespace DreamGuard.BE.DAL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("ComboId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TIMESTAMPTZ");
 
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("ProductId")
+                    b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ComboId");
-
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("CustomerId", "ComboId")
-                        .IsUnique()
-                        .HasFilter("\"ComboId\" IS NOT NULL");
-
                     b.HasIndex("CustomerId", "ProductId")
-                        .IsUnique()
-                        .HasFilter("\"ProductId\" IS NOT NULL");
+                        .IsUnique();
 
-                    b.ToTable("FavoriteProducts", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_FavoriteProduct_ProductOrCombo", "(\"ProductId\" IS NOT NULL AND \"ComboId\" IS NULL) OR (\"ProductId\" IS NULL AND \"ComboId\" IS NOT NULL)");
-                        });
+                    b.ToTable("FavoriteProducts", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Inventory", b =>
@@ -1451,11 +1438,6 @@ namespace DreamGuard.BE.DAL.Migrations
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.FavoriteProduct", b =>
                 {
-                    b.HasOne("DreamGuard.BE.DAL.Models.Combo", "Combo")
-                        .WithMany()
-                        .HasForeignKey("ComboId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("DreamGuard.BE.DAL.Models.Customer", "Customer")
                         .WithMany("FavoriteProducts")
                         .HasForeignKey("CustomerId")
@@ -1465,9 +1447,8 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasOne("DreamGuard.BE.DAL.Models.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Combo");
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Customer");
 

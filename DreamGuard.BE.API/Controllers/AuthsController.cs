@@ -48,8 +48,7 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _identityService
                 .RegisterAsync(registerRequest.Email,
                 registerRequest.Password,
-                registerRequest.FirstName,
-                registerRequest.LastName,
+                registerRequest.FullName,
                 registerRequest.PhoneNumber,
                 registerRequest.Gender,
                 registerRequest.DateOfBirth);
@@ -99,7 +98,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Xác thực OTP thành công");
+            return Ok("Verified OTP successfully!");
         }
 
         [HttpPost("register-otp")]
@@ -200,6 +199,22 @@ namespace DreamGuard.BE.API.Controllers
                 });
             }
             return Ok("Your password has been changed successfully.");
+        }
+
+        [HttpPost("CreateStaff")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequest request)
+        {
+            var result = await _identityService.CreateStaffAsync(request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
         }
     }
 }

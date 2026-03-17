@@ -2,24 +2,19 @@
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -31,17 +26,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JwtOptions _jwtOptions;
         private readonly IOtpService _otpService;
-        private readonly ICustomerService _customerService;
-        private readonly IStaffService _staffService;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IStaffRepository _staffRepository;
+        private readonly IUnitOfWork _unitOfWork;
         public IdentityService(
-            UserManager<User> userManager, 
+            UserManager<User> userManager,
             IBrevoEmailService brevoEmailService,
             IAuthRepository authRepository,
             IHttpContextAccessor httpContextAccessor,
             IOptions<JwtOptions> jwtOptions,
             IOtpService otpService,
-            ICustomerService customerService,
-            IStaffService staffService)
+            ICustomerRepository customerRepository,
+            IStaffRepository staffRepository,
+            IUnitOfWork unitOfWork)
         {
             _userManager = userManager;
             _brevoEmailService = brevoEmailService;
@@ -49,12 +46,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _httpContextAccessor = httpContextAccessor;
             _jwtOptions = jwtOptions.Value;
             _otpService = otpService;
-            _customerService = customerService;
-            _staffService = staffService;
-        }
-
-        public IdentityService()
-        {
+            _customerRepository = customerRepository;
+            _staffRepository = staffRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Result<LoginResponse>> LoginAsync(string phone, string password)
@@ -106,100 +100,136 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<RefreshTokenResponse>.Failure("User không tồn tại", 404);
         }
 
-        public async Task<Result<RegisterResponse>> RegisterAsync(string email, string password, string firstName, string lastName, string phoneNumber, string gender, DateOnly dateOfBirth)
+        public async Task<Result<RegisterResponse>> RegisterAsync(string email, string password, string fullName, string phoneNumber, string gender, DateOnly dateOfBirth)
         {
-            var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
-            //kiểm tra số điện thoại đã được đăng ký chưa
-            if (user != null)
-            {
-                return Result<RegisterResponse>.Failure("Số điện thoại đã được đăng ký", 400);
-            }
-            //đăng ký user
-            User newUser = new User
-            {
-                Email = email,
-                FirstName = firstName,
-                LastName = lastName,
-                UserName = phoneNumber,
-                PhoneNumber = phoneNumber,
-                Gender = gender,
-                DateOfBirth = dateOfBirth,
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true
-            };
-            var result = await _userManager.CreateAsync(newUser, password);
-            if (result.Succeeded)
-            {
+            // Validate gender
+            if (gender != Gender.Male && gender != Gender.Female)
+                return Result<RegisterResponse>.Failure("Gender must be 'Male' or 'Female'", 400);
 
-                CustomerCreateRequest customerCreateRequest = new CustomerCreateRequest
+            // Check email uniqueness
+            var existingByEmail = await _userManager.FindByEmailAsync(email);
+            if (existingByEmail != null)
+                return Result<RegisterResponse>.Failure("Email already registered", 400);
+
+            // Check phone uniqueness
+            var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
+            if (user != null)
+                return Result<RegisterResponse>.Failure("Phone number already registered", 400);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                User newUser = new User
                 {
-                    FullName = $"{firstName} {lastName}",
-                    Address = "",
-                    DateOfBirth = dateOfBirth,
-                    Gender = gender,
-                    User = newUser
+                    Email = email,
+                    UserName = phoneNumber,
+                    PhoneNumber = phoneNumber,
+                    EmailConfirmed = true,
+                    PhoneNumberConfirmed = true
                 };
-                await _customerService.CreateAsync(customerCreateRequest);
+                var result = await _userManager.CreateAsync(newUser, password);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return Result<RegisterResponse>.Failure(result.Errors.First().Description, 400);
+                }
 
                 await _userManager.AddToRoleAsync(newUser, Role.User);
-                await _brevoEmailService.SendEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
-                var registerResponse = new RegisterResponse
-                {
-                    UserId = newUser.Id,
-                    Message = "Đăng ký thành công"
-                };
-                return Result<RegisterResponse>.Success(registerResponse);
-            }
-        
-            return Result<RegisterResponse>.Failure(result.Errors.First().Description, 400);            
-        }
-        public async Task<Result<RegisterResponse>> StaffRegisterAsync(string email, string password, string firstName, string lastName, string phoneNumber, string gender, DateOnly dateOfBirth, string address)
-        {
-            var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
-            //kiểm tra số điện thoại đã được đăng ký chưa
-            if (user != null)
-            {
-                return Result<RegisterResponse>.Failure("Số điện thoại đã được đăng ký", 400);
-            }
-            //đăng ký user
-            User newUser = new User
-            {
-                Email = email,
-                FirstName = firstName,
-                LastName = lastName,
-                UserName = phoneNumber,
-                PhoneNumber = phoneNumber,
-                Gender = gender,
-                DateOfBirth = dateOfBirth,
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true,
-            };
-            var result = await _userManager.CreateAsync(newUser, password);
-            if (result.Succeeded)
-            {
 
-                StaffCreateRequest staffCreateRequest = new StaffCreateRequest
+                var customer = new Customer
                 {
-                    FullName = $"{firstName} {lastName}",
-                    Address = address,
-                    DateOfBirth = dateOfBirth,
+                    CustomerId = newUser.Id,
+                    FullName = fullName,
                     Gender = gender,
-                    User = newUser
-                    
+                    DateOfBirth = dateOfBirth,
+                    AvatarUrl = string.Empty
                 };
-                await _staffService.CreateAsync(staffCreateRequest);
+                await _customerRepository.CreateAsync(customer);
 
-                await _userManager.AddToRoleAsync(newUser, Role.CleaningStaff);
+                await transaction.CommitAsync();
+
                 await _brevoEmailService.SendEmailAsync(newUser.Email, "DreamGuard Registered", "Congratulations! Your account has been successfully created.");
-                var registerResponse = new RegisterResponse
+                return Result<RegisterResponse>.Success(new RegisterResponse
                 {
                     UserId = newUser.Id,
-                    Message = "Đăng ký thành công"
-                };
-                return Result<RegisterResponse>.Success(registerResponse);
+                    Message = "Registration successful"
+                });
             }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result<RegisterResponse>.Failure("Registration failed. Please try again.", 500);
+            }
+        }
 
-            return Result<RegisterResponse>.Failure(result.Errors.First().Description, 400);
+        public async Task<Result<RegisterResponse>> CreateStaffAsync(CreateStaffRequest request)
+        {
+            // Validate role - only Manager, Seller, CleaningStaff allowed
+            var allowedRoles = new[] { Role.Manager, Role.Seller, Role.CleaningStaff };
+            if (!allowedRoles.Contains(request.Role))
+                return Result<RegisterResponse>.Failure("Role must be Manager, Seller, or CleaningStaff", 400);
+
+            // Validate gender
+            if (request.Gender != Gender.Male && request.Gender != Gender.Female)
+                return Result<RegisterResponse>.Failure("Gender must be 'Male' or 'Female'", 400);
+
+            // Check phone uniqueness
+            var existingByPhone = await _authRepository.GetUserByPhoneAsync(request.PhoneNumber);
+            if (existingByPhone != null)
+                return Result<RegisterResponse>.Failure("Phone number already registered", 400);
+
+            // Check email uniqueness
+            var existingByEmail = await _userManager.FindByEmailAsync(request.Email);
+            if (existingByEmail != null)
+                return Result<RegisterResponse>.Failure("Email already registered", 400);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var newUser = new User
+                {
+                    Email = request.Email,
+                    UserName = request.PhoneNumber,
+                    PhoneNumber = request.PhoneNumber,
+                    EmailConfirmed = true,
+                    PhoneNumberConfirmed = true
+                };
+
+                var result = await _userManager.CreateAsync(newUser, request.Password);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return Result<RegisterResponse>.Failure(result.Errors.First().Description, 400);
+                }
+
+                await _userManager.AddToRoleAsync(newUser, request.Role);
+
+                var staff = new Staff
+                {
+                    StaffId = newUser.Id,
+                    FullName = request.FullName,
+                    Gender = request.Gender,
+                    DateOfBirth = request.DateOfBirth,
+                    Address = request.Address,
+                    Position = request.Position,
+                    Status = "Active",
+                    AvatarUrl = string.Empty
+                };
+                await _staffRepository.CreateAsync(staff);
+
+                await transaction.CommitAsync();
+
+                return Result<RegisterResponse>.Success(new RegisterResponse
+                {
+                    UserId = newUser.Id,
+                    Message = "Staff account created successfully"
+                });
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result<RegisterResponse>.Failure("Failed to create staff account. Please try again.", 500);
+            }
         }
 
         private string GenerateJSONWebToken(User account, string roleName)
@@ -259,8 +289,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
 
         //viết token vào cookie gửi lên client
-        public void WriteAuthTokenAsHttpOnlyCookie(string cookieName, string token,
-            DateTime expiration)
+        public void WriteAuthTokenAsHttpOnlyCookie(string cookieName, string token, DateTime expiration)
         {
             var httpContext = _httpContextAccessor.HttpContext;
             if (httpContext == null) return;
@@ -271,14 +300,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //thêm mới cookie hoặc cập nhật cookie nếu đã tồn tại
             httpContext.Response.Cookies.Append(cookieName, token, new CookieOptions
             {
-                HttpOnly = true, // ngăn javascript truy cập cookie này
+                HttpOnly = true,
                 Expires = expiration,
                 IsEssential = true,
-                //Secure = isProduction, // true cho production, false cho development
-                //browser luôn yêu cầu để gửi cookie secure = true, samesite = none, trên dev thì secure = true luôn vì đang chạy https thì đâu có sao 
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Path = "/" // Đảm bảo cookie available cho toàn bộ application
+                Secure = true, // ✅ LUÔN true — vì SameSite=None yêu cầu Secure
+                SameSite = isProduction 
+                    ? SameSiteMode.None   // Cross-site (FE và BE khác domain)
+                    : SameSiteMode.Lax,   // Dev thì dùng Lax cho an toàn
+                Path = "/"
             });
         }
 
@@ -294,13 +323,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = isProduction,
-                SameSite = SameSiteMode.None,
+                Secure = true, // ✅ LUÔN true
+                SameSite = isProduction 
+                    ? SameSiteMode.None 
+                    : SameSiteMode.Lax,
                 Path = "/",
                 Expires = DateTime.UtcNow.AddDays(-1),
                 IsEssential = true
             };
-
             httpContext.Response.Cookies.Delete(cookieName, cookieOptions);
         }
 

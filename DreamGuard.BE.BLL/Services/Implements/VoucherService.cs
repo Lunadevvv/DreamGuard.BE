@@ -24,17 +24,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IUserVoucherRepository _userVoucherRepo;
         private readonly IMapper _mapper;
         private readonly UserManager<User> _userManager;
+        private readonly ICustomerRepository _customerRepository;
 
-        public VoucherService(IVoucherRepository repo, IMapper mapper, UserManager<User> userManager, IUserVoucherRepository userVoucherRepository )
+        public VoucherService(IVoucherRepository repo, IMapper mapper, UserManager<User> userManager, IUserVoucherRepository userVoucherRepository, ICustomerRepository customerRepository)
         {
             _mapper = mapper;
             _repo = repo;
             _userManager = userManager;
             _userVoucherRepo = userVoucherRepository;
+            _customerRepository = customerRepository;
         }
         public async Task<Result<PaginatedList<VoucherResponse>>> GetAllAsync(Guid userId, int pageNumber)
         {
-            var vouchers = await  _repo.GetAllAsync(userId, pageNumber);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<PaginatedList<VoucherResponse>>.Failure("Customer profile not found", 404);
+
+            var customerId = customer.CustomerId;
+
+            var vouchers = await  _repo.GetAllAsync(customerId, pageNumber);
             if (vouchers == null || vouchers.TotalCount == 0)
             {
                 return Result<PaginatedList<VoucherResponse>>.Failure("No vouchers found", 404);
@@ -46,7 +54,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result<VoucherResponse>> GetByIdAsync(Guid userId, Guid voucherId)
         {
-            var voucher = await _repo.GetByIdAsync(userId, voucherId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<VoucherResponse>.Failure("Customer profile not found", 404);
+
+            var customerId = customer.CustomerId;
+
+            var voucher = await _repo.GetByIdAsync(customerId, voucherId);
             if (voucher == null)
             {
                 return Result<VoucherResponse>.Failure("Voucher not found", 404);
@@ -115,6 +129,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> ClaimVoucherAsync(Guid userId, string code)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found", 404);
+
+            var customerId = customer.CustomerId;
+
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
             {
@@ -137,14 +157,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Voucher has expired", 400);
             }
-            var alreadyClaimed = await _userVoucherRepo.ExistsAsync(userId, voucher.VoucherId);
+            var alreadyClaimed = await _userVoucherRepo.ExistsAsync(customerId, voucher.VoucherId);
             if (alreadyClaimed)
             {
                 return Result.Failure("You have already claimed this voucher", 400);
             }
             var userVoucher = new UserVoucher
             {
-                UserId = userId,
+                CustomerId = customerId,
                 VoucherId = voucher.VoucherId,
                 IsUsed = false,
                 ExpiredAt = voucher.EndDate

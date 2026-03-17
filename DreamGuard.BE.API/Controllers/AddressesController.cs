@@ -67,8 +67,7 @@ namespace DreamGuard.BE.API.Controllers
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
             var Address = _mapper.Map<Address>(AddressRequest);
-            Address.UserId = userId;
-            var result = await _addressService.CreateAsync(Address);
+            var result = await _addressService.CreateAsync(userId, Address);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

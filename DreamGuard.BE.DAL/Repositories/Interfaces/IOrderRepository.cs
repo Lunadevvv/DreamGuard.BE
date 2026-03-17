@@ -12,7 +12,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<Order?> GetOrderByIdAsync(Guid orderId);
         Task<Order?> GetOrderWithItemsAsync(Guid orderId);
         Task<Order?> GetOrderWithItemsForUpdateAsync(Guid orderId);
-        Task<PaginatedList<Order>> GetOrdersByUserIdAsync(Guid userId, int pageNumber, OrderStatus? status);
+        Task<PaginatedList<Order>> GetOrdersByCustomerIdAsync(Guid customerId, int pageNumber, OrderStatus? status);
         Task<PaginatedList<Order>> GetAllOrdersForAdminAsync(int pageNumber, OrderStatus? status, string? orderCode);
         Task AddOrderItemsAsync(List<OrderItem> items);
     }

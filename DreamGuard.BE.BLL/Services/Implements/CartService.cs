@@ -10,6 +10,7 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using DreamGuard.BE.BLL.Utilities;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -20,24 +21,33 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IComboRepository _comboRepository;
         private readonly IInventoryRepository _inventoryRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICustomerRepository _customerRepository;
 
         public CartService(
             ICartRepository cartRepository,
             IProductVariantRepository variantRepository,
             IComboRepository comboRepository,
             IInventoryRepository inventoryRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            ICustomerRepository customerRepository)
         {
             _cartRepository = cartRepository;
             _variantRepository = variantRepository;
             _comboRepository = comboRepository;
             _inventoryRepository = inventoryRepository;
             _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
         }
 
         public async Task<Result<CartResponse>> GetCartAsync(Guid userId)
         {
-            var cart = await _cartRepository.GetCartWithItemsAsync(userId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<CartResponse>.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
+            var cart = await _cartRepository.GetCartWithItemsAsync(customerId);
 
             if (cart == null || !cart.CartItems.Any())
             {
@@ -63,6 +73,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> AddToCartAsync(Guid userId, AddToCartRequest request)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
             // Validate exactly one of ProductVariantId or ComboId
             if (request.ProductVariantId.HasValue == request.ComboId.HasValue)
             {
@@ -87,13 +103,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             // Get or create cart
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
                 cart = new Cart
                 {
                     Id = Guid.NewGuid(),
-                    UserId = userId,
+                    CustomerId = customerId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -145,7 +161,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> UpdateCartItemAsync(Guid userId, Guid cartItemId, UpdateCartItemRequest request)
         {
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
                 return Result.Failure("Cart not found.", 404);
@@ -191,7 +213,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> RemoveCartItemAsync(Guid userId, Guid cartItemId)
         {
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
                 return Result.Failure("Cart not found.", 404);
@@ -213,7 +241,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> ClearCartAsync(Guid userId)
         {
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
                 return Result.Success("Cart is already empty.");
@@ -229,19 +263,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result<CartResponse>> SyncCartAsync(Guid userId, SyncCartRequest request)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<CartResponse>.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
             if (request.Items == null || !request.Items.Any())
             {
                 return await GetCartAsync(userId);
             }
 
             // Get or create cart
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
                 cart = new Cart
                 {
                     Id = Guid.NewGuid(),
-                    UserId = userId,
+                    CustomerId = customerId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -251,19 +291,40 @@ namespace DreamGuard.BE.BLL.Services.Implements
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
+                // Pre-load all variants, inventories, combos, and existing cart items to avoid N+1 queries
+                var variantIds = request.Items
+                    .Where(i => i.ProductVariantId.HasValue)
+                    .Select(i => i.ProductVariantId!.Value).ToList();
+                var comboIds = request.Items
+                    .Where(i => i.ComboId.HasValue)
+                    .Select(i => i.ComboId!.Value).ToList();
+
+                var variantsDict = (await _variantRepository.GetVariantsByIdsAsync(variantIds))
+                    .ToDictionary(v => v.Id);
+                var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds))
+                    .ToDictionary(i => i.ProductVariantId);
+                var existingCartItems = (await _cartRepository.GetCartItemsByCartIdAsync(cart.Id))
+                    .ToDictionary(ci => (ci.ProductVariantId, ci.ComboId));
+
                 foreach (var item in request.Items)
                 {
                     // Validate exactly one of ProductVariantId or ComboId
                     if (item.ProductVariantId.HasValue == item.ComboId.HasValue)
                         continue;
 
-                    // Validate stock and availability - skip invalid items
+                    // Validate stock and availability - skip invalid items using pre-loaded data
                     int availableStock;
                     if (item.ProductVariantId.HasValue)
                     {
-                        var validationResult = await ValidateVariantForCart(item.ProductVariantId.Value);
-                        if (!validationResult.Succeeded) continue;
-                        availableStock = validationResult.Data;
+                        variantsDict.TryGetValue(item.ProductVariantId.Value, out var variant);
+                        if (variant == null || variant.Status != ProductStatus.Published)
+                            continue;
+
+                        inventoriesDict.TryGetValue(item.ProductVariantId.Value, out var inventory);
+                        if (inventory == null || inventory.Quantity <= 0)
+                            continue;
+
+                        availableStock = inventory.Quantity;
                     }
                     else
                     {
@@ -276,9 +337,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     var quantity = Math.Min(item.Quantity, availableStock);
                     if (quantity <= 0) continue;
 
-                    // Check if item already exists in cart
-                    var existingItem = await _cartRepository.GetCartItemAsync(
-                        cart.Id, item.ProductVariantId, item.ComboId);
+                    // Check if item already exists in cart using pre-loaded data
+                    existingCartItems.TryGetValue((item.ProductVariantId, item.ComboId), out var existingItem);
 
                     if (existingItem != null)
                     {
@@ -355,7 +415,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<int>.Failure($"Combo '{comboId}' is not available.", 400);
             }
 
-            var comboStock = CalculateComboStock(combo.ComboProductVariants);
+            var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
             if (comboStock <= 0)
             {
                 return Result<int>.Failure($"Combo '{comboId}' is out of stock.", 400);
@@ -391,7 +451,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             else if (ci.ComboId.HasValue && ci.Combo != null)
             {
                 var combo = ci.Combo;
-                var comboStock = CalculateComboStock(combo.ComboProductVariants);
+                var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
                 var isAvailable = combo.Status == ProductStatus.Published && comboStock > 0;
 
                 return new CartItemResponse
@@ -420,23 +480,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Quantity = ci.Quantity,
                 IsAvailable = false
             };
-        }
-
-        private static int CalculateComboStock(List<ComboProductVariant> comboProductVariants)
-        {
-            if (comboProductVariants == null || !comboProductVariants.Any())
-                return 0;
-
-            int minStock = int.MaxValue;
-            foreach (var cpv in comboProductVariants)
-            {
-                if (cpv.Quantity <= 0) continue;
-                int inventoryQuantity = cpv.ProductVariant?.Inventory?.Quantity ?? 0;
-                int possibleSets = inventoryQuantity / cpv.Quantity;
-                minStock = Math.Min(minStock, possibleSets);
-            }
-
-            return minStock == int.MaxValue ? 0 : minStock;
         }
     }
 }

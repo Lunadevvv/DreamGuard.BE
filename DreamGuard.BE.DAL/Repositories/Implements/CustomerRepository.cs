@@ -1,4 +1,4 @@
-﻿using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;

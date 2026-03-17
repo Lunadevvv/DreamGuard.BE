@@ -10,6 +10,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IUserVoucherRepository : IGenericRepository<UserVoucher>
     {
-        Task<bool> ExistsAsync(Guid userId, Guid voucherId);
+        Task<bool> ExistsAsync(Guid customerId, Guid voucherId);
     }
 }
