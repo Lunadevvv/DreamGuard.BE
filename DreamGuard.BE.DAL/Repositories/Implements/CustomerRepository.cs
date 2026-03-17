@@ -18,6 +18,16 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
         }
 
+        public async Task<Customer?> GetByUserIdAsync(Guid userId)
+        {
+            return await _context.Customers.FirstOrDefaultAsync(c => c.CustomerId == userId);
+        }
 
+        public async Task<Customer?> GetByUserIdWithUserAsync(Guid userId)
+        {
+            return await _context.Customers
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.CustomerId == userId);
+        }
     }
 }
