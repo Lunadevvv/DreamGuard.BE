@@ -15,6 +15,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> UpdateAsync(Guid staffId, StaffUpdateRequest staffUpdateRequest);
         Task<Result<StaffResponse>> GetByIdAsync(Guid StaffId);
         Task<Result<PaginatedList<StaffResponse>>> GetAllAsync(int pageNumber, int pageSize);
-        Task<Result> CreateAsync(StaffCreateRequest StaffCreateRequest);
+        Task<Result> UpdateRoleAsync(Guid staffId, string newRole);
+        Task<Result> UpdateAccountAsync(Guid staffId, StaffAccountUpdateRequest staffUpdateRequest);
     }
 }

@@ -15,7 +15,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             try
             {
-                var query = _context.Staffs;
+                var query = _context.Staffs.Include(s => s.User);
                 return await PaginatedList<Staff>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
@@ -26,7 +26,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
 
         public async Task<Staff?> GetByUserIdAsync(Guid userId)
         {
-            return await _context.Staffs.FirstOrDefaultAsync(s => s.StaffId == userId);
+            return await _context.Staffs
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.StaffId == userId);
         }
     }
 }

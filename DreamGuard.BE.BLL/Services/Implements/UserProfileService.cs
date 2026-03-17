@@ -17,6 +17,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using DreamGuard.BE.DAL.Basic;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -25,15 +26,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly UserManager<User> _userManager;
         private readonly IMapper _mapper;
         private readonly IOtpService _otpService;
-        private readonly IOtpRepository _otpRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public UserProfileService(UserManager<User> userManager, IMapper mapper, IOtpService otpService, IOtpRepository otpRepository, ICustomerRepository customerRepository)
+        public UserProfileService(UserManager<User> userManager, IMapper mapper, IOtpService otpService, ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
         {
             _mapper = mapper;
             _userManager = userManager;
             _otpService = otpService;
-            _otpRepository = otpRepository;
+            _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
         }
         public async Task<Result<UserProfileResponse>> GetByIdAsync(Guid userId)
@@ -89,25 +90,43 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("User not found", 404);
             }
-            var otpResult = await _otpService.VerifyOtpAsync(user.PhoneNumber, user.Email, changePhoneNumberRequest.OtpCode);
-            if (!otpResult.Succeeded)
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return Result.Failure($"{otpResult.Error}", 400);
-            }
-            var existingUser = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.PhoneNumber == changePhoneNumberRequest.PhoneNumber && u.Id != userId);
-            if (existingUser != null)
+                var otpResult = await _otpService.VerifyOtpAsync(user.PhoneNumber, user.Email, changePhoneNumberRequest.OtpCode);
+                if (!otpResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure($"{otpResult.Error}", 400);
+                }
+
+                var existingUser = await _userManager.Users
+                    .FirstOrDefaultAsync(u => u.PhoneNumber == changePhoneNumberRequest.PhoneNumber && u.Id != userId);
+
+                if (existingUser != null)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure("Phone number is already in use by another account", 400);
+                }
+
+                user.PhoneNumber = changePhoneNumberRequest.PhoneNumber;
+                user.UserName = changePhoneNumberRequest.PhoneNumber;
+
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure(string.Join(", ", result.Errors.Select(e => e.Description)), 400);
+                }
+                
+                await transaction.CommitAsync();
+                return Result.Success($"PhoneNumber changed successfully");
+            }catch
             {
-                return Result.Failure("Phone number is already in use by another account", 400);
+                await transaction.RollbackAsync();
+                throw;
             }
-            user.PhoneNumber = changePhoneNumberRequest.PhoneNumber;
-            user.UserName = changePhoneNumberRequest.PhoneNumber;
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-            {
-                return Result.Failure(string.Join(", ", result.Errors.Select(e => e.Description)), 400);
-            }
-            return Result.Success($"PhoneNumber changed successfully");
+            
         }
     }
 }

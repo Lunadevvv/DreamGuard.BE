@@ -8,6 +8,8 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -15,19 +17,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IStaffRepository _repo;
         private readonly IMapper _mapper;
-        
-      
-        public StaffService(IStaffRepository repo, IMapper mapper)
+        private readonly UserManager<User> _userManager;
+        private readonly IUnitOfWork _unitOfWork;
+        public StaffService(IStaffRepository repo, IMapper mapper, UserManager<User> userManager, IUnitOfWork unitOfWork)
         {
             _repo = repo;
             _mapper = mapper;
-        }
-
-        public async Task<Result> CreateAsync(StaffCreateRequest staffCreateRequest)
-        {
-            var addStaff = _mapper.Map<StaffCreateRequest, Staff>(staffCreateRequest);
-            var result = await _repo.CreateAsync(addStaff);
-            return Result.Success($"{result}");
+            _userManager = userManager;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Result<PaginatedList<StaffResponse>>> GetAllAsync(int pageNumber, int pageSize)
@@ -40,7 +37,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result<StaffResponse>> GetByIdAsync(Guid staffId)
         {
-            var result = await _repo.GetByIdAsync(staffId);
+            var result = await _repo.GetByUserIdAsync(staffId);
             if (result == null)
             {
                 return Result<StaffResponse>.Failure("Staff not found.", 404);
@@ -49,7 +46,34 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<StaffResponse>.Success(staffResponse);
         }
 
-        public async Task<Result> UpdateAsync(Guid staffId,StaffUpdateRequest staffUpdateRequest)
+        public async Task<Result> UpdateAccountAsync(Guid staffId, StaffAccountUpdateRequest staffUpdateRequest)
+        {
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == staffId);
+            if (user == null)
+            {
+                return Result.Failure("Staff not found.", 404);
+            }
+
+            user.PhoneNumber = staffUpdateRequest.PhoneNumber;
+            user.Email = staffUpdateRequest.Email;
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var passwordResult = await _userManager.ResetPasswordAsync(user, token, staffUpdateRequest.Password!);
+            if (!passwordResult.Succeeded)
+            {
+                return Result.Failure("Failed to update password.", 500);
+            }
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                return Result.Failure("Failed to update account information.", 500);
+            }
+
+            return Result.Success("Account information updated successfully.");
+        }
+
+        public async Task<Result> UpdateAsync(Guid staffId, StaffUpdateRequest staffUpdateRequest)
         {
             var existingStaff = await _repo.GetByIdAsync(staffId);
             if (existingStaff == null)
@@ -59,6 +83,67 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _mapper.Map(staffUpdateRequest, existingStaff);
             var result = await _repo.UpdateAsync(existingStaff);
             return Result.Success($"{result}");
+        }
+
+        public async Task<Result> UpdateRoleAsync(Guid staffId, string newRole)
+        {
+            if(newRole != DAL.Constants.Role.Seller && newRole != DAL.Constants.Role.Manager && newRole != DAL.Constants.Role.CleaningStaff)
+            {
+                return Result.Failure("Invalid role. Role must be either 'Seller' or 'Manager' or 'CleaningStaff'.", 400);
+            }
+
+            var staff = await _repo.GetByUserIdAsync(staffId);
+
+            if (staff == null)
+            {
+                return Result.Failure("Staff not found.", 404);
+            }
+
+            var user = staff.User;
+            var roleExists = await _userManager.IsInRoleAsync(user, newRole);
+            if (roleExists)
+            {
+                return Result.Failure("Staff already has the specified role.", 400);
+            }
+
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+                if (!removeResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure("Failed to remove existing roles.", 500);
+                }
+
+                var addResult = await _userManager.AddToRoleAsync(user, newRole);
+
+                if (!addResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure("Failed to add new role.", 500);
+                }
+
+                //Update staff's position in Staff table
+                staff.Position = newRole;
+                var res = await _repo.UpdateAsync(staff);
+
+                if (res <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure("Failed to update staff position.", 500);
+                }
+
+                await transaction.CommitAsync();
+                return Result.Success("Role updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure($"An error occurred while updating roles: {ex.Message}", 500);
+            }
         }
     }
 }
