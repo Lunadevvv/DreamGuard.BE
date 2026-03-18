@@ -10,6 +10,8 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     {
         Task<Result> AddToFavoriteAsync(Guid userId, Guid productId);
         Task<Result> RemoveFromFavoriteAsync(Guid userId, Guid productId);
+        Task<Result> AddComboToFavoriteAsync(Guid userId, Guid comboId);
+        Task<Result> RemoveComboFromFavoriteAsync(Guid userId, Guid comboId);
         Task<Result<PaginatedList<FavoriteProductResponse>>> GetFavoriteProductsAsync(Guid userId, int pageNumber);
     }
 }

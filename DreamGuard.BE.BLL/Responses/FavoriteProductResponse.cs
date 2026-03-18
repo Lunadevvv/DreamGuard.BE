@@ -6,7 +6,9 @@ namespace DreamGuard.BE.BLL.Responses
     public class FavoriteProductResponse
     {
         public Guid Id { get; set; }
-        public Guid ProductId { get; set; }
+        public Guid? ProductId { get; set; }
+        public Guid? ComboId { get; set; }
+        public string ItemType { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;
         public string Slug { get; set; } = string.Empty;
         public decimal BasePrice { get; set; }

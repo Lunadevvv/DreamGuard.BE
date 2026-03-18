@@ -41,6 +41,26 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
 
+        [HttpPost("combo/{comboId}")]
+        public async Task<IActionResult> AddComboToFavorite(Guid comboId)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _favoriteProductService.AddComboToFavoriteAsync(userId, comboId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(result.Message);
+        }
+
         [HttpDelete("{productId}")]
         public async Task<IActionResult> RemoveFromFavorite(Guid productId)
         {
@@ -50,6 +70,26 @@ namespace DreamGuard.BE.API.Controllers
             }
 
             var result = await _favoriteProductService.RemoveFromFavoriteAsync(userId, productId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        [HttpDelete("combo/{comboId}")]
+        public async Task<IActionResult> RemoveComboFromFavorite(Guid comboId)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _favoriteProductService.RemoveComboFromFavoriteAsync(userId, comboId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

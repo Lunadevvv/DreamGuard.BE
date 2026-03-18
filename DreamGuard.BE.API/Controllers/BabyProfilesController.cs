@@ -22,8 +22,8 @@ namespace DreamGuard.BE.API.Controllers
             _babyProfileService = babyProfileService;
             _mapper = mapper;
         }
+
         [HttpGet]
-     
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -41,6 +41,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpGet("{babyId}")]
         public async Task<IActionResult> GetByIdAsync(Guid babyId)
         {
@@ -59,6 +60,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpPost]
         public async Task<IActionResult> CreateAsync([FromBody] BabyProfileCreateRequest babyProfileRequest)
         {
@@ -67,8 +69,7 @@ namespace DreamGuard.BE.API.Controllers
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
             var babyProfile = _mapper.Map<BabyProfile>(babyProfileRequest);
-            babyProfile.UserId = userId;
-            var result = await _babyProfileService.CreateAsync(babyProfile);
+            var result = await _babyProfileService.CreateAsync(userId, babyProfile);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -79,6 +80,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
+
 		[HttpPut("{babyId}")]
 		public async Task<IActionResult> UpdateAsync(Guid babyId, [FromBody] BabyProfileUpdateRequest babyProfileRequest)
         {
@@ -97,6 +99,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
+        
         [HttpDelete("{babyId}")]
         public async Task<IActionResult> RemoveAsync(Guid babyId)
         {

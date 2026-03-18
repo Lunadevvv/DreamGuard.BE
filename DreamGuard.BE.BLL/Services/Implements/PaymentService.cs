@@ -23,6 +23,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IUnitOfWork _unitOfWork;
         private readonly VnPayOptions _vnPayOptions;
         private readonly IOrderService _orderService;
+        private readonly ICustomerRepository _customerRepository;
 
         public PaymentService(
             IPaymentRepository paymentRepository,
@@ -30,7 +31,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IVnPayService vnPayService,
             IUnitOfWork unitOfWork,
             IOptions<VnPayOptions> vnPayOptions,
-            IOrderService orderService)
+            IOrderService orderService,
+            ICustomerRepository customerRepository)
         {
             _paymentRepository = paymentRepository;
             _orderRepository = orderRepository;
@@ -38,6 +40,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _unitOfWork = unitOfWork;
             _vnPayOptions = vnPayOptions.Value;
             _orderService = orderService;
+            _customerRepository = customerRepository;
         }
 
         public async Task<Result<CreatePaymentResponse>> CreatePaymentAsync(Guid orderId, PaymentMethod method, string ipAddress)
@@ -65,7 +68,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Id = Guid.NewGuid(),
                 OrderCode = order.OrderCode,
                 POrderId = orderId,
-                Status = method == PaymentMethod.COD ? PaymentStatus.Pending : PaymentStatus.Pending,
+                Status = PaymentStatus.Pending,
                 Amount = order.TotalAmount,
                 Description = $"Payment for Order {order.OrderCode}",
                 PaymentMethod = method,
@@ -177,13 +180,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result<PaymentResponse>> GetPaymentByIdAsync(Guid userId, Guid paymentId)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<PaymentResponse>.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
             var payment = await _paymentRepository.GetPaymentByIdAsync(paymentId);
             if (payment == null)
             {
                 return Result<PaymentResponse>.Failure("Payment not found.", 404);
             }
 
-            if (payment.POrder == null || payment.POrder.UserId != userId)
+            if (payment.POrder == null || payment.POrder.CustomerId != customerId)
             {
                 return Result<PaymentResponse>.Failure("Payment not found.", 404);
             }
@@ -193,13 +202,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result<PaymentResponse>> GetPaymentByOrderIdAsync(Guid userId, Guid orderId)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<PaymentResponse>.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
             var payment = await _paymentRepository.GetPaymentByOrderIdAsync(orderId);
             if (payment == null)
             {
                 return Result<PaymentResponse>.Failure("Payment not found.", 404);
             }
 
-            if (payment.POrder == null || payment.POrder.UserId != userId)
+            if (payment.POrder == null || payment.POrder.CustomerId != customerId)
             {
                 return Result<PaymentResponse>.Failure("Payment not found.", 404);
             }
@@ -210,7 +225,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<PaginatedList<PaymentSummaryResponse>>> GetPaymentsByUserAsync(
             Guid userId, int pageNumber, PaymentStatus? status)
         {
-            var payments = await _paymentRepository.GetPaymentsByUserIdAsync(userId, pageNumber, status);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<PaginatedList<PaymentSummaryResponse>>.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
+            var payments = await _paymentRepository.GetPaymentsByCustomerIdAsync(customerId, pageNumber, status);
 
             var responses = payments.Items.Select(p => new PaymentSummaryResponse
             {

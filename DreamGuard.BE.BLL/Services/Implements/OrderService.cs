@@ -6,6 +6,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.BLL.Utilities;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
@@ -27,6 +28,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IPaymentRepository _paymentRepository;
         private readonly IVnPayService _vnPayService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICustomerRepository _customerRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
@@ -39,7 +41,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IInventoryService inventoryService,
             IPaymentRepository paymentRepository,
             IVnPayService vnPayService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            ICustomerRepository customerRepository)
         {
             _orderRepository = orderRepository;
             _cartRepository = cartRepository;
@@ -52,19 +55,26 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _paymentRepository = paymentRepository;
             _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
         }
 
         public async Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<OrderResponse>.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
             // Load cart with items
-            var cart = await _cartRepository.GetCartWithItemsAsync(userId);
+            var cart = await _cartRepository.GetCartWithItemsAsync(customerId);
             if (cart == null || !cart.CartItems.Any())
             {
                 return Result<OrderResponse>.Failure("Cart is empty.", 400);
             }
 
             // Validate address belongs to user
-            var address = await _addressRepository.GetByIdAsync(userId, request.AddressId);
+            var address = await _addressRepository.GetByIdAsync(customerId, request.AddressId);
             if (address == null)
             {
                 return Result<OrderResponse>.Failure("Address not found.", 404);
@@ -76,12 +86,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var orderItems = new List<OrderItem>();
                 decimal subTotal = 0;
 
+                // Pre-load all variants and inventories to avoid N+1 queries
+                var variantIds = cart.CartItems
+                    .Where(ci => ci.ProductVariantId.HasValue)
+                    .Select(ci => ci.ProductVariantId!.Value).ToList();
+
+                var variantsDict = (await _variantRepository.GetVariantsByIdsAsync(variantIds))
+                    .ToDictionary(v => v.Id);
+                var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds))
+                    .ToDictionary(i => i.ProductVariantId);
+
                 // Validate and prepare each cart item
                 foreach (var cartItem in cart.CartItems)
                 {
                     if (cartItem.ProductVariantId.HasValue)
                     {
-                        var variant = await _variantRepository.GetVariantByIdAsync(cartItem.ProductVariantId.Value);
+                        variantsDict.TryGetValue(cartItem.ProductVariantId.Value, out var variant);
                         if (variant == null || variant.Status != ProductStatus.Published)
                         {
                             await transaction.RollbackAsync();
@@ -89,7 +109,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                 $"Product variant '{cartItem.ProductVariantId}' is no longer available.", 400);
                         }
 
-                        var inventory = await _inventoryRepository.GetInventoryByVariantIdAsync(cartItem.ProductVariantId.Value);
+                        inventoriesDict.TryGetValue(cartItem.ProductVariantId.Value, out var inventory);
                         if (inventory == null || inventory.Quantity < cartItem.Quantity)
                         {
                             await transaction.RollbackAsync();
@@ -131,7 +151,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         }
 
                         // Validate combo stock
-                        var comboStock = CalculateComboStock(combo.ComboProductVariants);
+                        var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
                         if (comboStock < cartItem.Quantity)
                         {
                             await transaction.RollbackAsync();
@@ -176,7 +196,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         return Result<OrderResponse>.Failure("Voucher not found.", 404);
                     }
 
-                    if (userVoucher.UserId != userId)
+                    if (userVoucher.CustomerId != customerId)
                     {
                         await transaction.RollbackAsync();
                         return Result<OrderResponse>.Failure("Voucher does not belong to this user.", 403);
@@ -222,7 +242,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var order = new Order
                 {
                     Id = Guid.NewGuid(),
-                    UserId = userId,
+                    CustomerId = customerId,
                     OrderCode = orderCode,
                     Status = OrderStatus.Pending,
                     ReceiverName = address.ReceiverName,
@@ -290,7 +310,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         PaymentId = payment.Id.ToString(),
                         OrderCode = order.OrderCode,
                         Description = payment.Description,
-                        Amount = (int)totalAmount,
+                        Amount = totalAmount,
                         IpAddress = ipAddress,
                         CreatedDate = payment.CreatedAt
                     };
@@ -319,16 +339,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid userId, Guid orderId)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<OrderDetailResponse>.Failure("Customer profile not found.", 404);
+
             var order = await _orderRepository.GetOrderWithItemsAsync(orderId);
             if (order == null)
             {
                 return Result<OrderDetailResponse>.Failure("Order not found.", 404);
             }
 
-            if (order.UserId != userId)
-            {
-                return Result<OrderDetailResponse>.Failure("Order not found.", 404);
-            }
+            if (order.CustomerId != customer.CustomerId) return Result<OrderDetailResponse>.Failure("Order not found.", 404);
 
             return Result<OrderDetailResponse>.Success(MapToDetailResponse(order));
         }
@@ -336,7 +357,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<PaginatedList<OrderSummaryResponse>>> GetOrdersAsync(
             Guid userId, int pageNumber, OrderStatus? status)
         {
-            var orders = await _orderRepository.GetOrdersByUserIdAsync(userId, pageNumber, status);
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result<PaginatedList<OrderSummaryResponse>>.Failure("Customer profile not found.", 404);
+
+            var customerId = customer.CustomerId;
+
+            var orders = await _orderRepository.GetOrdersByCustomerIdAsync(customerId, pageNumber, status);
 
             var responses = orders.Items.Select(o => new OrderSummaryResponse
             {
@@ -404,13 +431,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> CancelOrderAsync(Guid userId, Guid orderId)
         {
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            if (customer == null)
+                return Result.Failure("Customer profile not found.", 404);
+
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(orderId);
             if (order == null)
             {
                 return Result.Failure("Order not found.", 404);
             }
 
-            if (order.UserId != userId)
+            if (order.CustomerId != customer.CustomerId)
             {
                 return Result.Failure("Order not found.", 404);
             }
@@ -546,21 +577,5 @@ namespace DreamGuard.BE.BLL.Services.Implements
             };
         }
 
-        private static int CalculateComboStock(List<ComboProductVariant> comboProductVariants)
-        {
-            if (comboProductVariants == null || !comboProductVariants.Any())
-                return 0;
-
-            int minStock = int.MaxValue;
-            foreach (var cpv in comboProductVariants)
-            {
-                if (cpv.Quantity <= 0) continue;
-                int inventoryQuantity = cpv.ProductVariant?.Inventory?.Quantity ?? 0;
-                int possibleSets = inventoryQuantity / cpv.Quantity;
-                minStock = Math.Min(minStock, possibleSets);
-            }
-
-            return minStock == int.MaxValue ? 0 : minStock;
-        }
     }
 }

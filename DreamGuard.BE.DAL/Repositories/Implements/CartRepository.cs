@@ -14,13 +14,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public CartRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<Cart?> GetCartByUserIdAsync(Guid userId)
+        public async Task<Cart?> GetCartByCustomerIdAsync(Guid customerId)
         {
             return await _context.Carts
-                .FirstOrDefaultAsync(c => c.UserId == userId);
+                .FirstOrDefaultAsync(c => c.CustomerId == customerId);
         }
 
-        public async Task<Cart?> GetCartWithItemsAsync(Guid userId)
+        public async Task<Cart?> GetCartWithItemsAsync(Guid customerId)
         {
             return await _context.Carts
                 .Include(c => c.CartItems.OrderByDescending(ci => ci.AddedAt))
@@ -40,7 +40,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                                 .ThenInclude(pv => pv.Inventory)
                 .AsSplitQuery()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.UserId == userId);
+                .FirstOrDefaultAsync(c => c.CustomerId == customerId);
         }
 
         public async Task<CartItem?> GetCartItemAsync(Guid cartId, Guid? productVariantId, Guid? comboId)
@@ -82,6 +82,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .ToListAsync();
             _context.CartItems.RemoveRange(items);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<CartItem>> GetCartItemsByCartIdAsync(Guid cartId)
+        {
+            return await _context.CartItems
+                .Where(ci => ci.CartId == cartId)
+                .ToListAsync();
         }
     }
 }

@@ -17,15 +17,13 @@ namespace DreamGuard.BE.API.Controllers
     public class StaffsController : ControllerBase
     {
         private readonly IStaffService _staffService;
-        private readonly IMapper _mapper;
-        public StaffsController(IStaffService staffService, IMapper mapper)
+        public StaffsController(IStaffService staffService)
         {
             _staffService = staffService;
-            _mapper = mapper;
         }
 
         [HttpGet]
-        [Authorize(Roles = $"{Role.CleaningStaff}")]
+        [Authorize(Roles = $"{Role.CleaningStaff}, {Role.Manager}, {Role.Seller}")]
         public async Task<IActionResult> GetByIdAsync()
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -43,8 +41,9 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpGet("GetAllAsync")]
-        [Authorize(Roles = $"{Role.Admin}")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
         {
             var result = await _staffService.GetAllAsync(pageNumber, pageSize);
@@ -59,15 +58,61 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpPut]
-        [Authorize(Roles = $"{Role.CleaningStaff}")]
-        public async Task<IActionResult> UpdateAsync([FromBody] StaffUpdateRequest staffRequest)
+        [HttpGet("{staffId}")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
+        public async Task<IActionResult> GetByIdAsync(Guid staffId)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            var result = await _staffService.GetByIdAsync(staffId);
+            if (!result.Succeeded)
             {
-                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
             }
-            var result = await _staffService.UpdateAsync(userId, staffRequest);
+            return Ok(result.Data);
+        }
+
+        [HttpPut("{staffId}")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
+        public async Task<IActionResult> UpdateAsync(Guid staffId, [FromBody] StaffUpdateRequest staffRequest)
+        {
+            var result = await _staffService.UpdateAsync(staffId, staffRequest);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        //Update Role for staff
+        [HttpPut("{staffId}/UpdateRole")]
+        [Authorize(Roles = $"{Role.Admin}")]
+        public async Task<IActionResult> UpdateRoleAsync(Guid staffId, [FromQuery] string newRole)
+        {
+            var result = await _staffService.UpdateRoleAsync(staffId, newRole);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        //Update Staff's account information (email, phone number, password)
+        [HttpPut("{staffId}/UpdateAccount")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
+        public async Task<IActionResult> UpdateAccountAsync(Guid staffId, [FromBody] StaffAccountUpdateRequest staffRequest)
+        {
+            var result = await _staffService.UpdateAccountAsync(staffId, staffRequest);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

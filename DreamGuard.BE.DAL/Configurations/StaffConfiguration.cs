@@ -13,7 +13,7 @@ namespace DreamGuard.BE.DAL.Configurations
     {
         public void Configure(EntityTypeBuilder<Staff> builder)
         {
-            //1-1 staff - user
+            //1-1 staff - user (separate FK)
             builder.ToTable("Staffs");
             builder.HasKey(x => x.StaffId);
             builder.HasOne(x => x.User)

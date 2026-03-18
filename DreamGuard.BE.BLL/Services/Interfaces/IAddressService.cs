@@ -15,7 +15,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     {
         Task<Result<PaginatedList<AddressResponse>>> GetAllAsync(Guid userId, int pageNumber);
         Task<Result<AddressResponse>> GetByIdAsync(Guid userId, Guid addressId);
-        Task<Result> CreateAsync(Address address);
+        Task<Result> CreateAsync(Guid userId, Address address);
         Task<Result> UpdateAsync(Guid userId, Guid addressId, AddressUpdateRequest addressRequest);
         Task<Result> RemoveAsync(Guid userId, Guid addressId);
     }

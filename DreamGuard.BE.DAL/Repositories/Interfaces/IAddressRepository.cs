@@ -11,8 +11,8 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IAddressRepository : IGenericRepository<Address>
     {
-        Task<PaginatedList<Address>> GetAllAsync(Guid userId, int pageNumber);
-        Task<Address> GetByIdAsync(Guid userId, Guid addressId);
+        Task<PaginatedList<Address>> GetAllAsync(Guid customerId, int pageNumber);
+        Task<Address> GetByIdAsync(Guid customerId, Guid addressId);
 
     }
 }

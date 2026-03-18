@@ -52,6 +52,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
+        public async Task<Combo?> GetComboBySlugAsync(string slug)
+        {
+            return await _context.Combos
+                .FirstOrDefaultAsync(c => c.Slug == slug);
+        }
+
         public async Task<Combo?> GetComboWithChildrenAsync(Guid id, string? size, string? color)
         {
             var query = await _context.Combos
@@ -145,6 +151,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<PaginatedList<Combo>> GetAllCombosForAdminAsync(int pageNumber, string? name, ProductStatus? status)
         {
             var query = _context.Combos
+                .Where(c => c.ComboParentId == null)
                 .Include(c => c.ComboChildrens)
                 .OrderByDescending(c => c.CreatedAt)
                 .AsNoTracking();

@@ -34,6 +34,8 @@ namespace DreamGuard.BE.DAL
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
             builder.Services.AddScoped<IFavoriteProductRepository, FavoriteProductRepository>();
+            builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+            builder.Services.AddScoped<IStaffRepository, StaffRepository>();
             builder.Services.AddScoped<DreamGuardDbContextInitialiser>();
             builder.Services.AddScoped<IProductTypeRepository, ProductTypeRepository>();
             builder.Services.AddScoped<IServicePackageRepository, ServicePackageRepository>();

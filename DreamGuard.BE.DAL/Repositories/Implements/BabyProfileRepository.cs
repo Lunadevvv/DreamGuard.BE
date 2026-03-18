@@ -16,28 +16,28 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public BabyProfileRepository(DreamGuardContext context) : base(context) { }
 
-        public async Task<BabyProfile> GetByIdAsync(Guid userId, Guid babyId)
+        public async Task<BabyProfile> GetByIdAsync(Guid customerId, Guid babyId)
         {
             try
             {
-                return await _context.BabyProfiles.FirstOrDefaultAsync(bp => bp.UserId == userId && bp.BabyId == babyId);
+                return await _context.BabyProfiles.FirstOrDefaultAsync(bp => bp.CustomerId == customerId && bp.BabyId == babyId);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving baby profiles for user {userId}: {ex.Message}");
+                throw new Exception($"Error retrieving baby profiles for customer {customerId}: {ex.Message}");
             }
         }
 
-        public async Task<PaginatedList<BabyProfile>> GetAllAsync(Guid userId, int pageNumber)
+        public async Task<PaginatedList<BabyProfile>> GetAllAsync(Guid customerId, int pageNumber)
         {
             try
             {
-                var query = _context.BabyProfiles.Where(bp => bp.UserId == userId);
+                var query = _context.BabyProfiles.Where(bp => bp.CustomerId == customerId);
                 return await PaginatedList<BabyProfile>.CreateAsync(query, pageNumber, 4);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving baby profiles for user {userId}: {ex.Message}");
+                throw new Exception($"Error retrieving baby profiles for customer {customerId}: {ex.Message}");
             }
         }
     }

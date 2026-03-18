@@ -18,11 +18,15 @@ namespace DreamGuard.BE.BLL.Responses
         public string Gender { get; set; }
         public DateOnly DateOfBirth { get; set; }
         public string Status { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Email { get; set; }
         private class Mapping : Profile
         {
             public Mapping()
             {
-                CreateMap<Staff, StaffResponse>();
+                CreateMap<Staff, StaffResponse>()
+                    .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email))
+                    .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User.PhoneNumber));;
             }
         }
     }

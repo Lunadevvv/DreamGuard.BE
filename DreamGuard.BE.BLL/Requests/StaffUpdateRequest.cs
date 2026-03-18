@@ -19,7 +19,8 @@ namespace DreamGuard.BE.BLL.Requests
         [Required]
         public string Gender { get; set; }
         [Required]
-        public DateOnly? DateOfBirth { get; set; }
+        public DateOnly DateOfBirth { get; set; }
+        public string? AvatarUrl { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

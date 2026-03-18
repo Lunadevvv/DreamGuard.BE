@@ -48,34 +48,10 @@ namespace DreamGuard.BE.API.Controllers
             var result = await _identityService
                 .RegisterAsync(registerRequest.Email,
                 registerRequest.Password,
-                registerRequest.FirstName,
-                registerRequest.LastName,
+                registerRequest.FullName,
                 registerRequest.PhoneNumber,
                 registerRequest.Gender,
                 registerRequest.DateOfBirth);
-            if (!result.Succeeded)
-            {
-                return StatusCode(result.StatusCode, new ErrorResponse
-                {
-                    ErrorCode = result.StatusCode,
-                    Message = new List<string> { result.Error }
-                });
-            }
-            return Ok(result.Data);
-        }
-        [HttpPost("StaffRegister")]
-        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
-        public async Task<IActionResult> StaffRegister([FromBody] StaffRegisterRequest staffRegisterRequest)
-        {
-            var result = await _identityService
-                .StaffRegisterAsync(staffRegisterRequest.Email,
-                staffRegisterRequest.Password,
-                staffRegisterRequest.FirstName,
-                staffRegisterRequest.LastName,
-                staffRegisterRequest.PhoneNumber,
-                staffRegisterRequest.Gender,
-                staffRegisterRequest.DateOfBirth,
-                staffRegisterRequest.Address);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -99,7 +75,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            return Ok("Xác thực OTP thành công");
+            return Ok("Verified OTP successfully!");
         }
 
         [HttpPost("register-otp")]
@@ -200,6 +176,22 @@ namespace DreamGuard.BE.API.Controllers
                 });
             }
             return Ok("Your password has been changed successfully.");
+        }
+
+        [HttpPost("CreateStaff")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequest request)
+        {
+            var result = await _identityService.CreateStaffAsync(request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
         }
     }
 }
