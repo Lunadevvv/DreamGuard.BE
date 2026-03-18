@@ -16,6 +16,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string VnpayTransactionId { get; set; } = "";
         public string VnPayResponseCode { get; set; } = "";
         public string VnPayTransactionStatus { get; set; } = "";
+        public string RedirectUrl { get; set; } = "";
 
         public override string ToString()
         {

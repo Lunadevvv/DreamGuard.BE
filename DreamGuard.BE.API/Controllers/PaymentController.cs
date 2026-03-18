@@ -101,7 +101,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
-            return Ok(result.Data);
+            return Redirect(result.Data!.RedirectUrl);
         }
 
         //VnPay callback endpoint IPN (no auth required - called by VnPay)
@@ -118,7 +118,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
-            return Ok(result.Data);
+            return Redirect(result.Data!.RedirectUrl);
         }
 
         // [Admin] Get all payments with filters

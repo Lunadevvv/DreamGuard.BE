@@ -23,7 +23,7 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IProductVariantService, ProductVariantService>();
             builder.Services.AddScoped<IComboService, ComboService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
-
+            builder.Services.AddScoped<ICustomerService, CustomerService>();
             builder.Services.AddScoped<IIdentityService, IdentityService>();
             builder.Services.AddScoped<IOtpService, OtpService>();
             builder.Services.AddScoped<IBrevoEmailService, BrevoEmailService>();

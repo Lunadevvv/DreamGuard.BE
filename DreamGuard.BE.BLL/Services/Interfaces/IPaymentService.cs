@@ -10,7 +10,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     public interface IPaymentService
     {
         Task<Result<CreatePaymentResponse>> CreatePaymentAsync(Guid orderId, PaymentMethod method, string ipAddress);
-        Task<Result<PaymentResponse>> HandleVnPayCallbackAsync(Microsoft.AspNetCore.Http.IQueryCollection queryParams);
+        Task<Result<VnPaymentResponse>> HandleVnPayCallbackAsync(Microsoft.AspNetCore.Http.IQueryCollection queryParams);
         Task<Result<PaymentResponse>> GetPaymentByIdAsync(Guid userId, Guid paymentId);
         Task<Result<PaymentResponse>> GetPaymentByOrderIdAsync(Guid userId, Guid orderId);
         Task<Result<PaginatedList<PaymentSummaryResponse>>> GetPaymentsByUserAsync(Guid userId, int pageNumber, PaymentStatus? status);

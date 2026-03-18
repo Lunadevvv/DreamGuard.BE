@@ -55,7 +55,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             var user = await _authRepository.GetUserByPhoneAsync(phone);
             if(user == null)
-                return Result<LoginResponse>.Failure("User không tồn tại", 401);
+                return Result<LoginResponse>.Failure("User doesn't exist", 401);
             if(await _userManager.CheckPasswordAsync(user, password))
             {
                 var role = await _userManager.GetRolesAsync(user);
@@ -97,7 +97,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 WriteAuthTokenAsHttpOnlyCookie("RefreshToken", newRefreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<RefreshTokenResponse>.Success(refreshTokenResponse);
             }
-            return Result<RefreshTokenResponse>.Failure("User không tồn tại", 404);
+            return Result<RefreshTokenResponse>.Failure("User doesn't exist", 404);
         }
 
         public async Task<Result<RegisterResponse>> RegisterAsync(string email, string password, string fullName, string phoneNumber, string gender, DateOnly dateOfBirth)
@@ -266,7 +266,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
             {
-                return Result.Failure("User không tồn tại", 404);
+                return Result.Failure("User doesn't exist", 404);
             }   
             // 1. Xóa refresh token khỏi database
             user.RefreshToken = null;
