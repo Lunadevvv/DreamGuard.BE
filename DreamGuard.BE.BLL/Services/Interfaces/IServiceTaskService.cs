@@ -14,7 +14,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     public interface IServiceTaskService
     {
         public Task<Result> CreateAsync(ServiceTaskCreateRequest serviceTaskCreateRequest);
-        public Task<Result<ServiceTaskDetailResponse>> GetDetailByIdAsync(Guid serviceTaskId);
+        public Task<Result<ServiceTaskDetailResponse>> GetDetailByIdAsync(Guid serviceTaskId, Guid staffId, string role);
         public Task<Result<ServiceTaskResponse>> GetByIdAsync(Guid serviceTaskId);
         Task<Result<PaginatedList<ServiceTaskResponse>>> GetBySoIdAsync(Guid soId, int pageNumber, int pageSize);
         Task<Result<PaginatedList<ServiceTaskResponse>>> SearchAsync(AdminSearchServiceTaskRequest searchRequest, int pageNumber, int pageSize);

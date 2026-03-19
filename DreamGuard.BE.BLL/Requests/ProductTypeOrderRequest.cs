@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Requests
 {
-    public class RemoveServicePackagesRequest
+    public class ProductTypeOrderRequest
     {
-        [Required]
-        [MinLength(1, ErrorMessage = "At least one service package ID must be provided.")]
-        public List<Guid> ServicePackageIds { get; set; }
+        public Guid ProductTypeId { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
+        public int Quantity { get; set; }
     }
 }

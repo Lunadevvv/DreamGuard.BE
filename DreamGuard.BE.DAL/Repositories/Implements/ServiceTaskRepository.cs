@@ -40,13 +40,17 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             {
                 var serviceTask = await _context.ServiceTasks
                     .Include(st => st.ServiceOrder)
-                        .ThenInclude(so => so.ServicePackageMapping)
-                            .ThenInclude(spm => spm.ServicePackage)
+                        .ThenInclude(so => so.ServiceOrderItems)
+                            .ThenInclude(soi => soi.ServicePackageMapping)
+                                .ThenInclude(spm => spm.ServicePackage)
                     .Include(st => st.ServiceOrder)
-                        .ThenInclude(so => so.ServicePackageMapping)
-                            .ThenInclude(spm => spm.ProductType)
+                        .ThenInclude(so => so.ServiceOrderItems)
+                            .ThenInclude(soi => soi.ServicePackageMapping)
+                                .ThenInclude(spm => spm.ProductType)
                     .Include(st => st.ServiceOrder)
                         .ThenInclude(so => so.Payments)
+                    .Include(st => st.ServiceOrder)
+                        .ThenInclude(so => so.ServiceAssets)
                     .FirstOrDefaultAsync(st => st.ServiceTaskId == serviceTaskId);
                 return serviceTask;
             }

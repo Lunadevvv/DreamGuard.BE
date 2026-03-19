@@ -20,5 +20,20 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await _context.UserVouchers
                 .AnyAsync(uv => uv.CustomerId == customerId && uv.VoucherId == voucherId);
         }
+
+        public async Task<bool> MarkAsUsedAsync(Guid userVoucherId)
+        {
+            var result = await _context.UserVouchers.Where(v => v.UserVoucherId == userVoucherId && !v.IsUsed)
+                 .ExecuteUpdateAsync(s => s
+                     .SetProperty(v => v.IsUsed, true)
+                     .SetProperty(v => v.UsedAt, DateTime.UtcNow));
+            return result > 0;
+        }
+        public async Task<UserVoucher?> GetByIdAsync(Guid userVoucherId)
+        {
+            return await _context.UserVouchers
+                .Include(uv => uv.Voucher)
+                .FirstOrDefaultAsync(uv => uv.UserVoucherId == userVoucherId);
+        }
     }
 }

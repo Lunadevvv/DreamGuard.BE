@@ -92,5 +92,9 @@ namespace DreamGuard.BE.DAL.Basic
         {
             _context.Set<T>().Remove(entity);
         }
+        public void RemoveRange(IEnumerable<T> entities)
+        {
+            _context.Set<T>().RemoveRange(entities);
+        }
     }
 }

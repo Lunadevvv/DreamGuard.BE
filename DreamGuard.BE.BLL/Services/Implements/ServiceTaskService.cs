@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -34,10 +33,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> CreateAsync(ServiceTaskCreateRequest serviceTaskCreateRequest)
         {
-            var serviceOrder = await _soRepo.GetByIdWithPayment(serviceTaskCreateRequest.SoId);
+            var serviceOrder = await _soRepo.GetByIdWithServiceTask(serviceTaskCreateRequest.SoId);
             if (serviceOrder == null)
             {
                 return Result.Failure("Service order not found.", 404);
+            }
+            if(serviceOrder.ServiceTask != null)
+            {
+                return Result.Failure("Service task already exists for this service order.", 400);
             }
             var staff = await _staffRepo.GetByIdAsync(serviceTaskCreateRequest.StaffId);
             if (staff == null)
@@ -90,16 +93,48 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<ServiceTaskResponse>>.Success(paginatedResult);
         }
 
-        public async Task<Result<ServiceTaskDetailResponse>> GetDetailByIdAsync(Guid serviceTaskId)
+        public async Task<Result<ServiceTaskDetailResponse>> GetDetailByIdAsync(Guid serviceTaskId, Guid staffId, string role)
         {
             var serviceTask = await _repo.GetByIdWithDetailsAsync(serviceTaskId);
             if (serviceTask == null)
             {
                 return Result<ServiceTaskDetailResponse>.Failure("Service task not found.", 404);
             }
-            var serviceTaskDetailResponse = _mapper.Map<ServiceTask, ServiceTaskDetailResponse>(serviceTask);
-            serviceTaskDetailResponse.PackageName = serviceTask.ServiceOrder.ServicePackageMapping.ServicePackage.PackageName;
-            serviceTaskDetailResponse.ProductTypeName = serviceTask.ServiceOrder.ServicePackageMapping.ProductType.ProductTypeName;
+            if (role != Role.Admin && role != Role.Manager &&  serviceTask.StaffId != staffId)
+            {
+                return Result<ServiceTaskDetailResponse>.Failure("You are not assigned to this service task.", 403);
+            }
+            var serviceTaskDetailResponse = new ServiceTaskDetailResponse()
+            {
+                SoId = serviceTask.SoId,
+                StaffId = serviceTask.StaffId,
+                ServiceTaskId = serviceTask.ServiceTaskId,
+                Status = serviceTask.Status,
+                CheckIn = serviceTask.CheckIn,
+                CheckOut = serviceTask.CheckOut,
+                StaffNote = serviceTask.StaffNote,
+                ServiceOrderStatus = serviceTask.ServiceOrder.Status,
+                CustomerNote = serviceTask.ServiceOrder.CustomerNote,
+                ReceiverName = serviceTask.ServiceOrder.ReceiverName,
+                Address = serviceTask.ServiceOrder.Address,
+                TotalPrice = serviceTask.ServiceOrder.TotalPrice,
+                PhoneNumber = serviceTask.ServiceOrder.PhoneNumber,
+                AppointmentDate = serviceTask.ServiceOrder.AppointmentDate,
+                ServiceOrderItems = serviceTask.ServiceOrder.ServiceOrderItems.Select(soi => new ServiceOrderItemResponse
+                {
+                    ServiceOrderItemId = soi.ServiceOrderItemId,
+                    ServicePackageMappingId = soi.ServicePackageMappingId,
+                    TotalPrice = soi.TotalPrice,
+                    Price = soi.Price,
+                    Quantity = soi.Quantity,
+                    ServicePackageName = soi.ServicePackageMapping.ServicePackage.PackageName,
+                    ProductTypeName = soi.ServicePackageMapping.ProductType.ProductTypeName
+                }).ToList(),
+                ServiceOrderImageUrl = serviceTask.ServiceOrder.ServiceAssets.Select(se => se.Url).ToList(),
+            };
+            var lastPayment = serviceTask.ServiceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            serviceTaskDetailResponse.PaymentMethod = lastPayment.PaymentMethod.ToString();
+            serviceTaskDetailResponse.PaymentStatus = lastPayment.Status.ToString();
             return Result<ServiceTaskDetailResponse>.Success(serviceTaskDetailResponse);
         }
 

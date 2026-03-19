@@ -215,8 +215,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Status = "Active",
                     AvatarUrl = string.Empty
                 };
-                await _staffRepository.CreateAsync(staff);
-
+                _staffRepository.AddEntity(staff);
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
 
                 return Result<RegisterResponse>.Success(new RegisterResponse

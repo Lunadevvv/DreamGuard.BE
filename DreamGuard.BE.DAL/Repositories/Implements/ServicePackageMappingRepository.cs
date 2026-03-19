@@ -37,5 +37,17 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 throw new Exception($"Error retrieving service package mappings for admin");
             }
         }
+
+        public async Task<List<ServicePackageMapping>> GetListByProductTypeAndServicePackageAsync(List<Guid> productTypeIds, Guid servicePackageId)
+        {
+            try
+            {
+               return await _context.ServicePackageMappings.Where(spm => productTypeIds.Contains(spm.ProductTypeId) && spm.ServicePackageId == servicePackageId).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving List service package mappings");
+            }
+        }
     }
 }

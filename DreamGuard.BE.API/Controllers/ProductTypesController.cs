@@ -39,10 +39,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpGet("{productTypeId}/service-package")]
-        public async Task<IActionResult> GetPackageByProductTypeIdAsync(Guid productTypeId)
+        [HttpGet("/service-package")]
+        public async Task<IActionResult> GetPackageByProductTypeIdsAsync([FromQuery]List<Guid> productTypeIds)
         {
-            var result = await _productTypeService.GetPackagesByProductTypeIdAsync(productTypeId);
+            var result = await _productTypeService.GetPackagesByProductTypeIdsAsync(productTypeIds);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
