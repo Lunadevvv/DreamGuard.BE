@@ -24,27 +24,21 @@ namespace DreamGuard.BE.API.Controllers
             _mapper = mapper;
         }
 
+
         [HttpGet("{serviceTaskId}")]
-        [Authorize(Roles = $"{Role.Admin}, {Role.CleaningStaff}")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.CleaningStaff}, {Role.Manager}")]
         public async Task<IActionResult> GetByIdAsync(Guid serviceTaskId)
         {
-            var result = await _service.GetByIdAsync(serviceTaskId);
-            if (!result.Succeeded)
+            if(!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
             {
-                return StatusCode(result.StatusCode, new ErrorResponse
-                {
-                    ErrorCode = result.StatusCode,
-                    Message = new List<string> { result.Error }
-                });
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
-            return Ok(result.Data);
-        }
-
-        [HttpGet("{serviceTaskId}/detail")]
-        [Authorize(Roles = $"{Role.Admin}, {Role.CleaningStaff}")]
-        public async Task<IActionResult> GetDetailByIdAsync(Guid serviceTaskId)
-        {
-            var result = await _service.GetDetailByIdAsync(serviceTaskId);
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            if (role == null) 
+            {                 
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user role." } });
+            }
+            var result = await _service.GetByIdAsync(serviceTaskId, staffId, role);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -57,7 +51,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("AdminSearchServiceTask")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> AdminSearchServiceTask([FromQuery]AdminSearchServiceTaskRequest searchRequest, int pageSize = 4, int pageNumber = 1)
         {
             var result = await _service.SearchAsync(searchRequest, pageNumber, pageSize);
@@ -93,7 +87,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> CreateAsync([FromBody] ServiceTaskCreateRequest serviceTaskCreateRequest)
         {
             var result = await _service.CreateAsync(serviceTaskCreateRequest);

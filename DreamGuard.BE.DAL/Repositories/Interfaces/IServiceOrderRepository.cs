@@ -14,7 +14,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         Task<PaginatedList<ServiceOrder>> GetAllAdminAsync(int pageNumber, int pageSize, string? orderCode, PaymentMethod? paymentMethod, PaymentStatus? paymentStatus);
         Task<PaginatedList<ServiceOrder>> GetAllAsync(int pageNumber, int pageSize);
-        Task<ServiceOrder?> GetByIdWithPayment(Guid serviceOrderId);
+        Task<ServiceOrder?> GetByIdWithDetail(Guid serviceOrderId);
         Task<ServiceOrder?> GetByIdWithServiceTask(Guid serviceOrderId);
     }
 }

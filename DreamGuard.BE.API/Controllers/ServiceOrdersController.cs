@@ -27,6 +27,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost("OrderService")]
+        [Authorize]
         public async Task<IActionResult> OrderServiceAsync([FromBody] ServiceOrderCreateRequest serviceOrderRequest)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
@@ -45,7 +46,24 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        [HttpPost("OrderService/{serviceOrderId}/assets")]
+        [Authorize]
+        public async Task<IActionResult> UploadAsset(Guid serviceOrderId, [FromForm] ServiceAssetCreateRequest assetCreateRequest)
+        {
+            var result = await _serviceOrderService.UploadServiceAsset(serviceOrderId, assetCreateRequest);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
         [HttpPost("ReorderFailedService")]
+        [Authorize]
         public async Task<IActionResult> ReOrderFailedServiceAsync(Guid SoId)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))

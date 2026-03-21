@@ -16,10 +16,6 @@ namespace DreamGuard.BE.BLL.Requests
         [Required]
         public string PackageName { get; set; } 
         [Required]
-        public string Description { get; set; }
-        [Range(0, double.MaxValue, ErrorMessage = "Price must be a non-negative value.")]
-        public decimal Price { get; set; }
-        [Required]
         public ServicePackageStatus? Status { get; set; }
         [Range(0, int.MaxValue, ErrorMessage = "Duration must be a non-negative integer.")]
         public int Duration { get; set; }

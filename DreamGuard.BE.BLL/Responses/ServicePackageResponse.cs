@@ -14,7 +14,6 @@ namespace DreamGuard.BE.BLL.Responses
     {
         public Guid ServicePackageId { get; set; }
         public string PackageName { get; set; }
-        public decimal Price { get; set; }
         public ServicePackageStatus Status { get; set; }
         public int Duration { get; set; }
         public string SuitableFor { get; set; }
@@ -22,7 +21,6 @@ namespace DreamGuard.BE.BLL.Responses
         public string ServiceContent { get; set; }
         public string ImageUrl { get; set; }
         public string PublicId { get; set; }
-        public ProductType? Service { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

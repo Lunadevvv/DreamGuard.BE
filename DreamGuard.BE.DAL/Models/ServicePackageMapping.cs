@@ -14,7 +14,7 @@ namespace DreamGuard.BE.DAL.Models
         public int Duration { get; set; } // Duration in minutes
         public decimal Price { get; set; }
         public ProductType ProductType { get; set; } = null!;
-        public ICollection<ServiceOrder> ServiceOrders { get; set; } = new List<ServiceOrder>();
+        public ICollection<ServiceOrderItem> ServiceOrderItems { get; set; } = new List<ServiceOrderItem>();
         public ServicePackage ServicePackage { get; set; } = null!;
     }
 }

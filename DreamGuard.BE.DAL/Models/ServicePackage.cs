@@ -11,9 +11,7 @@ namespace DreamGuard.BE.DAL.Models
     {
         public Guid ServicePackageId { get; set; } = Guid.NewGuid();
         public string PackageName { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public decimal Price { get; set; }
-        public ServicePackageStatus status { get; set; } = ServicePackageStatus.Draft;
+        public ServicePackageStatus Status { get; set; } = ServicePackageStatus.Draft;
         public int Duration { get; set; } = 0; // in minutes
         public string SuitableFor { get; set; } = string.Empty;
         public string ServiceContent { get; set; } = string.Empty;

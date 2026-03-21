@@ -8,8 +8,8 @@ namespace DreamGuard.BE.BLL.Requests
     {
         [Required]
         public string ProductTypeName { get; set; }
-        [Range(0, double.MaxValue, ErrorMessage = "Price must be a non-negative value.")]
-        public decimal Price { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "AddPrice must be a non-negative value.")]
+        public decimal AddPrice { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

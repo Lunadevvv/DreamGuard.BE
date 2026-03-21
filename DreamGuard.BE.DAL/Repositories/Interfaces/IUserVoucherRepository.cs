@@ -11,5 +11,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IUserVoucherRepository : IGenericRepository<UserVoucher>
     {
         Task<bool> ExistsAsync(Guid customerId, Guid voucherId);
+        Task<bool> MarkAsUsedAsync(Guid userVoucherId);
+        Task<UserVoucher?> GetByIdAsync(Guid userVoucherId);
     }
 }

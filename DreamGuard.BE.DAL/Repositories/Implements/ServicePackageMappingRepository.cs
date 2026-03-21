@@ -29,12 +29,67 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             try
             {
-                var query = _context.ServicePackageMappings;
+                var query = _context.ServicePackageMappings
+                    .Include(spm => spm.ServicePackage)
+                    .Include(spm => spm.ProductType);
                 return await PaginatedList<ServicePackageMapping>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
             {
                 throw new Exception($"Error retrieving service package mappings for admin");
+            }
+        }
+
+        public async Task<List<ServicePackageMapping>> GetListByProductTypeAndServicePackageAsync(List<Guid> productTypeIds, Guid servicePackageId)
+        {
+            try
+            {
+                return await _context.ServicePackageMappings.Where(spm => productTypeIds.Contains(spm.ProductTypeId) && spm.ServicePackageId == servicePackageId).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving List service package mappings");
+            }
+        }
+
+        public async Task<List<ServicePackageMapping>> GetByListIdAsync(List<Guid> servicePackageMappingIds)
+        {
+            try
+            {
+                return await _context.ServicePackageMappings.Include(spm => spm.ProductType).Where(spm => servicePackageMappingIds.Contains(spm.ServicePackageMappingId)).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving List service package mappings");
+            }
+        }
+        public async Task<ServicePackageMapping?> GetByIdAsync(Guid servicePackageMappingId)
+        {
+            try
+            {
+                return await _context.ServicePackageMappings
+                    .Include(spm => spm.ProductType)
+                    .Include(spm => spm.ServicePackage)
+                    .FirstOrDefaultAsync(spm => spm.ServicePackageMappingId == servicePackageMappingId);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving service package mapping with ID {servicePackageMappingId}");
+            }
+        }
+
+        public async Task<ServicePackageMapping?> GetByProductTypeIdAndServicePackageIdAsync(Guid productTypeId, Guid servicePackageId)
+        {
+            try
+            {
+                return await _context.ServicePackageMappings
+                    .Include(spm => spm.ProductType)
+                    .Include(spm => spm.ServicePackage)
+                    .FirstOrDefaultAsync(spm => spm.ProductTypeId == productTypeId && spm.ServicePackageId == servicePackageId);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving service package mapping");
             }
         }
     }

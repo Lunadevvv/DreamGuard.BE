@@ -48,6 +48,22 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
+        [HttpGet("{productTypeId}/ProductType/{servicePackageId}/ServicePackage")]
+        public async Task<IActionResult> GetByIdAsync(Guid productTypeId, Guid servicePackageId)
+        {
+            var result = await _service.GetByProductTypeIdAndServicePackageIdAsync(productTypeId, servicePackageId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpPut("{servicePackageMappingId}")]
         public async Task<IActionResult> UpdateByIdAsync(Guid servicePackageMappingId, ServicePackageMappingUpdateRequest request)
         {

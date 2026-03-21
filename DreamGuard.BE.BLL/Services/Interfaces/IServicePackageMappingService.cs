@@ -17,5 +17,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<ServicePackageMappingResponse>> GetByIdAsync(Guid servicePackageMappingId);
         Task<Result<PaginatedList<ServicePackageMappingResponse>>> GetAllAsync(int pageNumber, int pageSize);
         Task<Result> UpdateByIdAsync(Guid servicePackageMappingId, ServicePackageMappingUpdateRequest servicePackageMappingUpdateRequest);
+        Task<Result<ServicePackageMappingResponse>> GetByProductTypeIdAndServicePackageIdAsync(Guid productTypeId, Guid servicePackageId);
     }
 }

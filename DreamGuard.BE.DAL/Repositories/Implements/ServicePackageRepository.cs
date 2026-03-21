@@ -35,7 +35,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             try
             {
-                return await _context.ServicePackages.Where(sp => servicePackageIds.Contains(sp.ServicePackageId) && sp.status == Constants.ServicePackageStatus.Active).ToListAsync();
+                return await _context.ServicePackages.Where(sp => servicePackageIds.Contains(sp.ServicePackageId) && sp.Status == ServicePackageStatus.Active).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -46,7 +46,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             try
             {
-                var query = _context.ServicePackages.Where(s => s.status == status);
+                var query = _context.ServicePackages.Where(s => s.Status == status);
                 return await PaginatedList<ServicePackage>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
@@ -54,11 +54,14 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 throw new Exception($"Error retrieving ServicePackage for customer");
             }
         }
-        public async Task<List<ServicePackage>> GetAllByProductTypeIdAsync(Guid productTypeId)
+        public async Task<List<ServicePackage>> GetAllByProductTypeIdsAsync(List<Guid> productTypeIds)
         {
             try
             {
-                return await _context.ServicePackages.Where(s => s.ServicePackageMappings.Any(spm => spm.ProductTypeId == productTypeId )).ToListAsync();
+                // chỉ lấy những servicepackage mà có mapping với tất cả producttypeid trong list
+                return await _context.ServicePackages
+                    .Where(s => productTypeIds.All(pt => s.ServicePackageMappings.Any(spm => spm.ProductTypeId == pt))
+                    ).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -66,5 +69,17 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
+        public async Task<List<ServicePackage>> GetAllByProductTypeIdAsync(Guid productTypeId)
+        {
+            try
+            {
+                return await _context.ServicePackages
+                    .Where(s => s.ServicePackageMappings.Any(spm => spm.ProductTypeId == productTypeId)).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving ServicePackage");
+            }
+        }
     }
 }

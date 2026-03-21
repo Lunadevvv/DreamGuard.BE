@@ -11,8 +11,10 @@ namespace DreamGuard.BE.BLL.Responses
     public class ServiceOrderResponse
     {
         public Guid SoId { get; set; }
+        public Guid? UserVoucherId { get; set; }
+        public Guid CustomerId { get; set; }
         public string OrderCode { get; set; }
-        public string CustomNote { get; set; }
+        public string CustomerNote { get; set; }
         public string ReceiverName { get; set; }
 
         public string Address { get; set; }
@@ -24,7 +26,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string Status { get; set; }
 
         public decimal TotalPrice { get; set; }
-
+        public decimal SubTotalPrice { get; set; }
         public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }

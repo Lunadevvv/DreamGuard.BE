@@ -9,7 +9,8 @@ namespace DreamGuard.BE.BLL.Requests
 {
     public class RemoveServicePackagesRequest
     {
+        [Required]
         [MinLength(1, ErrorMessage = "At least one service package ID must be provided.")]
-        public List<Guid> ServicePackageIds { get; set; } = new();
+        public List<Guid> ServicePackageIds { get; set; }
     }
 }

@@ -18,5 +18,6 @@ namespace DreamGuard.BE.DAL.Models
 
         public Customer Customer { get; set; }
         public Voucher Voucher { get; set; }
+        public ServiceOrder? ServiceOrder { get; set; }
     }
 }
