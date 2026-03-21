@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Requests
 {
-    public class ProductTypeOrderRequest
+    public class ServicePackageMappingOrderRequest
     {
-        public Guid ProductTypeId { get; set; }
+        public Guid ServicePackageMappingId { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
         public int Quantity { get; set; }
     }

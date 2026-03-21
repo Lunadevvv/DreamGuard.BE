@@ -15,7 +15,6 @@ namespace DreamGuard.BE.DAL.Models
         public Guid ServicePackageMappingId { get; set; }
 
         public decimal TotalPrice { get; set; }
-        public decimal Price { get; set; }
         public int Quantity { get; set; }
         public ServicePackageMapping ServicePackageMapping { get; set; } = null!;
         public ServiceOrder ServiceOrder { get; set; } = null!;

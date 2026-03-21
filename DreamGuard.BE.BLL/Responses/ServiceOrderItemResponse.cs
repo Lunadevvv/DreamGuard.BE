@@ -13,7 +13,6 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid ServiceOrderItemId { get; set; }
         public Guid ServicePackageMappingId { get; set; }
         public decimal TotalPrice { get; set; }
-        public decimal Price { get; set; }
         public int Quantity { get; set; }
         public string ServicePackageName { get; set; }
         public string ProductTypeName { get; set; }

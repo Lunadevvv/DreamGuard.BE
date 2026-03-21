@@ -13,6 +13,7 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid ProductTypeId { get; set; } 
         public string ProductTypeName { get; set; }
         public bool IsActive { get; set; }
+        public decimal AddPrice { get; set; }
         public DateTime CreatedAt { get; set; }
         private class Mapping : Profile
         {

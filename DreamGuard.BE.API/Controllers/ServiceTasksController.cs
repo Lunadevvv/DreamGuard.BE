@@ -24,25 +24,10 @@ namespace DreamGuard.BE.API.Controllers
             _mapper = mapper;
         }
 
+
         [HttpGet("{serviceTaskId}")]
         [Authorize(Roles = $"{Role.Admin}, {Role.CleaningStaff}, {Role.Manager}")]
         public async Task<IActionResult> GetByIdAsync(Guid serviceTaskId)
-        {
-            var result = await _service.GetByIdAsync(serviceTaskId);
-            if (!result.Succeeded)
-            {
-                return StatusCode(result.StatusCode, new ErrorResponse
-                {
-                    ErrorCode = result.StatusCode,
-                    Message = new List<string> { result.Error }
-                });
-            }
-            return Ok(result.Data);
-        }
-
-        [HttpGet("{serviceTaskId}/detail")]
-        [Authorize(Roles = $"{Role.Admin}, {Role.CleaningStaff}, {Role.Manager}")]
-        public async Task<IActionResult> GetDetailByIdAsync(Guid serviceTaskId)
         {
             if(!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
             {
@@ -53,7 +38,7 @@ namespace DreamGuard.BE.API.Controllers
             {                 
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user role." } });
             }
-            var result = await _service.GetDetailByIdAsync(serviceTaskId, staffId, role);
+            var result = await _service.GetByIdAsync(serviceTaskId, staffId, role);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

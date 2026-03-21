@@ -69,5 +69,17 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
+        public async Task<List<ServicePackage>> GetAllByProductTypeIdAsync(Guid productTypeId)
+        {
+            try
+            {
+                return await _context.ServicePackages
+                    .Where(s => s.ServicePackageMappings.Any(spm => spm.ProductTypeId == productTypeId)).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving ServicePackage");
+            }
+        }
     }
 }

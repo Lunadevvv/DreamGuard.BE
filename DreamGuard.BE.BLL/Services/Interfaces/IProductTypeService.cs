@@ -16,6 +16,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<PaginatedList<ProductTypeResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, bool isActive);
         Task<Result<PaginatedList<ProductTypeResponse>>> GetAllAsync(int pageNumber, int pageSize);
         Task<Result<List<ServicePackageResponse>>> GetPackagesByProductTypeIdsAsync(List<Guid> productTypeIds);
+        Task<Result<List<ServicePackageResponse>>> GetAllPackageByProductTypeIdAsync(Guid productTypeId);
         Task<Result<ProductTypeResponse>> GetByIdAsync(Guid productTypeId);
         Task<Result> CreateAsync(ProductTypeCreateRequest service);
         Task<Result> UpdateAsync(Guid productTypeId, ProductTypeUpdateRequest serviceRequest);

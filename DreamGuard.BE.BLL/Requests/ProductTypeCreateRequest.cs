@@ -17,5 +17,7 @@ namespace DreamGuard.BE.BLL.Requests
 
         [Required]
         public bool? IsActive { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "AddPrice must be a non-negative value.")]
+        public decimal AddPrice { get; set; }
     }
 }

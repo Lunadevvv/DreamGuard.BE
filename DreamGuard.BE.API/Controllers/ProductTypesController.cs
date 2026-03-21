@@ -39,10 +39,26 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpGet("/service-package")]
-        public async Task<IActionResult> GetPackageByProductTypeIdsAsync([FromQuery]List<Guid> productTypeIds)
+        //ko cần thì xóa, để tạm đây mai mốt có gì xài thì lấy ra dùng :v
+        //[HttpGet("/service-package")]
+        //public async Task<IActionResult> GetPackageByProductTypeIdsAsync([FromQuery]List<Guid> productTypeIds)
+        //{
+        //    var result = await _productTypeService.GetPackagesByProductTypeIdsAsync(productTypeIds);
+        //    if (!result.Succeeded)
+        //    {
+        //        return StatusCode(result.StatusCode, new ErrorResponse
+        //        {
+        //            ErrorCode = result.StatusCode,
+        //            Message = new List<string> { result.Error }
+        //        });
+        //    }
+        //    return Ok(result.Data);
+        //}
+
+        [HttpGet("{productTypeId}/service-package")]
+        public async Task<IActionResult> GetAllPackageByProductTypeIdAsync(Guid productTypeId)
         {
-            var result = await _productTypeService.GetPackagesByProductTypeIdsAsync(productTypeIds);
+            var result = await _productTypeService.GetAllPackageByProductTypeIdAsync(productTypeId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

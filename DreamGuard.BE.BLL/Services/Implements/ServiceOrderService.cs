@@ -118,24 +118,31 @@ namespace DreamGuard.BE.BLL.Services.Implements
             using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var productTypes = serviceOrderRequest.ProductTypeOrderRequests;
-                var productTypeIds = productTypes.Select(pt => pt.ProductTypeId).ToList();
+                var servicePackageMappings = serviceOrderRequest.ServicePackageMappingOrderRequest;
+                var servicePackageMappingIds = servicePackageMappings.Select(spm => spm.ServicePackageMappingId).ToList();
 
-                //check duplicate product type id in request
-                var productTypeIdSet = productTypeIds.ToHashSet();
+                //check duplicate servicePackageMapping id in request
+                var servicePackageMappingIdSet = servicePackageMappingIds.ToHashSet();
           
-                if (productTypeIds.Count() != productTypeIds.Distinct().Count())
+                if (servicePackageMappingIds.Count() != servicePackageMappingIds.Distinct().Count())
                 {
-                    return Result<OrderServiceResponse>.Failure("Duplicate product type id in request", 400);
+                    return Result<OrderServiceResponse>.Failure("Duplicate servicePackageMapping id in request", 400);
                 }
 
-                List<ServicePackageMapping> serviceMappings = await _servicePackageMappingRepository.GetListByProductTypeAndServicePackageAsync(productTypeIds, serviceOrderRequest.ServicePackageId);
-                //check if service package mapping exist with all product type id in request
-                var serviceMappingsSet = serviceMappings.Select(m => m.ProductTypeId).ToHashSet();
-                if (productTypeIds.Any(id => !serviceMappingsSet.Contains(id)))
+                //check if servicePackageMappingIds are valid 
+                List<ServicePackageMapping> serviceMappings = await _servicePackageMappingRepository.GetByListIdAsync(servicePackageMappingIds);
+                if (serviceMappings == null || !serviceMappings.Any())
                 {
-                    return Result<OrderServiceResponse>.Failure("Some Service mapping not found", 404);
+                    return Result<OrderServiceResponse>.Failure("No valid service package mapping found for the provided ids", 400);
                 }
+                var foundIds = serviceMappings.Select(spm => spm.ServicePackageMappingId).ToHashSet();
+                var missingIds = servicePackageMappingIds.Where(spm => !foundIds.Contains(spm)).ToList();
+                if (missingIds.Any())
+                {
+                    return Result<OrderServiceResponse>.Failure($"The following service package mapping ids are invalid: {string.Join(", ", missingIds)}", 400);
+                }
+
+
 
                 //check if customer exist
                 var customer = await _customerRepository.GetByIdAsync(customerId);
@@ -159,17 +166,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
 
                 //Add service order items
-                var mappingDict = serviceMappings.ToDictionary(m => m.ProductTypeId);
-                foreach (var pt in productTypes)
+                var mappingDict = serviceMappings.ToDictionary(m => m.ServicePackageMappingId);
+                foreach (var spm in servicePackageMappings)
                 {
-                    mappingDict.TryGetValue(pt.ProductTypeId, out var mapping);
+                    mappingDict.TryGetValue(spm.ServicePackageMappingId, out var mapping);
                     var serviceOrderItem = new ServiceOrderItem
                     {
                         SoId = serviceOrder.SoId,
                         ServicePackageMappingId = mapping!.ServicePackageMappingId,
-                        Price = mapping.Price,
-                        Quantity = pt.Quantity,
-                        TotalPrice = mapping.Price * pt.Quantity,
+                        Quantity = spm.Quantity-1,
+                        TotalPrice = mapping.Price + (mapping.ProductType.AddPrice * (spm.Quantity-1)),
                     };
                     serviceOrder.ServiceOrderItems.Add(serviceOrderItem);
                     serviceOrder.SubTotalPrice += serviceOrderItem.TotalPrice;
@@ -332,7 +338,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ServiceOrderItemId = soi.ServiceOrderItemId,
                     ServicePackageMappingId = soi.ServicePackageMappingId,
                     TotalPrice = soi.TotalPrice,
-                    Price = soi.Price,
                     Quantity = soi.Quantity,
                     ServicePackageName = soi.ServicePackageMapping.ServicePackage.PackageName,
                     ProductTypeName = soi.ServicePackageMapping.ProductType.ProductTypeName

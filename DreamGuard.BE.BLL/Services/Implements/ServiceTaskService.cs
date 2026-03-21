@@ -93,7 +93,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<ServiceTaskResponse>>.Success(paginatedResult);
         }
 
-        public async Task<Result<ServiceTaskDetailResponse>> GetDetailByIdAsync(Guid serviceTaskId, Guid staffId, string role)
+        public async Task<Result<ServiceTaskDetailResponse>> GetByIdAsync(Guid serviceTaskId, Guid staffId, string role)
         {
             var serviceTask = await _repo.GetByIdWithDetailsAsync(serviceTaskId);
             if (serviceTask == null)
@@ -125,7 +125,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ServiceOrderItemId = soi.ServiceOrderItemId,
                     ServicePackageMappingId = soi.ServicePackageMappingId,
                     TotalPrice = soi.TotalPrice,
-                    Price = soi.Price,
                     Quantity = soi.Quantity,
                     ServicePackageName = soi.ServicePackageMapping.ServicePackage.PackageName,
                     ProductTypeName = soi.ServicePackageMapping.ProductType.ProductTypeName
@@ -138,16 +137,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<ServiceTaskDetailResponse>.Success(serviceTaskDetailResponse);
         }
 
-        public async Task<Result<ServiceTaskResponse>> GetByIdAsync(Guid serviceTaskId)
-        {
-            var result = await _repo.GetByIdAsync(serviceTaskId);
-            if (result == null)
-            {
-                return Result<ServiceTaskResponse>.Failure("service task not found.", 404);
-            }
-            var serviceTaskResponse = _mapper.Map<ServiceTask, ServiceTaskResponse>(result);
-            return Result<ServiceTaskResponse>.Success(serviceTaskResponse);
-        }
 
         public async Task<Result> UpdateCheckedInStatusAsync(Guid serviceTaskId, Guid staffId)
         {

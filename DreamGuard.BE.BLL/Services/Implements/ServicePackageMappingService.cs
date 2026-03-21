@@ -40,6 +40,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var result = _mapper.Map<ServicePackageMappingResponse>(servicePackageMapping);
             return Result<ServicePackageMappingResponse>.Success(result);
         }
+        public async Task<Result<ServicePackageMappingResponse>> GetByProductTypeIdAndServicePackageIdAsync(Guid productTypeId, Guid servicePackageId)
+        {
+            var servicePackageMapping = await _servicePackageMappingRepository.GetByProductTypeIdAndServicePackageIdAsync(productTypeId, servicePackageId);
+            if (servicePackageMapping == null)
+            {
+                return Result<ServicePackageMappingResponse>.Failure("Service package mapping not found", 404);
+            }
+            var result = _mapper.Map<ServicePackageMappingResponse>(servicePackageMapping);
+            return Result<ServicePackageMappingResponse>.Success(result);
+        }
 
         public async Task<Result> UpdateByIdAsync(Guid servicePackageMappingId, ServicePackageMappingUpdateRequest servicePackageMappingUpdateRequest)
         {

@@ -13,8 +13,7 @@ namespace DreamGuard.BE.BLL.Requests
     {
         [Required]
         [MinLength(1, ErrorMessage = "At least one product type must be selected")]
-        public List<ProductTypeOrderRequest> ProductTypeOrderRequests { get; set; }
-        public Guid ServicePackageId { get; set; }
+        public List<ServicePackageMappingOrderRequest> ServicePackageMappingOrderRequest { get; set; }
 
         [Required(ErrorMessage = "Phone number cannot be empty")]
         [RegularExpression(@"^(94|0)(3|5|7|8|9)\d{8}$", ErrorMessage = "Phone number doesn't have correct format")]

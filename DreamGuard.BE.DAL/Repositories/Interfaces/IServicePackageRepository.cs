@@ -16,5 +16,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<PaginatedList<ServicePackage>> GetAllAdminAsync(int pageNumber, int pageSize, ServicePackageStatus status);
         Task<List<ServicePackage>> GetByListIdAsync(List<Guid> servicePackageIds);
         Task<List<ServicePackage>> GetAllByProductTypeIdsAsync(List<Guid> productTypeIds);
+        Task<List<ServicePackage>> GetAllByProductTypeIdAsync(Guid productTypeId);
     }
 }

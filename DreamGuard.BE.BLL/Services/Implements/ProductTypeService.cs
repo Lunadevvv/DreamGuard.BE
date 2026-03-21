@@ -47,6 +47,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var servicePackageResponse = _mapper.Map<List<ServicePackageResponse>>(servicePackage);
             return Result<List<ServicePackageResponse>>.Success(servicePackageResponse);
         }
+        public async Task<Result<List<ServicePackageResponse>>> GetAllPackageByProductTypeIdAsync(Guid productTypeId)
+        {
+            var servicePackage =  _servicePackageRepository.GetAllByProductTypeIdAsync(productTypeId);
+            var servicePackageResponse = _mapper.Map<List<ServicePackageResponse>>(servicePackage);
+            return Result<List<ServicePackageResponse>>.Success(servicePackageResponse);
+        }
         public async Task<Result<PaginatedList<ProductTypeResponse>>> GetAllAsync(int pageNumber, int pageSize)
         {
             var productTypes = await _repo.GetAllAsync(pageNumber, pageSize);
