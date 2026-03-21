@@ -118,7 +118,7 @@ namespace DreamGuard.BE.API.Controllers
      
         [HttpPost]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> CreateAsync([FromForm] ProductTypeCreateRequest serviceRequest)
+        public async Task<IActionResult> CreateAsync([FromBody] ProductTypeCreateRequest serviceRequest)
         {
             var result = await _productTypeService.CreateAsync(serviceRequest);
             if (!result.Succeeded)
