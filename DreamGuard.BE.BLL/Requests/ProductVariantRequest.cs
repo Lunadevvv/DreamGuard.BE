@@ -32,6 +32,9 @@ namespace DreamGuard.BE.BLL.Requests
         [Required(ErrorMessage = "Product ID is required.")]
         public Guid ProductId { get; set; }
 
+        //Customize Types
+        public List<Guid> CustomizeTypeIds { get; set; } = new List<Guid>();
+        
         private class Mapping : Profile
         {
             public Mapping()
