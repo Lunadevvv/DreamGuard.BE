@@ -57,11 +57,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<PaginatedList<ProductType>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<PaginatedList<ProductType>> GetAllAsync(int pageNumber, int pageSize, List<Guid> exceedProductTypeIds)
         {
             try
             {
-                var query = _context.ProductTypes.Where(s => s.IsActive);
+                var query = _context.ProductTypes.Where(s => !exceedProductTypeIds.Contains(s.ProductTypeId) && s.IsActive);
                 return await PaginatedList<ProductType>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)

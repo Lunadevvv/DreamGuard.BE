@@ -12,7 +12,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IProductTypeRepository : IGenericRepository<ProductType>
     {
         Task<ProductType?> GetByIdAsync(Guid id);
-        Task<PaginatedList<ProductType>> GetAllAsync(int pageNumber, int pageSize);
+        Task<PaginatedList<ProductType>> GetAllAsync(int pageNumber, int pageSize, List<Guid> exceedProductTypeIds);
         Task<PaginatedList<ProductType>> GetAllAdminAsync(int pageNumber, int pageSize, bool isActive);
 
         Task<List<ServicePackageMapping>> GetMappingsByProductTypeIdAsync(Guid productTypeId);
