@@ -189,7 +189,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.HasIndex("CateParentId");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Combo", b =>
@@ -260,7 +260,7 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasIndex("Slug")
                         .IsUnique();
 
-                    b.ToTable("Combos");
+                    b.ToTable("Combos", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ComboProductVariant", b =>
@@ -284,7 +284,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.HasIndex("ProductVariantId");
 
-                    b.ToTable("ComboProductVariants");
+                    b.ToTable("ComboProductVariants", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Customer", b =>

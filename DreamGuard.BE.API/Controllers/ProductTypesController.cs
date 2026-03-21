@@ -71,9 +71,9 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
+        public async Task<IActionResult> GetAllAsync([FromBody] int pageNumber, int pageSize, List<Guid> exceedProductTypeIds)
         {
-            var result = await _productTypeService.GetAllAsync(pageNumber, pageSize);
+            var result = await _productTypeService.GetAllAsync(pageNumber, pageSize, exceedProductTypeIds);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
