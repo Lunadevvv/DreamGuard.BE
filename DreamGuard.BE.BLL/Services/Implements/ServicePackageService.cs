@@ -54,8 +54,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             servicePackage.ImageUrl = uploadImageResult.Data!.Url;
             servicePackage.PublicId = uploadImageResult.Data.PublicId;
             var result = await _repo.CreateAsync(servicePackage);
-
-            return Result.Success($"{result}");
+            if (result == 0)
+            {
+                return Result.Failure("Nothing created", 400);
+            }
+            return Result.Success($"{servicePackage.ServicePackageId}");
         }
 
         public async Task<Result> ReplaceImagesAsync(Guid servicePackageId, PackageImageUploadRequest file)

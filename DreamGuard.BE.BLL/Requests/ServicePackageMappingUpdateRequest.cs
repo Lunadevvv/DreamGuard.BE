@@ -15,6 +15,7 @@ namespace DreamGuard.BE.BLL.Requests
         public int Duration { get; set; }
         [Range(0, double.MaxValue, ErrorMessage = "Price must be a non-negative decimal.")]
         public decimal Price { get; set; }
+        public ServicePackageUpdateRequest? ServicePackage { get; set; } 
         private class Mapping : Profile
         {
             public Mapping()

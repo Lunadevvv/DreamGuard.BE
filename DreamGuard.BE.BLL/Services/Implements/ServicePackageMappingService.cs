@@ -3,6 +3,7 @@ using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using System;
@@ -17,10 +18,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IServicePackageMappingRepository _servicePackageMappingRepository;
         private readonly IMapper _mapper;
-        public ServicePackageMappingService(IServicePackageMappingRepository servicePackageMappingRepository, IMapper mapper)
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IServicePackageRepository _servicePackageRepository;
+        public ServicePackageMappingService(IServicePackageMappingRepository servicePackageMappingRepository, IMapper mapper, IUnitOfWork unitOfWork, IServicePackageRepository servicePackageRepository)
         {
             _servicePackageMappingRepository = servicePackageMappingRepository;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _servicePackageRepository = servicePackageRepository;
         }
         public async Task<Result<PaginatedList<ServicePackageMappingResponse>>> GetAllAsync(int pageNumber, int pageSize)
         {
@@ -58,8 +63,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service package mapping not found", 404);
             }
+            if (servicePackageMappingUpdateRequest.ServicePackage != null)
+            {
+                var servicePackage = _mapper.Map(servicePackageMappingUpdateRequest.ServicePackage, servicePackageMapping.ServicePackage);
+                _servicePackageRepository.UpdateEntity(servicePackage);
+
+            }
             var update = _mapper.Map(servicePackageMappingUpdateRequest, servicePackageMapping);
-            var result = await _servicePackageMappingRepository.UpdateAsync(update);
+            _servicePackageMappingRepository.UpdateEntity(update);
+            var result = await _unitOfWork.SaveChangeAsync();
             return Result.Success($"{result}");
         }
     }

@@ -49,7 +49,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
         public async Task<Result<List<ServicePackageResponse>>> GetAllPackageByProductTypeIdAsync(Guid productTypeId)
         {
-            var servicePackage =  _servicePackageRepository.GetAllByProductTypeIdAsync(productTypeId);
+            var servicePackage =  await _servicePackageRepository.GetAllByProductTypeIdAsync(productTypeId);
             var servicePackageResponse = _mapper.Map<List<ServicePackageResponse>>(servicePackage);
             return Result<List<ServicePackageResponse>>.Success(servicePackageResponse);
         }
@@ -87,8 +87,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 CreatedAt = DateTime.UtcNow
             };
             var result = await _repo.CreateAsync(newProductType);
-
-            return Result.Success($"{result}");
+            if (result == 0)
+            {
+                return Result.Failure("Nothing created", 400);
+            }
+            return Result.Success($"{newProductType.ProductTypeId}");
         }
 
 
@@ -146,6 +149,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             var requestDict = request.ToDictionary(r => r.ServicePackageId, r => r.Price);
             var packageDict = packageList.ToDictionary(p => p.ServicePackageId, p => p.Duration);
+            //list lưu mapping id
+            List<ServicePackageMapping> mappingList = new();
             foreach (var packageId in servicePackageIds)
             {
                 
@@ -156,10 +161,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Duration = packageDict[packageId],
                     Price = requestDict[packageId],
                 };
+                mappingList.Add(mapping);
                 _servicePackageMappingRepository.AddEntity(mapping);
             }
+            var mappingIdList = mappingList.Select(m => m.ServicePackageMappingId).ToList();
             var result = await _unitOfWork.SaveChangeAsync();
-            return Result.Success($"{result}");
+            if(result == 0)
+            {
+                return Result.Failure($"Nothing created", 400);
+            }
+            return Result.Success(string.Join("\n",mappingIdList));
         }
         public async Task<Result> RemovePackagesAsync(Guid productTypeId, RemoveServicePackagesRequest removeServicePackagesRequest)
         {
