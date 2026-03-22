@@ -81,6 +81,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 VnpayTransactionId = vnpayTranId.ToString(),
                 VnPayResponseCode = vnp_ResponseCode,
                 VnPayTransactionStatus = vnp_TransactionStatus,
+                RedirectUrl = $"{_configuration.PaymentResultPage}vnp_ResponseCode={vnp_ResponseCode}&vnp_TxnRef={paymentId}"
                 };
             }
             // if (vnp_ResponseCode == "24")
@@ -98,6 +99,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 VnpayTransactionId = vnpayTranId.ToString(),
                 VnPayResponseCode = vnp_ResponseCode,
                 VnPayTransactionStatus = vnp_TransactionStatus,
+                RedirectUrl = $"{_configuration.PaymentResultPage}vnp_ResponseCode={vnp_ResponseCode}&vnp_TxnRef={paymentId}"
             };
         }
     }

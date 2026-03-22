@@ -3,6 +3,7 @@ using System;
 using DreamGuard.BE.DAL.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    partial class DreamGuardContextModelSnapshot : ModelSnapshot
+    [Migration("20260317193243_MigrateServiceModule")]
+    partial class MigrateServiceModule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -710,14 +713,14 @@ namespace DreamGuard.BE.DAL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("AddPrice")
-                        .HasColumnType("numeric");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("ProductTypeName")
                         .IsRequired()
@@ -783,34 +786,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.ToTable("ProductVariants", (string)null);
                 });
 
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceAsset", b =>
-                {
-                    b.Property<Guid>("ServiceAssetId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("PublicId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ServiceOrderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("ServiceAssetId");
-
-                    b.HasIndex("ServiceOrderId");
-
-                    b.ToTable("ServiceAssets", (string)null);
-                });
-
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceEvidence", b =>
                 {
                     b.Property<Guid>("SeId")
@@ -862,12 +837,12 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CustomerNote")
+                    b.Property<string>("CustomNote")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("OrderCode")
                         .IsRequired()
@@ -881,12 +856,12 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid>("ServicePackageMappingId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<decimal>("SubTotalPrice")
-                        .HasColumnType("numeric");
 
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("numeric");
@@ -894,44 +869,13 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("UserVoucherId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("SoId");
 
                     b.HasIndex("CustomerId");
 
-                    b.HasIndex("UserVoucherId")
-                        .IsUnique();
-
-                    b.ToTable("ServiceOrders", (string)null);
-                });
-
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceOrderItem", b =>
-                {
-                    b.Property<Guid>("ServiceOrderItemId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("ServicePackageMappingId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SoId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("ServiceOrderItemId");
-
                     b.HasIndex("ServicePackageMappingId");
 
-                    b.HasIndex("SoId");
-
-                    b.ToTable("ServiceOrderItems", (string)null);
+                    b.ToTable("ServiceOrders", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServicePackage", b =>
@@ -941,6 +885,10 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Benefits")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -955,6 +903,9 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("PublicId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -963,12 +914,12 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
                     b.Property<string>("SuitableFor")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("status")
+                        .HasColumnType("integer");
 
                     b.HasKey("ServicePackageId");
 
@@ -1599,17 +1550,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceAsset", b =>
-                {
-                    b.HasOne("DreamGuard.BE.DAL.Models.ServiceOrder", "ServiceOrder")
-                        .WithMany("ServiceAssets")
-                        .HasForeignKey("ServiceOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ServiceOrder");
-                });
-
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceEvidence", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.ServiceTask", "ServiceTask")
@@ -1629,30 +1569,13 @@ namespace DreamGuard.BE.DAL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DreamGuard.BE.DAL.Models.UserVoucher", "UserVoucher")
-                        .WithOne("ServiceOrder")
-                        .HasForeignKey("DreamGuard.BE.DAL.Models.ServiceOrder", "UserVoucherId");
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("UserVoucher");
-                });
-
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceOrderItem", b =>
-                {
                     b.HasOne("DreamGuard.BE.DAL.Models.ServicePackageMapping", "ServicePackageMapping")
-                        .WithMany("ServiceOrderItems")
+                        .WithMany("ServiceOrders")
                         .HasForeignKey("ServicePackageMappingId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DreamGuard.BE.DAL.Models.ServiceOrder", "ServiceOrder")
-                        .WithMany("ServiceOrderItems")
-                        .HasForeignKey("SoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ServiceOrder");
+                    b.Navigation("Customer");
 
                     b.Navigation("ServicePackageMapping");
                 });
@@ -1842,10 +1765,6 @@ namespace DreamGuard.BE.DAL.Migrations
                 {
                     b.Navigation("Payments");
 
-                    b.Navigation("ServiceAssets");
-
-                    b.Navigation("ServiceOrderItems");
-
                     b.Navigation("ServiceTask");
                 });
 
@@ -1856,7 +1775,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServicePackageMapping", b =>
                 {
-                    b.Navigation("ServiceOrderItems");
+                    b.Navigation("ServiceOrders");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceTask", b =>
@@ -1874,11 +1793,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("Staff");
-                });
-
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.UserVoucher", b =>
-                {
-                    b.Navigation("ServiceOrder");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Voucher", b =>

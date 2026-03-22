@@ -112,25 +112,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
             });
         }
 
-        public async Task<Result<PaymentResponse>> HandleVnPayCallbackAsync(
+        public async Task<Result<VnPaymentResponse>> HandleVnPayCallbackAsync(
             Microsoft.AspNetCore.Http.IQueryCollection queryParams)
         {
             var vnPayResult = _vnPayService.GetPaymentResult(queryParams);
 
             if (!Guid.TryParse(vnPayResult.PaymentId, out var paymentId))
             {
-                return Result<PaymentResponse>.Failure("Invalid payment reference.", 400);
+                return Result<VnPaymentResponse>.Failure("Invalid payment reference.", 400);
             }
 
             var payment = await _paymentRepository.GetByIdAsync(paymentId);
             if (payment == null)
             {
-                return Result<PaymentResponse>.Failure("Payment not found.", 404);
+                return Result<VnPaymentResponse>.Failure("Payment not found.", 404);
             }
 
             if (payment.Status != PaymentStatus.Pending)
             {
-                return Result<PaymentResponse>.Failure("Payment has already been processed.", 400);
+                return Result<VnPaymentResponse>.Failure("Payment has already been processed.", 400);
             }
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
@@ -162,19 +162,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _paymentRepository.UpdateAsync(payment);
 
                 await transaction.CommitAsync();
-
+                
                 // Auto-cancel order when payment fails (runs in separate transaction)
                 if (payment.Status == PaymentStatus.Failed && payment.POrderId.HasValue)
                 {
                     await _orderService.UpdateOrderStatusAsync(payment.POrderId.Value, OrderStatus.Cancelled);
                 }
 
-                return Result<PaymentResponse>.Success(MapToResponse(payment));
+                return Result<VnPaymentResponse>.Success(vnPayResult);
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
-                return Result<PaymentResponse>.Failure("Failed to process payment callback.", 500);
+                return Result<VnPaymentResponse>.Failure("Failed to process payment callback.", 500);
             }
         }
 

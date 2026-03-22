@@ -29,5 +29,17 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(c => c.User)
                 .FirstOrDefaultAsync(c => c.CustomerId == userId);
         }
+
+        public async Task<PaginatedList<Customer>> GetPaginatedListAsync(int pageNumber, int pageSize, string searchName)
+        {
+            var query = _context.Customers.Include(c => c.User).OrderByDescending(c => c.User.CreatedAt).AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchName))
+            {
+                query = query.Where(c => c.FullName.Contains(searchName));
+            }
+
+            return await PaginatedList<Customer>.CreateAsync(query, pageNumber, pageSize);
+        }
     }
 }

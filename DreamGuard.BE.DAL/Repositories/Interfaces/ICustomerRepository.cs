@@ -1,4 +1,5 @@
 using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 
 namespace DreamGuard.BE.DAL.Repositories.Interfaces
@@ -7,5 +8,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         Task<Customer?> GetByUserIdAsync(Guid userId);
         Task<Customer?> GetByUserIdWithUserAsync(Guid userId);
+        Task<PaginatedList<Customer>> GetPaginatedListAsync(int pageNumber, int pageSize, string searchName);
     }
 }
