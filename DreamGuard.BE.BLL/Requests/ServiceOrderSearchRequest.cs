@@ -9,6 +9,7 @@ namespace DreamGuard.BE.BLL.Requests
 {
     public class ServiceOrderSearchRequest
     {
+        public Guid? ServiceOrderId { get; set; }
         public string? OrderCode { get; set; }
         public PaymentMethod? PaymentMethod { get; set; }
         public PaymentStatus? PaymentStatus { get; set; }
