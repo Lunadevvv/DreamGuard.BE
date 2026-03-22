@@ -34,11 +34,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
 
 
-        public async Task<Result<List<ServicePackageMappingDetailResponse>>> GetMappingsByProductTypeIdAsync(Guid productTypeId)
+        public async Task<Result<List<ServicePackageMappingResponse>>> GetMappingsByProductTypeIdAsync(Guid productTypeId)
         {
             var servicePackageMapping = await _repo.GetMappingsByProductTypeIdAsync(productTypeId);
-            var servicePackageResponse = _mapper.Map<List<ServicePackageMappingDetailResponse>>(servicePackageMapping);
-            return Result<List<ServicePackageMappingDetailResponse>>.Success(servicePackageResponse);
+            var servicePackageResponse = _mapper.Map<List<ServicePackageMappingResponse>>(servicePackageMapping);
+            return Result<List<ServicePackageMappingResponse>>.Success(servicePackageResponse);
         }
     
         public async Task<Result<List<ServicePackageResponse>>> GetPackagesByProductTypeIdsAsync(List<Guid> productTypeIds)

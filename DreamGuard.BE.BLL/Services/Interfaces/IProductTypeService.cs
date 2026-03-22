@@ -23,6 +23,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> ToggleActiveAsync(Guid productTypeId);
         Task<Result> AssignPackagesAsync(Guid productTypeId, AssignServicePackagesRequest assignServicePackagesRequest);
         Task<Result> RemovePackagesAsync(Guid productTypeId, RemoveServicePackagesRequest removeServicePackagesRequest);
-        Task<Result<List<ServicePackageMappingDetailResponse>>> GetMappingsByProductTypeIdAsync(Guid productTypeId);
+        Task<Result<List<ServicePackageMappingResponse>>> GetMappingsByProductTypeIdAsync(Guid productTypeId);
     }
 }
