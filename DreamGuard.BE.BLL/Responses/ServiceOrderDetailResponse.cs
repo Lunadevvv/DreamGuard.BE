@@ -32,6 +32,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string PaymentStatus { get; set; }
         public List<ServiceOrderItemResponse> ServiceOrderItems { get; set; }
         public List<string> ImageUrl { get; set; }
+        public StaffResponse? Staff { get; set; }
 
     }
 }

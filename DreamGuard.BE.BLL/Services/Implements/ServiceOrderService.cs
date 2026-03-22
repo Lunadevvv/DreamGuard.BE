@@ -344,6 +344,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }).ToList(),
                 ImageUrl = serviceOrder.ServiceAssets.Select(sa => sa.Url).ToList()
             };
+            var staff = serviceOrder.ServiceTask?.Staff;
+            if(staff != null)
+            {
+                serviceOrderResponse.Staff = _mapper.Map<StaffResponse>(staff);
+            }
 
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             serviceOrderResponse.PaymentMethod = lastPayment.PaymentMethod.ToString();
