@@ -45,11 +45,14 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Staff> Staffs { get; set; }
         public DbSet<ServiceOrder> ServiceOrders { get; set; }
+        public DbSet<ServiceOrderItem> ServiceOrderItems { get; set; }
         public DbSet<ProductType> ProductTypes { get; set; }
         public DbSet<ServicePackage> ServicePackages { get; set; }
         public DbSet<ServicePackageMapping> ServicePackageMappings { get; set; }
         public DbSet<ServiceTask> ServiceTasks { get; set; }
         public DbSet<ServiceEvidence> ServiceEvidences { get; set; }
+        public DbSet<ServiceAsset> ServiceAssets { get; set; }
+       
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

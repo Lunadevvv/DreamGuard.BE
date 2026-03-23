@@ -25,10 +25,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<PaginatedList<ServicePackageResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServicePackageStatus status)
         {
             var servicePackage = await _repo.GetAllAdminAsync(pageNumber, pageSize, status);
-            if (servicePackage == null || servicePackage.TotalCount == 0)
-            {
-                return Result<PaginatedList<ServicePackageResponse>>.Failure("No service package found", 404);
-            }
             var servicePackageResponse = _mapper.Map<List<ServicePackageResponse>>(servicePackage.Items);
             var paginatedResult = new PaginatedList<ServicePackageResponse>(servicePackageResponse, servicePackage.TotalCount, servicePackage.PageNumber, servicePackage.PageSize);
             return Result<PaginatedList<ServicePackageResponse>>.Success(paginatedResult);
@@ -48,13 +44,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ServicePackage servicePackage = new ServicePackage
             {
                 PackageName = servicePackageRequest.PackageName,
-                Description = servicePackageRequest.Description,
-                Price = servicePackageRequest.Price,
                 Duration = servicePackageRequest.Duration,
                 SuitableFor = servicePackageRequest.SuitableFor,
                 Benefits = servicePackageRequest.Benefits,
                 ServiceContent = servicePackageRequest.ServiceContent,
-                status = servicePackageRequest.Status!.Value
+                Status = servicePackageRequest.Status!.Value
             };
             var uploadImageResult = await _cloudinaryService.UploadImageAsync(servicePackageRequest.FormFile, "PACKAGE_FOLDER");
             servicePackage.ImageUrl = uploadImageResult.Data!.Url;
@@ -115,7 +109,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service package not found", 404);
             }
-            servicePackage.status = status;
+            servicePackage.Status = status;
             var result = await _repo.UpdateAsync(servicePackage);
             return Result.Success($"{result}");
         }

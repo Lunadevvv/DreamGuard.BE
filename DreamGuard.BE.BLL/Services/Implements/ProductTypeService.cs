@@ -37,30 +37,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<List<ServicePackageMappingDetailResponse>>> GetMappingsByProductTypeIdAsync(Guid productTypeId)
         {
             var servicePackageMapping = await _repo.GetMappingsByProductTypeIdAsync(productTypeId);
-            if (!servicePackageMapping.Any())
-            {
-                return Result<List<ServicePackageMappingDetailResponse>>.Failure("Service mapping not found", 404);
-            }
             var servicePackageResponse = _mapper.Map<List<ServicePackageMappingDetailResponse>>(servicePackageMapping);
             return Result<List<ServicePackageMappingDetailResponse>>.Success(servicePackageResponse);
         }
-        public async Task<Result<List<ServicePackageResponse>>> GetPackagesByProductTypeIdAsync(Guid productTypeId)
+    
+        public async Task<Result<List<ServicePackageResponse>>> GetPackagesByProductTypeIdsAsync(List<Guid> productTypeIds)
         {
-            var servicePackage = await _servicePackageRepository.GetAllByProductTypeIdAsync(productTypeId);
-            if (!servicePackage.Any())
-            {
-                return Result<List<ServicePackageResponse>>.Failure("service package not found", 404);
-            }
+            var servicePackage = await _servicePackageRepository.GetAllByProductTypeIdsAsync(productTypeIds);
             var servicePackageResponse = _mapper.Map<List<ServicePackageResponse>>(servicePackage);
             return Result<List<ServicePackageResponse>>.Success(servicePackageResponse);
         }
-        public async Task<Result<PaginatedList<ProductTypeResponse>>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<Result<List<ServicePackageResponse>>> GetAllPackageByProductTypeIdAsync(Guid productTypeId)
         {
-            var productTypes = await _repo.GetAllAsync(pageNumber, pageSize);
-            if (productTypes == null || productTypes.TotalCount == 0)
-            {
-                return Result<PaginatedList<ProductTypeResponse>>.Failure("No productType found", 404);
-            }
+            var servicePackage =  _servicePackageRepository.GetAllByProductTypeIdAsync(productTypeId);
+            var servicePackageResponse = _mapper.Map<List<ServicePackageResponse>>(servicePackage);
+            return Result<List<ServicePackageResponse>>.Success(servicePackageResponse);
+        }
+        public async Task<Result<PaginatedList<ProductTypeResponse>>> GetAllAsync(int pageNumber, int pageSize, List<Guid> exceedProductTypeIds)
+        {
+            var productTypes = await _repo.GetAllAsync(pageNumber, pageSize, exceedProductTypeIds);
             var productTypeResponse = _mapper.Map<List<ProductTypeResponse>>(productTypes.Items);
             var paginatedResult = new PaginatedList<ProductTypeResponse>(productTypeResponse, productTypes.TotalCount, productTypes.PageNumber, productTypes.PageSize);
             return Result<PaginatedList<ProductTypeResponse>>.Success(paginatedResult);
@@ -69,10 +64,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<PaginatedList<ProductTypeResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, bool isActive)
         {
             var productTypes = await _repo.GetAllAdminAsync(pageNumber, pageSize, isActive);
-            if (productTypes == null || productTypes.TotalCount == 0)
-            {
-                return Result<PaginatedList<ProductTypeResponse>>.Failure("No productTypes found", 404);
-            }
             var productTypeResponse = _mapper.Map<List<ProductTypeResponse>>(productTypes.Items);
             var paginatedResult = new PaginatedList<ProductTypeResponse>(productTypeResponse, productTypes.TotalCount, productTypes.PageNumber, productTypes.PageSize);
             return Result<PaginatedList<ProductTypeResponse>>.Success(paginatedResult);
@@ -92,7 +83,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ProductType newProductType = new ProductType
             {
                 ProductTypeName = productType.ProductTypeName,
-                Price = productType.Price,
                 IsActive = productType.IsActive!.Value,
                 CreatedAt = DateTime.UtcNow
             };
@@ -128,6 +118,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> AssignPackagesAsync(Guid productTypeId, AssignServicePackagesRequest assignServicePackagesRequest)
         {
+            var request = assignServicePackagesRequest.Requests;
+            var servicePackageIds = request.Select(r => r.ServicePackageId).ToList();
+            //check if duplicate packageId in request
+            if (servicePackageIds.Count != servicePackageIds.Distinct().Count())
+            {
+                return Result.Failure($"Duplicate ServicePackageId in request", 400);
+            }
             //check if productType exist
             var productType = await _repo.GetByIdAsync(productTypeId);
             if (productType == null)
@@ -135,26 +132,29 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("productType not found", 404);
             }
             //check if all package exist
-            var packageList = await _servicePackageRepository.GetByListIdAsync(assignServicePackagesRequest.ServicePackageIds);
-            if (packageList.Count < assignServicePackagesRequest.ServicePackageIds.Count)
+            var packageList = await _servicePackageRepository.GetByListIdAsync(servicePackageIds);
+            var packageSet = packageList.Select(p => p.ServicePackageId).ToHashSet();
+            if(servicePackageIds.Any(id => !packageSet.Contains(id)))
             {
-                return Result.Failure($"Some ServicePackage not found", 404);
+                return Result.Failure($"Some ServicePackage not found or not activated", 404);
             }
             //check if mapping already exists with the same productTypeId and packageId
-            var isMappingExist = await _servicePackageMappingRepository.CheckMappingExistAsync(productTypeId, assignServicePackagesRequest.ServicePackageIds);
+            var isMappingExist = await _servicePackageMappingRepository.CheckMappingExistAsync(productTypeId, servicePackageIds);
             if (isMappingExist)
             {
                 return Result.Failure($"Mapping already exists for some ServicePackage", 400);
             }
-            foreach (var packageId in assignServicePackagesRequest.ServicePackageIds)
+            var requestDict = request.ToDictionary(r => r.ServicePackageId, r => r.Price);
+            var packageDict = packageList.ToDictionary(p => p.ServicePackageId, p => p.Duration);
+            foreach (var packageId in servicePackageIds)
             {
-
+                
                 ServicePackageMapping mapping = new ServicePackageMapping
                 {
                     ProductTypeId = productTypeId,
                     ServicePackageId = packageId,
-                    Duration = packageList.FirstOrDefault(p => p.ServicePackageId == packageId)!.Duration,
-                    Price = productType.Price + packageList.FirstOrDefault(p => p.ServicePackageId == packageId)!.Price
+                    Duration = packageDict[packageId],
+                    Price = requestDict[packageId],
                 };
                 _servicePackageMappingRepository.AddEntity(mapping);
             }
@@ -163,28 +163,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
         public async Task<Result> RemovePackagesAsync(Guid productTypeId, RemoveServicePackagesRequest removeServicePackagesRequest)
         {
+            //check if duplicate packageId in request
+            if (removeServicePackagesRequest.ServicePackageIds.Count != removeServicePackagesRequest.ServicePackageIds.Distinct().Count())
+            {
+                return Result.Failure($"Duplicate ServicePackageId in request", 400);
+            }
             //check if productType exist
             var productType = await _repo.GetByIdAsync(productTypeId);
             if (productType == null)
             {
                 return Result.Failure("productType not found", 404);
             }
-            //check if all package exist
-            var packageList = await _servicePackageRepository.GetByListIdAsync(removeServicePackagesRequest.ServicePackageIds);
-            if (packageList.Count < removeServicePackagesRequest.ServicePackageIds.Count)
-            {
-                return Result.Failure($"Some ServicePackage not found", 404);
-            }
             //check if mapping already exists with the same productTypeId and packageId
             var mappingList = await _servicePackageMappingRepository.GetListByIdAsync(productTypeId, removeServicePackagesRequest.ServicePackageIds);
-            if (mappingList.Count < removeServicePackagesRequest.ServicePackageIds.Count)
+            var mappingSet = mappingList.Select(m => m.ServicePackageId).ToHashSet();
+            if(removeServicePackagesRequest.ServicePackageIds.Any(id => !mappingSet.Contains(id)))
             {
-                return Result.Failure($"Mapping not exists for some ServicePackage", 400);
+                 return Result.Failure($"Mapping not exists for some ServicePackage", 400);
             }
-            foreach (var mapping in mappingList)
-            {
-                _servicePackageMappingRepository.RemoveEntity(mapping);
-            }
+            _servicePackageMappingRepository.RemoveRange(mappingList);
             var result = await _unitOfWork.SaveChangeAsync();
             return Result.Success($"{result}");
         }

@@ -49,19 +49,27 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<ServiceOrder?> GetByIdWithPayment(Guid serviceOrderId)
+        public async Task<ServiceOrder?> GetByIdWithDetail(Guid serviceOrderId)
         {
             try
             {
-               return await _context.ServiceOrders
-                    .Include(so => so.Payments)
-                    .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
+                return await _context.ServiceOrders
+                     .Include(so => so.Payments)
+                     .Include(so => so.ServiceOrderItems)
+                            .ThenInclude(soi => soi.ServicePackageMapping)
+                                 .ThenInclude(spm => spm.ServicePackage)
+                     .Include(so => so.ServiceOrderItems)
+                            .ThenInclude(soi => soi.ServicePackageMapping)
+                                 .ThenInclude(spm => spm.ProductType)
+                     .Include(so => so.ServiceAssets)
+                     .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving ServiceOrder with payment");
+                throw new Exception($"Error retrieving ServiceOrder with detail");
             }
         }
+
         public async Task<ServiceOrder?> GetByIdWithServiceTask(Guid serviceOrderId)
         {
             try

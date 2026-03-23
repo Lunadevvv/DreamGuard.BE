@@ -39,10 +39,26 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
+        //ko cần thì xóa, để tạm đây mai mốt có gì xài thì lấy ra dùng :v
+        //[HttpGet("/service-package")]
+        //public async Task<IActionResult> GetPackageByProductTypeIdsAsync([FromQuery]List<Guid> productTypeIds)
+        //{
+        //    var result = await _productTypeService.GetPackagesByProductTypeIdsAsync(productTypeIds);
+        //    if (!result.Succeeded)
+        //    {
+        //        return StatusCode(result.StatusCode, new ErrorResponse
+        //        {
+        //            ErrorCode = result.StatusCode,
+        //            Message = new List<string> { result.Error }
+        //        });
+        //    }
+        //    return Ok(result.Data);
+        //}
+
         [HttpGet("{productTypeId}/service-package")]
-        public async Task<IActionResult> GetPackageByProductTypeIdAsync(Guid productTypeId)
+        public async Task<IActionResult> GetAllPackageByProductTypeIdAsync(Guid productTypeId)
         {
-            var result = await _productTypeService.GetPackagesByProductTypeIdAsync(productTypeId);
+            var result = await _productTypeService.GetAllPackageByProductTypeIdAsync(productTypeId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -54,10 +70,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
+        [HttpPost("get-all")]
+        public async Task<IActionResult> GetAllAsync([FromBody] GetAllProductTypesRequest request)
         {
-            var result = await _productTypeService.GetAllAsync(pageNumber, pageSize);
+            var result = await _productTypeService.GetAllAsync(request.PageNumber, request.PageSize, request.ExceedProductTypeIds);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -102,7 +118,7 @@ namespace DreamGuard.BE.API.Controllers
      
         [HttpPost]
         [Authorize(Roles = Role.Admin)]
-        public async Task<IActionResult> CreateAsync([FromForm] ProductTypeCreateRequest serviceRequest)
+        public async Task<IActionResult> CreateAsync([FromBody] ProductTypeCreateRequest serviceRequest)
         {
             var result = await _productTypeService.CreateAsync(serviceRequest);
             if (!result.Succeeded)

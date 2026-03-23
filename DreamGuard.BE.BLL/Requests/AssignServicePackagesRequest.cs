@@ -9,7 +9,8 @@ namespace DreamGuard.BE.BLL.Requests
 {
     public class AssignServicePackagesRequest
     {
-        [MinLength(1, ErrorMessage = "At least one service package ID must be provided.")]
-        public List<Guid> ServicePackageIds { get; set; } = new();
+        [Required]
+        [MinLength(1, ErrorMessage = "At least one service package id and price is required.")]
+        public List<ServicePackageMappingCreateRequest> Requests { get; set; } 
     }
 }

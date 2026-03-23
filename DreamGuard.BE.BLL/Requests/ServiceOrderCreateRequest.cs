@@ -1,4 +1,5 @@
 ﻿using DreamGuard.BE.DAL.Constants;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -11,8 +12,8 @@ namespace DreamGuard.BE.BLL.Requests
     public class ServiceOrderCreateRequest
     {
         [Required]
-        public Guid ServicePackageMappingId { get; set; }
-
+        [MinLength(1, ErrorMessage = "At least one product type must be selected")]
+        public List<ServicePackageMappingOrderRequest> ServicePackageMappingOrderRequest { get; set; }
 
         [Required(ErrorMessage = "Phone number cannot be empty")]
         [RegularExpression(@"^(94|0)(3|5|7|8|9)\d{8}$", ErrorMessage = "Phone number doesn't have correct format")]
@@ -23,8 +24,11 @@ namespace DreamGuard.BE.BLL.Requests
         [Required]
         public string Address { get; set; }
         [Required]
-        public string CustomNote { get; set; }
+        public string CustomerNote { get; set; }
+        [Required]
+        public DateTime? AppointmentDate { get; set; }
         [Required]
         public PaymentMethod PaymentMethod { get; set; }
+        public Guid? UserVoucherId { get; set; }
     }
 }
