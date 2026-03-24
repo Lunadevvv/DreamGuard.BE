@@ -49,9 +49,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<ProductCustomizeType>.Success(result);
         }
 
-        public async Task<Result<PaginatedList<ProductCustomizeType>>> GetProductCustomizeTypesAsync(int pageNumber, int pageSize)
+        public async Task<Result<PaginatedList<ProductCustomizeType>>> GetProductCustomizeTypesAsync(int pageNumber, int pageSize, List<Guid> exceedProductCustomizeIds)
         {
-            var result = await _productCustomizeTypeRepository.GetAllWithPagingAsync(pageNumber, pageSize);
+            var result = await _productCustomizeTypeRepository.GetAllWithPagingAsync(pageNumber, pageSize, exceedProductCustomizeIds);
 
             return Result<PaginatedList<ProductCustomizeType>>.Success(result);
         }
@@ -64,10 +64,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Product customize type not found.", 404);
             }
 
-            _mapper.Map(customizeType, existingType);
+            existingType.DefaultPrice = customizeType.DefaultPrice;
+            existingType.Summary = customizeType.Summary;
+            existingType.Name = customizeType.Name;
+            existingType.Status = customizeType.Status;
 
-            _productCustomizeTypeRepository.UpdateEntity(existingType);
-            var result = await _unitOfWork.SaveChangeAsync();
+            var result = await _productCustomizeTypeRepository.UpdateAsync(existingType);
+            
             if (result <= 0)
             {
                 return Result.Failure("Failed to update product customize type.", 400);

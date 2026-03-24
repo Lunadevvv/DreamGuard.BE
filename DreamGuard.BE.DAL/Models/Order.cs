@@ -34,8 +34,6 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        //Customize order details
-        public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new List<ProductCustomizeDetail>();
 
         [JsonIgnore]
         public Customer? Customer { get; set; }

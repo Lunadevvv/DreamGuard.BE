@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.BLL.Responses
 {
@@ -13,6 +14,7 @@ namespace DreamGuard.BE.BLL.Responses
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
+        public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new();
     }
 
     public class OrderResponse
@@ -23,6 +25,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal SubTotal { get; set; }
         public decimal DiscountAmount { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal TotalAddonPrice { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
         public string? PaymentUrl { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -46,6 +49,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal SubTotal { get; set; }
         public decimal DiscountAmount { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal TotalAddonPrice { get; set; }
 
         public string? VoucherCode { get; set; }
         public decimal? VoucherDiscountValue { get; set; }

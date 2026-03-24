@@ -15,6 +15,6 @@ namespace DreamGuard.BE.DAL.Models
         public decimal DefaultPrice { get; set; }
         public CustomizeTypeStatus Status { get; set; }
         [JsonIgnore]
-        public List<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
+        public List<VariantCustomizeType> VariantCustomizeTypes { get; set; } = new List<VariantCustomizeType>();
     }
 }

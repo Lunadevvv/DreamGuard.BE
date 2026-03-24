@@ -20,6 +20,7 @@ namespace DreamGuard.BE.DAL.Models
         public ProductStatus Status { get; set; } = ProductStatus.Draft;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public bool IsNew { get; set; } = true;
+        public bool IsCustomizable { get; set; } = false;
         public Guid ProductId { get; set; }
         [JsonIgnore]
         public Product? Product { get; set; }
@@ -28,6 +29,6 @@ namespace DreamGuard.BE.DAL.Models
         [JsonIgnore]
         public List<ComboProductVariant> ComboProductVariants { get; set; } = new List<ComboProductVariant>();
         [JsonIgnore]
-        public List<ProductCustomizeType> ProductCustomizeTypes { get; set; } = new List<ProductCustomizeType>();
+        public List<VariantCustomizeType> VariantCustomizeTypes { get; set; } = new List<VariantCustomizeType>();
     }
 }

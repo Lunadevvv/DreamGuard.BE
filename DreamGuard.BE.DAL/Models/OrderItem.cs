@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
+using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.DAL.Models
 {
@@ -14,6 +15,9 @@ namespace DreamGuard.BE.DAL.Models
         public decimal TotalPrice { get; set; }
         public string ItemName { get; set; } = string.Empty;
 
+        //Customize order details
+        public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new List<ProductCustomizeDetail>();
+        
         [JsonIgnore]
         public Order? Order { get; set; }
         [JsonIgnore]

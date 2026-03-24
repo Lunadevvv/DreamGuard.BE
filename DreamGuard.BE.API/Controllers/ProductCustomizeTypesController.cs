@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
@@ -12,7 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DreamGuard.BE.API.Controllers
 {
     [ApiController]
-    [Route("api/product/customize-types")]
+    [Route("api/customize-types")]
     [Authorize(Roles = Role.Admin + "," + Role.Manager)]
     public class ProductCustomizeTypesController : ControllerBase
     {
@@ -24,11 +25,12 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         //get all customize types of product
-        [HttpGet]
-        public async Task<IActionResult> GetAllCustomizeTypes(int pageNumber = 1, int pageSize = 10)
+        [HttpPost("get-all")]
+        public async Task<IActionResult> GetAllCustomizeTypes([FromBody] GetCustomizeTypeRequest request)
         {
-            var result = await _productCustomizeTypeService.GetProductCustomizeTypesAsync(pageNumber, pageSize);
-            if (!result.Succeeded)            {
+            var result = await _productCustomizeTypeService.GetProductCustomizeTypesAsync(request.PageNumber, request.PageSize, request.ExceedProductCustomizeIds);
+            if (!result.Succeeded)
+            {
                 return StatusCode(result.StatusCode, new ErrorResponse
                 {
                     ErrorCode = result.StatusCode,

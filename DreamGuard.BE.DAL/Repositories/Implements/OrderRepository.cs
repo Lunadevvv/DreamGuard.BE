@@ -27,6 +27,8 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await _context.Orders
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.ProductVariant)
+                        .ThenInclude(pv => pv.VariantCustomizeTypes)
+                            .ThenInclude(vct => vct.ProductCustomizeType)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Combo)
                 .Include(o => o.UserVoucher)
