@@ -337,19 +337,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public async Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid userId, Guid orderId)
+        public async Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid orderId)
         {
-            var customer = await _customerRepository.GetByUserIdAsync(userId);
-            if (customer == null)
-                return Result<OrderDetailResponse>.Failure("Customer profile not found.", 404);
-
             var order = await _orderRepository.GetOrderWithItemsAsync(orderId);
             if (order == null)
             {
                 return Result<OrderDetailResponse>.Failure("Order not found.", 404);
             }
-
-            if (order.CustomerId != customer.CustomerId) return Result<OrderDetailResponse>.Failure("Order not found.", 404);
 
             return Result<OrderDetailResponse>.Success(MapToDetailResponse(order));
         }
