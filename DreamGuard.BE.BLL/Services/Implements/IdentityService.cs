@@ -74,7 +74,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 WriteAuthTokenAsHttpOnlyCookie("RefreshToken", refreshToken, DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenValidityInDays > 0 ? _jwtOptions.RefreshTokenValidityInDays : 7));
                 return Result<LoginResponse>.Success(loginResponse);
             }
-            return Result<LoginResponse>.Failure("Invalid Email or Password! Please try again!", 401); ;
+            return Result<LoginResponse>.Failure("Invalid Phone Number or Password! Please try again!", 401); ;
         }
 
         public async Task<Result<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken)
