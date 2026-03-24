@@ -17,7 +17,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<OrderServiceResponse>> OrderServiceAsync(ServiceOrderCreateRequest serviceOrderRequest, Guid customerId, string ipAddress);
         Task<Result> UploadServiceAsset(Guid serviceOrderId, ServiceAssetCreateRequest assetCreateRequest);
         Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(int pageNumber, int pageSize);
-        Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServiceOrderSearchRequest searchRequest);
+        Task<Result<PaginatedList<ServiceOrderAdminResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServiceOrderSearchRequest searchRequest);
         Task<Result<ServiceOrderDetailResponse>> GetByIdAsync(Guid serviceOrderId, Guid customerId, string role);
         Task<Result> UpdateServiceOrderAsync(Guid customerId, Guid serviceOrderId, ServiceOrderUpdateRequest updateRequest);
         Task<Result> RejectPendingServiceOrderAsync(Guid serviceOrderId);

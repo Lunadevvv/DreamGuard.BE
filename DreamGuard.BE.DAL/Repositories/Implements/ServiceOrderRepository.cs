@@ -19,12 +19,14 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public ServiceOrderRepository(DreamGuardContext context) : base(context)
         {
         }
-        public async Task<PaginatedList<ServiceOrder>> GetAllAdminAsync(int pageNumber, int pageSize, string? orderCode, PaymentMethod? paymentMethod, PaymentStatus? paymentStatus)
+        public async Task<PaginatedList<ServiceOrder>> GetAllAdminAsync(int pageNumber, int pageSize,Guid? serviceOrderId, string? orderCode, PaymentMethod? paymentMethod, PaymentStatus? paymentStatus)
         {
             try
             {
-                var query = _context.ServiceOrders.Include(so => so.Payments)
-                    .Where(so => (so.OrderCode == orderCode || string.IsNullOrEmpty(orderCode))
+                var query = _context.ServiceOrders.Include(so => so.Payments).Include(so => so.ServiceTask)
+                        .ThenInclude(st => st.Staff)
+                            .ThenInclude(s => s.User)
+                    .Where(so => (so.OrderCode == orderCode || string.IsNullOrEmpty(orderCode)) && (so.SoId == serviceOrderId || serviceOrderId == null)
                     && (so.Payments.Any(p => (p.PaymentMethod == paymentMethod || paymentMethod == null) 
                     && (p.Status == paymentStatus || paymentStatus == null)))
                     );
@@ -40,7 +42,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             try
             {
-                var query = _context.ServiceOrders.Include(so => so.Payments);
+                var query = _context.ServiceOrders
+                    .Include(so => so.Payments)
+                    .Include(so => so.ServiceTask)
+                        .ThenInclude(st => st.Staff)
+                            .ThenInclude(s => s.User);
                 return await PaginatedList<ServiceOrder>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
@@ -62,6 +68,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                             .ThenInclude(soi => soi.ServicePackageMapping)
                                  .ThenInclude(spm => spm.ProductType)
                      .Include(so => so.ServiceAssets)
+                     .Include(so => so.ServiceTask)
+                        .ThenInclude(st => st.Staff)
+                            .ThenInclude(s => s.User)
                      .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
             }
             catch (Exception ex)

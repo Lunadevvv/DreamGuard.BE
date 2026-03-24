@@ -1,4 +1,6 @@
-﻿using System;
+﻿using AutoMapper;
+using DreamGuard.BE.DAL.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Responses
 {
-    public class ServiceOrderDetailResponse
+    public class ServiceOrderAdminResponse
     {
         public Guid SoId { get; set; }
         public Guid? UserVoucherId { get; set; }
@@ -28,11 +30,19 @@ namespace DreamGuard.BE.BLL.Responses
         public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
+
         public string PaymentMethod { get; set; }
         public string PaymentStatus { get; set; }
-        public List<ServiceOrderItemResponse> ServiceOrderItems { get; set; }
-        public List<string> ImageUrl { get; set; }
         public StaffResponse? Staff { get; set; }
-
+        public ServiceTaskResponse? ServiceTask { get; set; }
+        private class Mapping : Profile
+        {
+            public Mapping()
+            {
+                CreateMap<ServiceOrder, ServiceOrderAdminResponse>()
+                     .ForMember(dest => dest.Staff, opt => opt.MapFrom(src => src.ServiceTask == null ? null : src.ServiceTask.Staff))
+                     .ForMember(dest => dest.ServiceTask, opt => opt.MapFrom(src => src.ServiceTask));
+            }
+        }
     }
 }

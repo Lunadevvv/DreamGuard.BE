@@ -57,7 +57,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 StaffId = serviceTaskCreateRequest.StaffId,
             };
             var result = await _repo.CreateAsync(serviceTask);
-            return Result.Success($"{result}");
+            if (result == 0)
+            {
+                return Result.Failure("Nothing created", 400);
+            }
+
+            return Result.Success($"{serviceTask.ServiceTaskId}");
         }
 
 

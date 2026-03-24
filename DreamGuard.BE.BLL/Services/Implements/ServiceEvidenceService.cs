@@ -55,6 +55,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service task is not in CheckedOut.", 400);
             }
+            List<ServiceEvidence> evidenceList = new();
             foreach (var file in createRequest.Files)
             {
                 var uploadImageResult = await _cloudinaryService.UploadImageAsync(file, "SERVICE_EVIDENCE_FOLDER");
@@ -70,10 +71,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     PublicId = uploadImageResult.Data.PublicId,
                     EvidenceType = file.ContentType
                 };
+                evidenceList.Add(serviceEvidence);
                 _serviceEvidenceRepository.AddEntity(serviceEvidence);
             }
+            var evidenceIds = evidenceList.Select(e => e.SeId).ToList();
             var result = await _unitOfWork.SaveChangeAsync();
-            return Result.Success($"{result}");
+            if (result == 0)
+            {
+                return Result.Failure("Nothing created", 400);
+            }
+            return Result.Success(string.Join("\n", evidenceIds));
         }
 
         public async Task<Result<PaginatedList<ServiceEvidenceResponse>>> GetAllAsync(Guid staffId, int pagenumber, int pageSize, Guid serviceTaskId)

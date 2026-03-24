@@ -15,15 +15,15 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid ServicePackageId { get; set; }
         public int Duration { get; set; }
         public decimal Price { get; set; }
-        public string ProductTypeName { get; set; } 
-        public string ServicePackageName { get; set; }
+        public ProductTypeResponse ProductType { get; set; }
+        public ServicePackageResponse ServicePackage { get; set; }
         private class Mapping : Profile
         {
             public Mapping()
             {
                 CreateMap<ServicePackageMapping, ServicePackageMappingResponse>()
-                    .ForMember(dest => dest.ProductTypeName, opt => opt.MapFrom(src => src.ProductType.ProductTypeName))
-                    .ForMember(dest => dest.ServicePackageName, opt => opt.MapFrom(src => src.ServicePackage.PackageName));
+                    .ForMember(dest => dest.ProductType, opt => opt.MapFrom(src => src.ProductType))
+                    .ForMember(dest => dest.ServicePackage, opt => opt.MapFrom(src => src.ServicePackage));
             }
         }
     }

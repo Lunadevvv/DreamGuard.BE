@@ -292,19 +292,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<ServiceOrderResponse>>.Success(paginatedResult);
         }
 
-        public async Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServiceOrderSearchRequest searchRequest)
+        public async Task<Result<PaginatedList<ServiceOrderAdminResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServiceOrderSearchRequest searchRequest)
         {
-            var serviceOrder = await _serviceOrderRepository.GetAllAdminAsync(pageNumber, pageSize, searchRequest.OrderCode, searchRequest.PaymentMethod, searchRequest.PaymentStatus);
+            var serviceOrder = await _serviceOrderRepository.GetAllAdminAsync(pageNumber, pageSize, searchRequest.ServiceOrderId , searchRequest.OrderCode, searchRequest.PaymentMethod, searchRequest.PaymentStatus);
 
-            var serviceOrderResponse = _mapper.Map<List<ServiceOrderResponse>>(serviceOrder.Items);
+            var ServiceOrderAdminResponse = _mapper.Map<List<ServiceOrderAdminResponse>>(serviceOrder.Items);
             for (int i = 0; i < serviceOrder.Items.Count; i++)
             {
                 var lastPayment = serviceOrder.Items.ElementAt(i).Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-                serviceOrderResponse[i].PaymentMethod = lastPayment.PaymentMethod.ToString();
-                serviceOrderResponse[i].PaymentStatus = lastPayment.Status.ToString();
+                ServiceOrderAdminResponse[i].PaymentMethod = lastPayment.PaymentMethod.ToString();
+                ServiceOrderAdminResponse[i].PaymentStatus = lastPayment.Status.ToString();
             }
-            var paginatedResult = new PaginatedList<ServiceOrderResponse>(serviceOrderResponse, serviceOrder.TotalCount, serviceOrder.PageNumber, serviceOrder.PageSize);
-            return Result<PaginatedList<ServiceOrderResponse>>.Success(paginatedResult);
+            var paginatedResult = new PaginatedList<ServiceOrderAdminResponse>(ServiceOrderAdminResponse, serviceOrder.TotalCount, serviceOrder.PageNumber, serviceOrder.PageSize);
+            return Result<PaginatedList<ServiceOrderAdminResponse>>.Success(paginatedResult);
         }
         public async Task<Result<ServiceOrderDetailResponse>> GetByIdAsync(Guid serviceOrderId, Guid customerId, string role)
         {
@@ -344,6 +344,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }).ToList(),
                 ImageUrl = serviceOrder.ServiceAssets.Select(sa => sa.Url).ToList()
             };
+            var staff = serviceOrder.ServiceTask?.Staff;
+            if(staff != null)
+            {
+                serviceOrderResponse.Staff = _mapper.Map<StaffResponse>(staff);
+            }
 
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             serviceOrderResponse.PaymentMethod = lastPayment.PaymentMethod.ToString();
