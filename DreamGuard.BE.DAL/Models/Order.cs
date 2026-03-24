@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.DAL.Models
 {
@@ -25,13 +26,14 @@ namespace DreamGuard.BE.DAL.Models
         public decimal SubTotal { get; set; }
         public decimal DiscountAmount { get; set; }
         public decimal TotalAmount { get; set; }
-
+        public decimal TotalAddonPrice { get; set; }
         // Voucher
         public Guid? UserVoucherId { get; set; }
 
         public string? Note { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
 
         [JsonIgnore]
         public Customer? Customer { get; set; }

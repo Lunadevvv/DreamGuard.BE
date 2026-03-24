@@ -17,11 +17,22 @@ namespace DreamGuard.BE.BLL.Responses
         public ProductAttribute? Attributes { get; set; }
         public string Size { get; set; } = string.Empty;
         public bool IsNew { get; set; }
+        public bool IsCustomizable { get; set; }
         public ProductStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
         public Guid ProductId { get; set; }
         public int StockQuantity { get; set; }
         public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
+        public List<CustomizeOptionResponse> CustomizeOptions { get; set; } = new();
+    }
+
+    public class CustomizeOptionResponse
+    {
+        public Guid CustomizeTypeId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Summary { get; set; } = string.Empty;
+        public decimal DefaultPrice { get; set; }
+        public decimal OverridePrice { get; set; }
     }
 
     public class ProductVariantGroupResponse

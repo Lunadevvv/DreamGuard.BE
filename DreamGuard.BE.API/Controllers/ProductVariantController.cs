@@ -122,5 +122,73 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok($"Updated variant's status to '{status}' successfully!");
         }
+
+        //Create new variant with customize types
+        [HttpPost("with-customize")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> CreateVariantWithCustomizeAsync([FromBody] CreateVariantWithCustomizeRequest request)
+        {
+            var result = await _productVariantService.CreateVariantWithCustomizeAsync(request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        //Assign customize type to variant
+        [HttpPost("{id}/customize-types")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> AssignCustomizeTypeAsync(Guid id, [FromBody] AssignCustomizeTypeRequest request)
+        {
+            var result = await _productVariantService.AssignCustomizeTypeAsync(id, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        //Remove customize type from variant
+        [HttpDelete("{id}/customize-types/{cusId}")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> RemoveCustomizeTypeAsync(Guid id, Guid cusId)
+        {
+            var result = await _productVariantService.RemoveCustomizeTypeAsync(id, cusId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        //Update customize type price for variant
+        [HttpPut("{id}/customize-types/{cusId}/price")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> UpdateCustomizeTypePriceAsync(Guid id, Guid cusId, [FromBody] UpdateCustomizeTypePriceRequest request)
+        {
+            var result = await _productVariantService.UpdateCustomizeTypePriceAsync(id, cusId, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
     }
 }

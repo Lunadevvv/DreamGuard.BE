@@ -21,6 +21,8 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             var query = await _context.ProductVariants
                 .Include(v => v.Inventory)
+                .Include(v => v.VariantCustomizeTypes)
+                    .ThenInclude(vct => vct.ProductCustomizeType)
                 .Where(v => v.ProductId == productId && v.Status != ProductStatus.Draft && v.Status != ProductStatus.Hidden)
                 .OrderByDescending(v => v.CreatedAt)
                 .AsNoTracking()
@@ -44,6 +46,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             return await _context.ProductVariants
                 .Include(v => v.Inventory)
+                .Include(v => v.VariantCustomizeTypes)
+                    .ThenInclude(vct => vct.ProductCustomizeType)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(v => v.Id == id);
         }
 
