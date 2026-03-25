@@ -11,6 +11,7 @@ using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using DreamGuard.BE.BLL.Utilities;
+using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -22,6 +23,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IInventoryRepository _inventoryRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IProductCustomizeTypeRepository _productCustomizeTypeRepository;
 
         public CartService(
             ICartRepository cartRepository,
@@ -29,7 +31,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IComboRepository comboRepository,
             IInventoryRepository inventoryRepository,
             IUnitOfWork unitOfWork,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IProductCustomizeTypeRepository productCustomizeTypeRepository)
         {
             _cartRepository = cartRepository;
             _variantRepository = variantRepository;
@@ -37,6 +40,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _inventoryRepository = inventoryRepository;
             _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
+            _productCustomizeTypeRepository = productCustomizeTypeRepository;
         }
 
         public async Task<Result<CartResponse>> GetCartAsync(Guid userId)
@@ -66,7 +70,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 CartId = cart.Id,
                 Items = items,
-                TotalAmount = items.Where(i => i.IsAvailable).Sum(i => i.SubTotal),
+                TotalAmount = items.Where(i => i.IsAvailable).Sum(i => i.SubTotal + i.TotalAddOnPrice),
                 TotalItems = items.Count
             });
         }
@@ -116,6 +120,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _cartRepository.CreateAsync(cart);
             }
 
+            //Get all CustomizeType 
+            var customizeTypes = await _productCustomizeTypeRepository.GetAllAsync();
+            //map customize details from request to cart item details
+            var customizeDetails = request.ProductCustomizeDetailRequest.Select(d =>
+            {
+                var type = customizeTypes.FirstOrDefault(ct => ct.Id == d.ProductCustomizeTypeId);
+                return new ProductCustomizeDetail
+                {
+                    CustomizeTypeName = type?.Name ?? "Unknown",
+                    CustomizeContent = d.CustomizeContent,
+                    AddOnPrice = type?.DefaultPrice ?? 0
+                };
+            }).ToList();
+
             // Check if item already exists in cart
             var existingItem = await _cartRepository.GetCartItemAsync(
                 cart.Id, request.ProductVariantId, request.ComboId);
@@ -147,7 +165,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ProductVariantId = request.ProductVariantId,
                     ComboId = request.ComboId,
                     Quantity = request.Quantity,
-                    AddedAt = DateTime.UtcNow
+                    AddedAt = DateTime.UtcNow,
+                    ProductCustomizeDetails = customizeDetails
                 };
                 await _cartRepository.AddCartItemAsync(cartItem);
             }
@@ -445,7 +464,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Quantity = ci.Quantity,
                     SubTotal = variant.SalePrice * ci.Quantity,
                     AvailableStock = stock,
-                    IsAvailable = isAvailable
+                    IsAvailable = isAvailable,
+                    ProductCustomizeDetails = ci.ProductCustomizeDetails ?? new(),
+                    TotalAddOnPrice = ci.ProductCustomizeDetails?.Sum(d => d.AddOnPrice) * ci.Quantity ?? 0
                 };
             }
             else if (ci.ComboId.HasValue && ci.Combo != null)

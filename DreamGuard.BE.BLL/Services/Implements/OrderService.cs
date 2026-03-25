@@ -86,7 +86,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var orderItems = new List<OrderItem>();
                 decimal subTotal = 0;
 
-                // Pre-load all variants and inventories to avoid N+1 queries
+                // Pre-load all variants and inventories
                 var variantIds = cart.CartItems
                     .Where(ci => ci.ProductVariantId.HasValue)
                     .Select(ci => ci.ProductVariantId!.Value).ToList();
@@ -128,6 +128,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                         var productName = cartItem.ProductVariant?.Product?.Name ?? "Unknown";
                         var itemPrice = variant.SalePrice;
+                        var itemAddonPrice = cartItem.ProductCustomizeDetails?.Sum(d => d.AddOnPrice) ?? 0;
                         orderItems.Add(new OrderItem
                         {
                             Id = Guid.NewGuid(),
@@ -136,7 +137,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             Quantity = cartItem.Quantity,
                             UnitPrice = itemPrice,
                             TotalPrice = itemPrice * cartItem.Quantity,
-                            ItemName = $"{productName} - {variant.Size}"
+                            ItemName = $"{productName} - {variant.Size}",
+                            ProductCustomizeDetails = cartItem.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
+                            {
+                                CustomizeTypeName = d.CustomizeTypeName,
+                                CustomizeContent = d.CustomizeContent,
+                                AddOnPrice = d.AddOnPrice
+                            }).ToList() ?? new List<ProductCustomizeDetail>()
                         });
                         subTotal += itemPrice * cartItem.Quantity;
                     }
@@ -233,7 +240,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     await _userVoucherRepository.UpdateAsync(userVoucher);
                 }
 
-                var totalAmount = Math.Max(0, subTotal - discountAmount);
+                // Calculate TotalAddonPrice from cart items' customize details
+                decimal totalAddonPrice = 0;
+                var allCustomizeDetails = new List<ProductCustomizeDetail>();
+                foreach (var cartItem in cart.CartItems)
+                {
+                    if (cartItem.ProductCustomizeDetails != null && cartItem.ProductCustomizeDetails.Any())
+                    {
+                        var itemAddon = cartItem.ProductCustomizeDetails.Sum(d => d.AddOnPrice) * cartItem.Quantity;
+                        totalAddonPrice += itemAddon;
+                        allCustomizeDetails.AddRange(cartItem.ProductCustomizeDetails);
+                    }
+                }
+
+                var totalAmount = Math.Max(0, subTotal + totalAddonPrice - discountAmount);
 
                 // Generate order code
                 var orderCode = GenerateOrderCode();
@@ -255,6 +275,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     SubTotal = subTotal,
                     DiscountAmount = discountAmount,
                     TotalAmount = totalAmount,
+                    TotalAddonPrice = totalAddonPrice,
                     UserVoucherId = request.UserVoucherId,
                     Note = request.Note,
                     CreatedAt = DateTime.UtcNow,
@@ -325,6 +346,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     SubTotal = order.SubTotal,
                     DiscountAmount = order.DiscountAmount,
                     TotalAmount = order.TotalAmount,
+                    TotalAddonPrice = order.TotalAddonPrice,
                     PaymentMethod = request.PaymentMethod,
                     PaymentUrl = paymentUrl,
                     CreatedAt = order.CreatedAt
@@ -337,19 +359,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public async Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid userId, Guid orderId)
+        public async Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid orderId)
         {
-            var customer = await _customerRepository.GetByUserIdAsync(userId);
-            if (customer == null)
-                return Result<OrderDetailResponse>.Failure("Customer profile not found.", 404);
-
             var order = await _orderRepository.GetOrderWithItemsAsync(orderId);
             if (order == null)
             {
                 return Result<OrderDetailResponse>.Failure("Order not found.", 404);
             }
-
-            if (order.CustomerId != customer.CustomerId) return Result<OrderDetailResponse>.Failure("Order not found.", 404);
 
             return Result<OrderDetailResponse>.Success(MapToDetailResponse(order));
         }
@@ -564,11 +580,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ItemName = oi.ItemName,
                     Quantity = oi.Quantity,
                     UnitPrice = oi.UnitPrice,
-                    TotalPrice = oi.TotalPrice
+                    TotalPrice = oi.TotalPrice,
+                    ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
+                    {
+                        CustomizeTypeName = d.CustomizeTypeName,
+                        CustomizeContent = d.CustomizeContent,
+                        AddOnPrice = d.AddOnPrice
+                    }).ToList() ?? new List<ProductCustomizeDetail>()
                 }).ToList() ?? new List<OrderItemResponse>(),
                 SubTotal = order.SubTotal,
                 DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
+                TotalAddonPrice = order.TotalAddonPrice,
                 VoucherCode = order.UserVoucher?.Voucher?.Code,
                 VoucherDiscountValue = order.UserVoucher?.Voucher?.DiscountValue,
                 Note = order.Note,

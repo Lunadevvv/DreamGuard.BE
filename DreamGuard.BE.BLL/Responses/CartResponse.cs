@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.BLL.Responses
 {
@@ -16,6 +17,8 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal SubTotal { get; set; }
         public int AvailableStock { get; set; }
         public bool IsAvailable { get; set; }
+        public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new();
+        public decimal TotalAddOnPrice { get; set; }
     }
 
     public class CartResponse

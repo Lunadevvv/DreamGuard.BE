@@ -68,12 +68,7 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet("{orderId}")]
         public async Task<IActionResult> GetOrderById(Guid orderId)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-            {
-                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
-            }
-
-            var result = await _orderService.GetOrderByIdAsync(userId, orderId);
+            var result = await _orderService.GetOrderByIdAsync(orderId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

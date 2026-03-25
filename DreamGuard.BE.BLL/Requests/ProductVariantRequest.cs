@@ -73,4 +73,34 @@ namespace DreamGuard.BE.BLL.Requests
             }
         }
     }
+
+    public class CreateVariantWithCustomizeRequest : CreateProductVariantRequest 
+    {
+        //Customize Types
+        public List<Guid> CustomizeTypeIds { get; set; } = new List<Guid>();
+
+        private class Mapping : Profile
+        {
+            public Mapping()
+            {
+                CreateMap<CreateVariantWithCustomizeRequest, ProductVariant>();
+            }
+        }
+    }
+
+    public class AssignCustomizeTypeRequest
+    {
+        [Required(ErrorMessage = "CustomizeTypeId is required.")]
+        public Guid CustomizeTypeId { get; set; }
+
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "OverridePrice must be a non-negative value.")]
+        public decimal OverridePrice { get; set; }
+    }
+
+    public class UpdateCustomizeTypePriceRequest
+    {
+        [Required(ErrorMessage = "OverridePrice is required.")]
+        [Range(0, (double)decimal.MaxValue, ErrorMessage = "OverridePrice must be a non-negative value.")]
+        public decimal OverridePrice { get; set; }
+    }
 }

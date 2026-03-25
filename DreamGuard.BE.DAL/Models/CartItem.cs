@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
+using DreamGuard.BE.DAL.ModelExtensions;
 
 namespace DreamGuard.BE.DAL.Models
 {
@@ -12,6 +13,9 @@ namespace DreamGuard.BE.DAL.Models
         public int Quantity { get; set; }
         public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 
+        //Product Customize Details
+        public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new List<ProductCustomizeDetail>();
+        
         [JsonIgnore]
         public Cart? Cart { get; set; }
         [JsonIgnore]
