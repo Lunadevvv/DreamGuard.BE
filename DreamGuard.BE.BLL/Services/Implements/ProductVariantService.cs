@@ -19,7 +19,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         private readonly IProductVariantRepository _variantRepository;
         private readonly IProductRepository _productRepository;
-        private readonly IInventoryRepository _inventoryRepository;
+        private readonly IInventoryService _inventoryService;
         private readonly IProductCustomizeTypeRepository _customizeTypeRepository;
         private readonly IVariantCustomizeTypeRepository _variantCustomizeTypeRepository;
         private readonly IUnitOfWork _unitOfWork;
@@ -28,7 +28,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public ProductVariantService(
             IProductVariantRepository variantRepository,
             IProductRepository productRepository,
-            IInventoryRepository inventoryRepository,
+            IInventoryService inventoryService,
             IProductCustomizeTypeRepository customizeTypeRepository,
             IVariantCustomizeTypeRepository variantCustomizeTypeRepository,
             IUnitOfWork unitOfWork,
@@ -36,7 +36,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             _variantRepository = variantRepository;
             _productRepository = productRepository;
-            _inventoryRepository = inventoryRepository;
+            _inventoryService = inventoryService;
             _customizeTypeRepository = customizeTypeRepository;
             _variantCustomizeTypeRepository = variantCustomizeTypeRepository;
             _unitOfWork = unitOfWork;
@@ -148,8 +148,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ProductVariantId = variant.Id
                 };
 
-                var inventoryResult = await _inventoryRepository.CreateAsync(inventory);
-                if (inventoryResult < 0)
+                var inventoryResult = await _inventoryService.CreateInventoryAsync(inventory);
+                if (!inventoryResult.Succeeded)
                 {
                     await transaction.RollbackAsync();
                     return Result<ProductVariantResponse>.Failure("Failed to create inventory for variant.", 400);
@@ -163,6 +163,85 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await transaction.RollbackAsync();
                 return Result<ProductVariantResponse>.Failure("Failed to create variant with inventory.", 500);
             }
+        }
+
+        public async Task<Result<ProductVariantResponse>> CreateVariantWithFullyCustomizeAsync(CreateProductVariantRequest request)
+        {
+            var product = await _productRepository.GetByIdAsync(request.ProductId);
+            if (product == null)
+            {
+                return Result<ProductVariantResponse>.Failure("Product not found.", 404);
+            }
+
+            if (request.SalePrice > request.BasePrice)
+            {
+                return Result<ProductVariantResponse>.Failure(
+                    "Sale price cannot be greater than base price.", 400);
+            }
+
+            if (await _variantRepository.IsVariantSkuUniqueAsync(request.Sku))
+            {
+                return Result<ProductVariantResponse>.Failure("SKU must be unique.", 400);
+            }
+
+            //get all customize types for fully customize product
+            var customizeTypes = await _customizeTypeRepository.GetAllAsync();
+            if (customizeTypes == null || !customizeTypes.Any())
+            {
+                return Result<ProductVariantResponse>.Failure("No customize types available for fully customizable product.", 400);
+            }
+
+            var variant = _mapper.Map<ProductVariant>(request);
+            variant.Id = Guid.NewGuid();
+            variant.Status = ProductStatus.Draft;
+            variant.CreatedAt = DateTime.UtcNow;
+            variant.Size = GenerateSize(variant.Attributes);
+            variant.IsCustomizable = customizeTypes.Any();
+
+            var variantResult = await _variantRepository.CreateAsync(variant);
+            if (variantResult < 0)
+            {
+                return Result<ProductVariantResponse>.Failure("Failed to create variant.", 400);
+            }
+
+            var inventory = new Inventory
+            {
+                Id = Guid.NewGuid(),
+                Quantity = 0,
+                LowStockThreshold = 10,
+                UpdatedAt = DateTime.UtcNow,
+                ProductVariantId = variant.Id
+            };
+
+            var inventoryResult = await _inventoryService.CreateInventoryAsync(inventory);
+            if (!inventoryResult.Succeeded)            
+            {
+                return Result<ProductVariantResponse>.Failure("Failed to create inventory for variant.", 400);
+            }
+
+            // Batch-create all VariantCustomizeType records at once (no N+1)
+            if (customizeTypes.Any())
+            {
+                var variantCustomizeTypes = customizeTypes.Select(ct => new VariantCustomizeType
+                {
+                    CusId = ct.Id,
+                    ProductVariantId = variant.Id,
+                    OverridePrice = ct.DefaultPrice
+                }).ToList();
+
+                await _variantCustomizeTypeRepository.AddRangeAsync(variantCustomizeTypes);
+
+                // Populate navigation properties for the response
+                variant.VariantCustomizeTypes = variantCustomizeTypes;
+                foreach (var vct in variant.VariantCustomizeTypes)
+                {
+                    vct.ProductCustomizeType = customizeTypes.First(ct => ct.Id == vct.CusId);
+                }
+            }
+
+            variant.Inventory = inventory;
+
+            return Result<ProductVariantResponse>.Success(MapToResponse(variant));
         }
 
         public async Task<Result<ProductVariantResponse>> CreateVariantWithCustomizeAsync(CreateVariantWithCustomizeRequest request)
@@ -236,8 +315,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ProductVariantId = variant.Id
                 };
 
-                var inventoryResult = await _inventoryRepository.CreateAsync(inventory);
-                if (inventoryResult < 0)
+                var inventoryResult = await _inventoryService.CreateInventoryAsync(inventory);
+                if (!inventoryResult.Succeeded)
                 {
                     await transaction.RollbackAsync();
                     return Result<ProductVariantResponse>.Failure("Failed to create inventory for variant.", 400);

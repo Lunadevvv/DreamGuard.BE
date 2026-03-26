@@ -19,6 +19,15 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             _context = context;
         }
 
+        public async Task<List<Guid>> GetAllCustomizeTypeIds()
+        {
+            var ids = await _context.ProductCustomizeTypes
+                .Select(pct => pct.Id)
+                .ToListAsync() ?? new List<Guid>();
+
+            return ids;
+        }
+
         public async Task<PaginatedList<ProductCustomizeType>> GetAllWithPagingAsync(int pageNumber, int pageSize, List<Guid> exceedProductCustomizeIds)
         {
             var query = _context.ProductCustomizeTypes

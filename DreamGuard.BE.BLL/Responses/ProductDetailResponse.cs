@@ -18,6 +18,7 @@ namespace DreamGuard.BE.BLL.Responses
         public int? WarrantyPolicyDay { get; set; }
         public int? ReturnPolicyDay { get; set; }
         public ProductStatus Status { get; set; }
+        public FullyCustomizedProductType FullyCustomizedProductType { get; set; }
         public double AverageRating { get; set; }
         public List<string> ImageUrls { get; set; } = new List<string>();
         public List<ProductVariantResponse> Variants { get; set; } = new List<ProductVariantResponse>();

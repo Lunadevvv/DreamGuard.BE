@@ -12,5 +12,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         public Task<PaginatedList<ProductCustomizeType>> GetAllWithPagingAsync(int pageNumber, int pageSize, List<Guid> exceedProductCustomizeIds);
         Task<List<ProductCustomizeType>> GetByIdsAsync(List<Guid> ids);
+        Task<List<Guid>> GetAllCustomizeTypeIds();
     }
 }

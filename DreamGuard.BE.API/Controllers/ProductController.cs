@@ -86,6 +86,39 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
+        //Create new Product with fully customizable variant
+        [HttpPost("fully-customize")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateFullyCustomizeProductAsync([FromBody] CreateFullyCustomizeProductRequest request)
+        {
+            var result = await _productService.CreateFullyCustomizeProductAsync(request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        //Get fully customizable products
+        [HttpGet("fully-customized")]
+        public async Task<IActionResult> GetFullyCustomizedProductsAsync()
+        {
+            var result = await _productService.GetFullyCustomizedProductsAsync();
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         //Create
         [HttpPost]
         [Authorize(Roles = "Admin, Manager")]

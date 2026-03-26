@@ -11,6 +11,7 @@ using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using DreamGuard.BE.BLL.Requests;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -19,13 +20,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IProductRepository _productRepository;
         private readonly IProductVariantRepository _variantRepository;
         private readonly IProductVariantService _variantService;
+        private readonly IProductCustomizeTypeRepository _customizeTypeRepository;
         private readonly IUnitOfWork _unitOfWork;
-        public ProductService(IProductRepository productRepository, IProductVariantRepository variantRepository, IProductVariantService variantService, IUnitOfWork unitOfWork)
+        public ProductService(
+            IProductRepository productRepository, 
+            IProductVariantRepository variantRepository, 
+            IProductVariantService variantService, 
+            IUnitOfWork unitOfWork,
+            IProductCustomizeTypeRepository customizeTypeRepository)
         {
             _productRepository = productRepository;
             _variantRepository = variantRepository;
             _variantService = variantService;
             _unitOfWork = unitOfWork;
+            _customizeTypeRepository = customizeTypeRepository;
         }
 
         public async Task<Result<bool>> CreateProductAsync(Product product)
@@ -183,6 +191,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ReturnPolicyDay = prod.ReturnPolicyDay,
                 Status = prod.Status,
                 Variants = variantsResult.Data!,
+                FullyCustomizedProductType = prod.FullyCustomizedProductType,
                 ImageUrls = prod.Assets.Select(a => a.Url).ToList()
             };
 
@@ -228,6 +237,113 @@ namespace DreamGuard.BE.BLL.Services.Implements
             );
 
             return Result<PaginatedList<ProductResponseForAdmin>>.Success(paginatedResponse);
+        }
+
+        public async Task<Result<ProductDetailResponse>> CreateFullyCustomizeProductAsync(CreateFullyCustomizeProductRequest request)
+        {
+            //check if product with the same slug already exists
+            var existingProduct = await _productRepository.GetProductBySlugAsync(request.Slug);
+            if (existingProduct != null)
+            {
+                return Result<ProductDetailResponse>.Failure("A product with the same slug already exists.", 400);
+            }
+
+            //get all customize type ids
+            var allCustomizeTypeIds = await _customizeTypeRepository.GetAllCustomizeTypeIds();
+
+            //map request to product
+            var product = new Product
+            {
+                Name = request.Name,
+                Summary = request.Summary,
+                Description = request.Description,
+                Material = request.Material,
+                AgeGroup = request.AgeGroup,
+                WarrantyPolicyDay = request.WarrantyPolicyDay,
+                ReturnPolicyDay = request.ReturnPolicyDay,
+                Slug = request.Slug,
+                FullyCustomizedProductType = request.FullyCustomizedProductType
+            };
+
+            //begin transaction
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                //create product
+                _productRepository.AddEntity(product);
+                await _unitOfWork.SaveChangeAsync();
+
+                //map request to CreateVariantWithCustomizeRequest
+                var createVariantRequest = new CreateVariantWithCustomizeRequest
+                {
+                    Sku = request.Sku,
+                    ProductId = product.Id,
+                    BasePrice = request.BasePrice,
+                    SalePrice = request.SalePrice,
+                    Weight = request.Weight,
+                    CustomizeTypeIds = allCustomizeTypeIds
+                };
+
+                //create variant with customize types
+                var variantResult = await _variantService.CreateVariantWithFullyCustomizeAsync(createVariantRequest);
+                if (!variantResult.Succeeded)
+                {
+                    //rollback transaction
+                    await transaction.RollbackAsync();
+                    return Result<ProductDetailResponse>.Failure("Failed to create product variant. " + variantResult.Error, variantResult.StatusCode);
+                }
+
+                //commit transaction
+                await transaction.CommitAsync();
+
+                //get product detail
+                var productDetailResult = await GetProductDetailBySlugAsync(product.Slug);
+                if (!productDetailResult.Succeeded)
+                {
+                    return Result<ProductDetailResponse>.Failure("Product created but failed to retrieve product detail. " + productDetailResult.Error, productDetailResult.StatusCode);
+                }
+
+                return Result<ProductDetailResponse>.Success(productDetailResult.Data!);
+
+            }
+            catch (Exception ex)
+            {
+                //rollback transaction
+                await transaction.RollbackAsync();
+                return Result<ProductDetailResponse>.Failure("Failed to create fully customized product. " + ex.Message, 400);
+            }
+        }
+
+        public async Task<Result<List<ProductResponse>>> GetFullyCustomizedProductsAsync()
+        {
+            var products = await _productRepository.GetFullyCustomizedProductsAsync();
+
+            //check if products is null or empty
+            if (products == null || !products.Any())
+            {
+                return Result<List<ProductResponse>>.Failure("No products found.", 404);
+            }
+
+            // Map products to ProductResponse
+            var productResponses = products.Select(p =>
+            {
+                var hasVariants = p.Variants != null && p.Variants.Any();
+                return new ProductResponse
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Summary = p.Summary,
+                    Slug = p.Slug,
+                    Material = p.Material,
+                    AgeGroup = p.AgeGroup,
+                    AverageRating = p.AverageRating,
+                    BasePrice = hasVariants ? p.Variants.Min(v => v.BasePrice) : 0,
+                    SalePrice = hasVariants ? p.Variants.Min(v => v.SalePrice) : 0,
+                    ImageUrls = p.Assets.Select(a => a.Url).ToList()
+                };
+            }).ToList();
+
+            return Result<List<ProductResponse>>.Success(productResponses);
         }
     }
 }

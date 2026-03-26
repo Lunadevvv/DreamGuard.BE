@@ -83,5 +83,16 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .AsTracking()
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
+
+        public async Task<List<Product>> GetFullyCustomizedProductsAsync()
+        {
+            return await _context.Products
+                .Include(p => p.Variants.Where(v => v.Status != ProductStatus.Draft && v.Status != ProductStatus.Hidden))
+                .Include(p => p.Assets)
+                .Where(p => p.FullyCustomizedProductType != FullyCustomizedProductType.None && p.Status != ProductStatus.Draft && p.Status != ProductStatus.Hidden)
+                .AsSplitQuery()
+                .AsNoTracking()
+                .ToListAsync();
+        }
     }
 }
