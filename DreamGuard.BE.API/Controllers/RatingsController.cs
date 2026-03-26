@@ -41,11 +41,12 @@ namespace DreamGuard.BE.API.Controllers
         {
             if (request.CreatedAt.HasValue)
             {
-                request.CreatedAt = DateTime.SpecifyKind(request.CreatedAt.Value, DateTimeKind.Utc);
+                request.CreatedAt = request.CreatedAt.Value.ToUniversalTime();
+
             }
             if (request.UpdatedAt.HasValue)
             {
-                request.UpdatedAt = DateTime.SpecifyKind(request.UpdatedAt.Value, DateTimeKind.Utc);
+                request.UpdatedAt = request.UpdatedAt.Value.ToUniversalTime();
             }
             var result = await _ratingService.GetRatingsByAdminSearchdAsync(request.ServiceOrderId, request.StaffId, request.Score, request.CreatedAt, request.UpdatedAt, request.PageNumber, request.PageSize);
             if (!result.Succeeded)
