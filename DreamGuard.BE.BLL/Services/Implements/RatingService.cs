@@ -100,10 +100,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("You can only rate your own service orders", 403);
             }
+            var oldScore = ratingUpdate.Score;
             _mapper.Map(request, ratingUpdate);
             var staff = ratingUpdate.Staff;
             // update average rating
-            staff.AverageRating = ((staff.AverageRating * staff.TotalRating) - ratingUpdate.Score + request.Score) / staff.TotalRating;
+            staff.AverageRating = ((staff.AverageRating * staff.TotalRating) - oldScore + ratingUpdate.Score) / staff.TotalRating;
             ratingUpdate.UpdatedAt = DateTime.UtcNow;
             _staffRepository.UpdateEntity(staff);
             _ratingRepository.UpdateEntity(ratingUpdate);
