@@ -74,6 +74,26 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
+        [HttpGet("GetRatings")]
+        [Authorize(Roles = $"{Role.CleaningStaff}")]
+        public async Task<IActionResult> GetRating(int pageNumber = 1, int pageSize = 4)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _staffService.GetRatings(userId, pageNumber, pageSize);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpPut("{staffId}")]
         [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> UpdateAsync(Guid staffId, [FromBody] StaffUpdateRequest staffRequest)
