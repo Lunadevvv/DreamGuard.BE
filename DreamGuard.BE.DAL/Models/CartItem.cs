@@ -15,6 +15,7 @@ namespace DreamGuard.BE.DAL.Models
 
         //Product Customize Details
         public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new List<ProductCustomizeDetail>();
+        public string? CustomizeHash { get; set; }
         
         [JsonIgnore]
         public Cart? Cart { get; set; }

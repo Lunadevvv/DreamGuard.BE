@@ -43,12 +43,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(c => c.CustomerId == customerId);
         }
 
-        public async Task<CartItem?> GetCartItemAsync(Guid cartId, Guid? productVariantId, Guid? comboId)
+        public async Task<CartItem?> GetCartItemAsync(Guid cartId, Guid? productVariantId, Guid? comboId, string? customizeHash)
         {
             return await _context.CartItems
                 .FirstOrDefaultAsync(ci => ci.CartId == cartId
                     && ci.ProductVariantId == productVariantId
-                    && ci.ComboId == comboId);
+                    && ci.ComboId == comboId
+                    && ci.CustomizeHash == customizeHash);
         }
 
         public async Task<CartItem?> GetCartItemByIdAsync(Guid cartItemId)

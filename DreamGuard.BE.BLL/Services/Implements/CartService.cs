@@ -134,9 +134,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 };
             }).ToList();
 
+            var customizeHash = GenerateCustomizeHash(customizeDetails);
+
             // Check if item already exists in cart
             var existingItem = await _cartRepository.GetCartItemAsync(
-                cart.Id, request.ProductVariantId, request.ComboId);
+                cart.Id, request.ProductVariantId, request.ComboId, customizeHash);
 
             if (existingItem != null)
             {
@@ -166,7 +168,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ComboId = request.ComboId,
                     Quantity = request.Quantity,
                     AddedAt = DateTime.UtcNow,
-                    ProductCustomizeDetails = customizeDetails
+                    ProductCustomizeDetails = customizeDetails,
+                    CustomizeHash = customizeHash
                 };
                 await _cartRepository.AddCartItemAsync(cartItem);
             }
@@ -323,7 +326,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds))
                     .ToDictionary(i => i.ProductVariantId);
                 var existingCartItems = (await _cartRepository.GetCartItemsByCartIdAsync(cart.Id))
-                    .ToDictionary(ci => (ci.ProductVariantId, ci.ComboId));
+                    .GroupBy(ci => (ci.ProductVariantId, ci.ComboId, ci.CustomizeHash))
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var customizeTypes = await _productCustomizeTypeRepository.GetAllAsync();
 
                 foreach (var item in request.Items)
                 {
@@ -356,8 +362,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     var quantity = Math.Min(item.Quantity, availableStock);
                     if (quantity <= 0) continue;
 
+                    var itemCustomizeDetails = item.ProductCustomizeDetailRequest.Select(d =>
+                    {
+                        var type = customizeTypes.FirstOrDefault(ct => ct.Id == d.ProductCustomizeTypeId);
+                        return new ProductCustomizeDetail
+                        {
+                            CustomizeTypeName = type?.Name ?? "Unknown",
+                            CustomizeContent = d.CustomizeContent,
+                            AddOnPrice = type?.DefaultPrice ?? 0
+                        };
+                    }).ToList();
+                    var itemHash = GenerateCustomizeHash(itemCustomizeDetails);
+
                     // Check if item already exists in cart using pre-loaded data
-                    existingCartItems.TryGetValue((item.ProductVariantId, item.ComboId), out var existingItem);
+                    existingCartItems.TryGetValue((item.ProductVariantId, item.ComboId, itemHash), out var existingItem);
 
                     if (existingItem != null)
                     {
@@ -374,7 +392,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             ProductVariantId = item.ProductVariantId,
                             ComboId = item.ComboId,
                             Quantity = quantity,
-                            AddedAt = DateTime.UtcNow
+                            AddedAt = DateTime.UtcNow,
+                            ProductCustomizeDetails = itemCustomizeDetails,
+                            CustomizeHash = itemHash
                         };
                         await _cartRepository.AddCartItemAsync(cartItem);
                     }
@@ -441,6 +461,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             return Result<int>.Success(comboStock);
+        }
+
+        private static string GenerateCustomizeHash(List<ProductCustomizeDetail> details)
+        {
+            if (details == null || !details.Any()) return string.Empty;
+
+            var sortedDetails = details
+                .OrderBy(d => d.CustomizeTypeName)
+                .ThenBy(d => d.CustomizeContent)
+                .ToList();
+
+            var combinedString = string.Join("|", sortedDetails.Select(d => $"{d.CustomizeTypeName}:{d.CustomizeContent}"));
+
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            var bytes = System.Text.Encoding.UTF8.GetBytes(combinedString);
+            var hashBytes = md5.ComputeHash(bytes);
+            return Convert.ToBase64String(hashBytes);
         }
 
         private static CartItemResponse MapCartItemToResponse(CartItem ci)
