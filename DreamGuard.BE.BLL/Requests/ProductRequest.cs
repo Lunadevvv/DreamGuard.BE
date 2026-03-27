@@ -2,18 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using AutoMapper;
 using DreamGuard.BE.DAL.Constants;
-using DreamGuard.BE.DAL.ModelExtensions;
+using DreamGuard.BE.DAL.Models;
 
-namespace DreamGuard.BE.DAL.Models
+namespace DreamGuard.BE.BLL.Requests
 {
-    public class Product
+    public class CreateProductRequest
     {
-        public Guid Id { get; set; }
-        public required string Name { get; set; }
-        public required string Slug { get; set; }
+        [Required(ErrorMessage = "Name is required.")]
+        public string Name { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Slug is required.")]
+        public string Slug { get; set; } = string.Empty;
         public string Summary { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Material { get; set; } = string.Empty;
@@ -23,16 +24,22 @@ namespace DreamGuard.BE.DAL.Models
         public int? WarrantyPolicyDay { get; set; }
         [Range(0, int.MaxValue, ErrorMessage = "Return Policy must be a non-negative value.")]
         public int? ReturnPolicyDay { get; set; }
-        public ProductStatus Status { get; set; } = ProductStatus.Draft;
         public FullyCustomizedProductType FullyCustomizedProductType { get; set; } = FullyCustomizedProductType.None;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public double AverageRating { get; set; } = 0.0;
         public int? CateId { get; set; }
-        [JsonIgnore]
-        public Category? Category { get; set; }
-        [JsonIgnore]
-        public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
-        public ICollection<ProductAsset> Assets { get; set; } = new List<ProductAsset>();
-        public ICollection<ProductCertificate> Certificates { get; set; } = new List<ProductCertificate>();
+        public List<Guid> CertificateIds { get; set; } = new List<Guid>();
+
+        private class Mapping : Profile
+        {
+            public Mapping()
+            {
+                CreateMap<CreateProductRequest, Product>()
+                    .ForMember(dest => dest.Certificates, opt => opt.Ignore());
+            }
+        }
+    }
+
+    public class UpdateProductRequest : CreateProductRequest
+    {
+        public Guid Id { get; set; }
     }
 }

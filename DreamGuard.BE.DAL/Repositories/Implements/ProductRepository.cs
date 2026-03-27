@@ -80,6 +80,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<Product?> GetProductByIdForUpdateAsync(Guid id)
         {
             return await _context.Products
+                .Include(p => p.Certificates)
                 .AsTracking()
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
@@ -93,6 +94,31 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .AsSplitQuery()
                 .AsNoTracking()
                 .ToListAsync();
+        }
+
+        public async Task UpdateProductCertificatesAsync(Product product, List<ProductCertificate> certificates)
+        {
+            var incomingCertIds = certificates.Select(c => c.Id).ToHashSet();
+
+            // Xóa các certificate cũ không còn được chọn 
+            foreach (var cert in product.Certificates.Where(c => !incomingCertIds.Contains(c.Id)).ToList())
+            {
+                product.Certificates.Remove(cert);
+            }
+
+            // Thêm các certificate mới được bổ sung
+            foreach (var cert in certificates.Where(c => !product.Certificates.Any(ec => ec.Id == c.Id)))
+            {
+                var tracked = _context.ProductCertificates.Local.FirstOrDefault(c => c.Id == cert.Id);
+                product.Certificates.Add(tracked ?? cert);
+                
+                if (tracked == null)
+                {
+                    _context.ProductCertificates.Attach(cert);
+                }
+            }
+            
+            await _context.SaveChangesAsync();
         }
     }
 }

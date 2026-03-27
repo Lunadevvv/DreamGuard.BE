@@ -12,6 +12,7 @@ using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using DreamGuard.BE.BLL.Requests;
+using AutoMapper;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -21,22 +22,28 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IProductVariantRepository _variantRepository;
         private readonly IProductVariantService _variantService;
         private readonly IProductCustomizeTypeRepository _customizeTypeRepository;
+        private readonly IProductCertificateRepository _productCertificateRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
         public ProductService(
             IProductRepository productRepository, 
             IProductVariantRepository variantRepository, 
             IProductVariantService variantService, 
             IUnitOfWork unitOfWork,
-            IProductCustomizeTypeRepository customizeTypeRepository)
+            IProductCustomizeTypeRepository customizeTypeRepository,
+            IProductCertificateRepository productCertificateRepository,
+            IMapper mapper)
         {
             _productRepository = productRepository;
             _variantRepository = variantRepository;
             _variantService = variantService;
             _unitOfWork = unitOfWork;
             _customizeTypeRepository = customizeTypeRepository;
+            _productCertificateRepository = productCertificateRepository;
+            _mapper = mapper;
         }
 
-        public async Task<Result<bool>> CreateProductAsync(Product product)
+        public async Task<Result<bool>> CreateProductAsync(CreateProductRequest product)
         {
             //Check if product with the same slug already exists
             var existingProduct = await _productRepository.GetProductBySlugAsync(product.Slug);
@@ -45,7 +52,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<bool>.Failure("A product with the same slug already exists.", 400);
             }
 
-            var res = await _productRepository.CreateAsync(product);
+            //get certificates by ids
+            var certificates = await _productCertificateRepository.GetByProductCertificateIdsAsync(product.CertificateIds);
+
+            //check if any certificate id is invalid
+            if(certificates.Count != product.CertificateIds.Count)
+            {
+                return Result<bool>.Failure("One or more certificate ids are invalid.", 400);
+            }
+
+           //map request to product
+            var newProduct = _mapper.Map<Product>(product);
+            newProduct.Certificates = certificates;
+
+            //add product to database
+            _productRepository.AddEntity(newProduct);
+            var res = await _unitOfWork.SaveChangeAsync();
             if (res < 0)
             {
                 return Result<bool>.Failure("Failed to create product.", 400);
@@ -54,10 +76,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<bool>.Success(true);
         }
 
-        public async Task<Result<bool>> UpdateProductAsync(Product product)
+        public async Task<Result<bool>> UpdateProductAsync(UpdateProductRequest product)
         {
             //Check if product exists
-            var existingProduct = await _productRepository.GetProductByIdAsync(product.Id);
+            var existingProduct = await _productRepository.GetProductByIdForUpdateAsync(product.Id);
             if (existingProduct == null)
             {
                 return Result<bool>.Failure("Product not found.", 404);
@@ -69,12 +91,29 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result<bool>.Failure("A product with the same slug already exists.", 400);
             }
-            
-            var res = await _productRepository.UpdateAsync(product);
-            if (res < 0)
+
+            //get certificates by ids
+            var certificates = await _productCertificateRepository.GetByProductCertificateIdsAsync(product.CertificateIds);
+
+            //check if any certificate id is invalid
+            if(certificates.Count != product.CertificateIds.Count)
             {
-                return Result<bool>.Failure("Failed to update product.", 400);
+                return Result<bool>.Failure("One or more certificate ids are invalid.", 400);
             }
+
+            // Manually map fields instead of using AutoMapper to prevent tracking issues with Navigation Properties
+            existingProduct.Name = product.Name;
+            existingProduct.Summary = product.Summary;
+            existingProduct.Slug = product.Slug;
+            existingProduct.Description = product.Description;
+            existingProduct.Material = product.Material;
+            existingProduct.AgeGroup = product.AgeGroup;
+            existingProduct.WarrantyPolicyDay = product.WarrantyPolicyDay;
+            existingProduct.ReturnPolicyDay = product.ReturnPolicyDay;
+            existingProduct.FullyCustomizedProductType = product.FullyCustomizedProductType;
+            existingProduct.CateId = product.CateId;
+
+            await _productRepository.UpdateProductCertificatesAsync(existingProduct, certificates);
 
             return Result<bool>.Success(true);
         }
