@@ -13,6 +13,10 @@ namespace DreamGuard.BE.DAL.Models
         public string Name { get; set; } = string.Empty;
         public string Summary { get; set; } = string.Empty;
         public decimal DefaultPrice { get; set; }
+        public CustomizeCategory Category { get; set; } = CustomizeCategory.Other;
+        public PriceCalculationMode CalculationMode { get; set; } = PriceCalculationMode.FixedAmount;
+        public double? DefaultMultiplier { get; set; }
+        public FullyCustomizedProductType ApplicableProductType { get; set; } = FullyCustomizedProductType.None;
         public CustomizeTypeStatus Status { get; set; }
         [JsonIgnore]
         public List<VariantCustomizeType> VariantCustomizeTypes { get; set; } = new List<VariantCustomizeType>();

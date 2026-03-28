@@ -287,8 +287,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<ProductDetailResponse>.Failure("A product with the same slug already exists.", 400);
             }
 
-            //get all customize type ids
-            var allCustomizeTypeIds = await _customizeTypeRepository.GetAllCustomizeTypeIds();
+            //get all customize type ids valid for this specific product type
+            var allCustomizeTypeIds = await _customizeTypeRepository.GetCustomizeTypeIdsByProductTypeAsync(request.FullyCustomizedProductType);
 
             //map request to product
             var product = new Product

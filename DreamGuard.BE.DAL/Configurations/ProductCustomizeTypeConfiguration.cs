@@ -15,6 +15,10 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.HasKey(e => e.Id);
             builder.Property(e => e.DefaultPrice).HasColumnType("decimal(18,2)");
             builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            builder.Property(e => e.Category).HasConversion<string>().HasMaxLength(20);
+            builder.Property(e => e.CalculationMode).HasConversion<string>().HasMaxLength(20);
+            builder.Property(e => e.ApplicableProductType).HasConversion<string>().HasMaxLength(50);
+
             builder.ToTable("ProductCustomizeTypes");
         }
     }

@@ -7,6 +7,7 @@ using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using DreamGuard.BE.DAL.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace DreamGuard.BE.DAL.Repositories.Implements
@@ -22,6 +23,16 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<List<Guid>> GetAllCustomizeTypeIds()
         {
             var ids = await _context.ProductCustomizeTypes
+                .Select(pct => pct.Id)
+                .ToListAsync() ?? new List<Guid>();
+
+            return ids;
+        }
+
+        public async Task<List<Guid>> GetCustomizeTypeIdsByProductTypeAsync(FullyCustomizedProductType type)
+        {
+            var ids = await _context.ProductCustomizeTypes
+                .Where(pct => pct.ApplicableProductType == FullyCustomizedProductType.None || pct.ApplicableProductType == type)
                 .Select(pct => pct.Id)
                 .ToListAsync() ?? new List<Guid>();
 

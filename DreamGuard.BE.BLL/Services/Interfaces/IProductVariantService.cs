@@ -19,7 +19,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<ProductVariantResponse>> UpdateVariantAsync(Guid id, UpdateProductVariantRequest request);
         Task<Result<bool>> UpdateVariantStatusAsync(Guid id, ProductStatus status);
         Task<Result<ProductVariantResponse>> CreateVariantWithCustomizeAsync(CreateVariantWithCustomizeRequest request);
-        Task<Result<ProductVariantResponse>> CreateVariantWithFullyCustomizeAsync(CreateProductVariantRequest request);
+        Task<Result<ProductVariantResponse>> CreateVariantWithFullyCustomizeAsync(CreateVariantWithCustomizeRequest request);
         Task<Result> AssignCustomizeTypeAsync(Guid variantId, AssignCustomizeTypeRequest request);
         Task<Result> RemoveCustomizeTypeAsync(Guid variantId, Guid customizeTypeId);
         Task<Result> UpdateCustomizeTypePriceAsync(Guid variantId, Guid customizeTypeId, UpdateCustomizeTypePriceRequest request);

@@ -165,7 +165,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public async Task<Result<ProductVariantResponse>> CreateVariantWithFullyCustomizeAsync(CreateProductVariantRequest request)
+        public async Task<Result<ProductVariantResponse>> CreateVariantWithFullyCustomizeAsync(CreateVariantWithCustomizeRequest request)
         {
             var product = await _productRepository.GetByIdAsync(request.ProductId);
             if (product == null)
@@ -184,9 +184,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<ProductVariantResponse>.Failure("SKU must be unique.", 400);
             }
 
-            //get all customize types for fully customize product
-            var customizeTypes = await _customizeTypeRepository.GetAllAsync();
-            if (customizeTypes == null || !customizeTypes.Any())
+            //get filtered customize types for fully customize product
+            var customizeTypeIds = request.CustomizeTypeIds?.Distinct().ToList() ?? new List<Guid>();
+            List<ProductCustomizeType> customizeTypes = new();
+            if (customizeTypeIds.Any())
+            {
+                customizeTypes = await _customizeTypeRepository.GetByIdsAsync(customizeTypeIds);
+            }
+
+            if (!customizeTypes.Any())
             {
                 return Result<ProductVariantResponse>.Failure("No customize types available for fully customizable product.", 400);
             }
@@ -388,7 +394,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 CusId = request.CustomizeTypeId,
                 ProductVariantId = variantId,
-                OverridePrice = request.OverridePrice > 0 ? request.OverridePrice : customizeType.DefaultPrice
+                OverridePrice = request.OverridePrice,
+                OverrideMultiplier = request.OverrideMultiplier
             };
 
             var result = await _variantCustomizeTypeRepository.CreateAsync(variantCustomizeType);
@@ -426,6 +433,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             existing.OverridePrice = request.OverridePrice;
+            existing.OverrideMultiplier = request.OverrideMultiplier;
             var result = await _variantCustomizeTypeRepository.UpdateAsync(existing);
             if (result < 0)
             {
@@ -532,14 +540,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ProductId = v.ProductId,
                 StockQuantity = v.Inventory?.Quantity ?? 0,
                 StockStatus = GetStockStatus(v.Inventory?.Quantity ?? 0, v.Inventory?.LowStockThreshold ?? 10),
-                CustomizeOptions = v.VariantCustomizeTypes?.Select(vct => new CustomizeOptionResponse
-                {
-                    CustomizeTypeId = vct.CusId,
-                    Name = vct.ProductCustomizeType?.Name ?? string.Empty,
-                    Summary = vct.ProductCustomizeType?.Summary ?? string.Empty,
-                    DefaultPrice = vct.ProductCustomizeType?.DefaultPrice ?? 0,
-                    OverridePrice = vct.OverridePrice
-                }).ToList() ?? new List<CustomizeOptionResponse>()
+                CustomizeOptionGroups = v.VariantCustomizeTypes?
+                    .Where(vct => vct.ProductCustomizeType != null)
+                    .GroupBy(vct => vct.ProductCustomizeType.Category)
+                    .Select(g => new CustomizeCategoryGroupResponse
+                    {
+                        Category = g.Key,
+                        CategoryName = g.Key.ToString(),
+                        Options = g.Select(vct => new CustomizeOptionResponse
+                        {
+                            CustomizeTypeId = vct.CusId,
+                            Name = vct.ProductCustomizeType.Name,
+                            Summary = vct.ProductCustomizeType.Summary,
+                            DefaultPrice = vct.ProductCustomizeType.DefaultPrice,
+                            OverridePrice = vct.OverridePrice,
+                            CalculationMode = vct.ProductCustomizeType.CalculationMode,
+                            DefaultMultiplier = vct.ProductCustomizeType.DefaultMultiplier,
+                            OverrideMultiplier = vct.OverrideMultiplier
+                        }).ToList()
+                    }).ToList() ?? new List<CustomizeCategoryGroupResponse>()
             };
         }
 
