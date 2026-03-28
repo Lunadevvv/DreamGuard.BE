@@ -3,6 +3,7 @@ using System;
 using DreamGuard.BE.DAL.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    partial class DreamGuardContextModelSnapshot : ModelSnapshot
+    [Migration("20260326055409_Rating")]
+    partial class Rating
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -140,10 +143,6 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<Guid?>("ComboId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("CustomizeHash")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ProductCustomizeDetails")
                         .IsRequired()
@@ -648,11 +647,6 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("FullyCustomizedProductType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
                     b.Property<string>("Material")
                         .IsRequired()
                         .HasColumnType("text");
@@ -724,57 +718,11 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.ToTable("ProductAssets", (string)null);
                 });
 
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ProductCertificate", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<string>("Summary")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ProductCertificates", (string)null);
-                });
-
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ProductCustomizeType", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("ApplicableProductType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("CalculationMode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<double?>("DefaultMultiplier")
-                        .HasColumnType("double precision");
 
                     b.Property<decimal>("DefaultPrice")
                         .HasColumnType("decimal(18,2)");
@@ -1333,10 +1281,7 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<Guid>("ProductVariantId")
                         .HasColumnType("uuid");
 
-                    b.Property<double?>("OverrideMultiplier")
-                        .HasColumnType("double precision");
-
-                    b.Property<decimal?>("OverridePrice")
+                    b.Property<decimal>("OverridePrice")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("CusId", "ProductVariantId");
@@ -1520,21 +1465,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("ProductProductCertificate", b =>
-                {
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ProductCertificateId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("ProductId", "ProductCertificateId");
-
-                    b.HasIndex("ProductCertificateId");
-
-                    b.ToTable("ProductProductCertificates", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Address", b =>
@@ -1983,21 +1913,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasOne("DreamGuard.BE.DAL.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ProductProductCertificate", b =>
-                {
-                    b.HasOne("DreamGuard.BE.DAL.Models.ProductCertificate", null)
-                        .WithMany()
-                        .HasForeignKey("ProductCertificateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DreamGuard.BE.DAL.Models.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

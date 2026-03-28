@@ -26,6 +26,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 var query = _context.ServiceOrders.Include(so => so.Payments).Include(so => so.ServiceTask)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
+                        .Include(so => so.Rating)
                     .Where(so => (so.OrderCode == orderCode || string.IsNullOrEmpty(orderCode)) && (so.SoId == serviceOrderId || serviceOrderId == null)
                     && (so.Payments.Any(p => (p.PaymentMethod == paymentMethod || paymentMethod == null) 
                     && (p.Status == paymentStatus || paymentStatus == null)))
@@ -46,7 +47,8 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                     .Include(so => so.Payments)
                     .Include(so => so.ServiceTask)
                         .ThenInclude(st => st.Staff)
-                            .ThenInclude(s => s.User);
+                            .ThenInclude(s => s.User)
+                    .Include(so => so.Rating);
                 return await PaginatedList<ServiceOrder>.CreateAsync(query, pageNumber, pageSize);
             }
             catch (Exception ex)
@@ -71,11 +73,29 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                      .Include(so => so.ServiceTask)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
+                     .Include(so => so.Rating)
                      .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
             }
             catch (Exception ex)
             {
                 throw new Exception($"Error retrieving ServiceOrder with detail");
+            }
+        }
+
+        public async Task<ServiceOrder?> GetByIdWithRating(Guid serviceOrderId)
+        {
+            try
+            {
+                return await _context.ServiceOrders
+                     .Include(so => so.Rating)
+                     .Include(so => so.ServiceTask)
+                        .ThenInclude(st => st.Staff)
+
+                     .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving ServiceOrder with rating");
             }
         }
 
@@ -86,6 +106,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 return await _context.ServiceOrders
                      .Include(so => so.ServiceTask)
                      .Include(so => so.Payments)
+                     .Include(so => so.Rating)
                      .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
             }
             catch (Exception ex)

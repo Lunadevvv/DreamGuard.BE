@@ -33,6 +33,7 @@ namespace DreamGuard.BE.BLL.Responses
         public List<ServiceOrderItemResponse> ServiceOrderItems { get; set; }
         public List<string> ImageUrl { get; set; }
         public StaffResponse? Staff { get; set; }
+        public RatingResponse? Rating { get; set; }
 
     }
 }
