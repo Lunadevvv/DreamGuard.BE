@@ -62,16 +62,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
            //map request to product
-            var newProduct = _mapper.Map<Product>(product);
-            newProduct.Certificates = certificates;
+            var newProduct = new Product
+            {
+                Name = product.Name,
+                Summary = product.Summary,
+                Description = product.Description,
+                Material = product.Material,
+                AgeGroup = product.AgeGroup,
+                WarrantyPolicyDay = product.WarrantyPolicyDay,
+                ReturnPolicyDay = product.ReturnPolicyDay,
+                Slug = product.Slug,
+                CateId = product.CateId
+            };
 
             //add product to database
             _productRepository.AddEntity(newProduct);
-            var res = await _unitOfWork.SaveChangeAsync();
-            if (res < 0)
-            {
-                return Result<bool>.Failure("Failed to create product.", 400);
-            }
+            await _productRepository.UpdateProductCertificatesAsync(newProduct, certificates);
 
             return Result<bool>.Success(true);
         }

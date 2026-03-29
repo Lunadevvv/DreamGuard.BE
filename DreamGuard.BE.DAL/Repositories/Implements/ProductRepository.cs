@@ -110,12 +110,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             foreach (var cert in certificates.Where(c => !product.Certificates.Any(ec => ec.Id == c.Id)))
             {
                 var tracked = _context.ProductCertificates.Local.FirstOrDefault(c => c.Id == cert.Id);
-                product.Certificates.Add(tracked ?? cert);
-                
                 if (tracked == null)
                 {
                     _context.ProductCertificates.Attach(cert);
                 }
+                product.Certificates.Add(tracked ?? cert);
             }
             
             await _context.SaveChangesAsync();

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    [Migration("20260327103225_AddProductCertificate")]
+    [Migration("20260329061024_AddProductCertificate")]
     partial class AddProductCertificate
     {
         /// <inheritdoc />
@@ -761,6 +761,24 @@ namespace DreamGuard.BE.DAL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ApplicableProductType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CalculationMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<double?>("DefaultMultiplier")
+                        .HasColumnType("double precision");
+
                     b.Property<decimal>("DefaultPrice")
                         .HasColumnType("decimal(18,2)");
 
@@ -862,6 +880,41 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsUnique();
 
                     b.ToTable("ProductVariants", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Rating", b =>
+                {
+                    b.Property<Guid>("RatingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ServiceOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("RatingId");
+
+                    b.HasIndex("ServiceOrderId")
+                        .IsUnique();
+
+                    b.HasIndex("StaffId");
+
+                    b.ToTable("Ratings", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceAsset", b =>
@@ -1132,6 +1185,9 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<double>("AverageRating")
+                        .HasColumnType("double precision");
+
                     b.Property<DateOnly>("DateOfBirth")
                         .HasColumnType("date");
 
@@ -1150,6 +1206,9 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("TotalRating")
+                        .HasColumnType("integer");
 
                     b.HasKey("StaffId");
 
@@ -1277,7 +1336,10 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<Guid>("ProductVariantId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("OverridePrice")
+                    b.Property<double?>("OverrideMultiplier")
+                        .HasColumnType("double precision");
+
+                    b.Property<decimal?>("OverridePrice")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("CusId", "ProductVariantId");
@@ -1713,6 +1775,25 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Rating", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.ServiceOrder", "ServiceOrder")
+                        .WithOne("Rating")
+                        .HasForeignKey("DreamGuard.BE.DAL.Models.Rating", "ServiceOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.Staff", "Staff")
+                        .WithMany("Ratings")
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ServiceOrder");
+
+                    b.Navigation("Staff");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceAsset", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.ServiceOrder", "ServiceOrder")
@@ -1997,6 +2078,8 @@ namespace DreamGuard.BE.DAL.Migrations
                 {
                     b.Navigation("Payments");
 
+                    b.Navigation("Rating");
+
                     b.Navigation("ServiceAssets");
 
                     b.Navigation("ServiceOrderItems");
@@ -2021,6 +2104,8 @@ namespace DreamGuard.BE.DAL.Migrations
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Staff", b =>
                 {
+                    b.Navigation("Ratings");
+
                     b.Navigation("ServiceTasks");
                 });
 
