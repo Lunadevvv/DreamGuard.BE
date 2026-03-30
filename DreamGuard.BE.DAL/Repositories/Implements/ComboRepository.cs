@@ -97,6 +97,23 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
+        public async Task<List<Combo>> GetCombosWithProductsByIdsAsync(IEnumerable<Guid> comboIds)
+        {
+            if (comboIds == null || !comboIds.Any()) return new List<Combo>();
+
+            return await _context.Combos
+                .Where(c => comboIds.Contains(c.Id))
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Product)
+                .Include(c => c.ComboProductVariants)
+                    .ThenInclude(cpv => cpv.ProductVariant!)
+                        .ThenInclude(pv => pv.Inventory)
+                .AsSplitQuery()
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task<bool> SlugExistsAsync(string slug, Guid? excludeId = null)
         {
             var query = _context.Combos.Where(c => c.Slug == slug);

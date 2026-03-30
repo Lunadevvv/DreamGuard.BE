@@ -361,7 +361,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     .Select(i => i.ProductVariantId!.Value).ToList();
                 var comboIds = request.Items
                     .Where(i => i.ComboId.HasValue)
-                    .Select(i => i.ComboId!.Value).ToList();
+                    .Select(i => i.ComboId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var combosDict = (await _comboRepository.GetCombosWithProductsByIdsAsync(comboIds))
+                    .ToDictionary(c => c.Id);
 
                 var variantsDict = (await _variantRepository.GetVariantsByIdsAsync(variantIds))
                     .ToDictionary(v => v.Id);
@@ -396,9 +401,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                     else
                     {
-                        var validationResult = await ValidateComboForCart(item.ComboId!.Value);
-                        if (!validationResult.Succeeded) continue;
-                        availableStock = validationResult.Data;
+                        combosDict.TryGetValue(item.ComboId!.Value, out var combo);
+                        if (combo == null || combo.ComboParentId == null || combo.Status != ProductStatus.Published) continue;
+
+                        var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
+                        if (comboStock <= 0) continue;
+                        
+                        availableStock = comboStock;
                     }
 
                     // Clamp quantity to available stock

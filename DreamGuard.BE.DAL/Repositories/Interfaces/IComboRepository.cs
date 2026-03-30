@@ -17,6 +17,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<Combo?> GetComboByIdAsync(Guid id);
         Task<Combo?> GetComboWithChildrenAsync(Guid id, string? size, string? color);
         Task<Combo?> GetComboWithProductsAsync(Guid id);
+        Task<List<Combo>> GetCombosWithProductsByIdsAsync(IEnumerable<Guid> comboIds);
         Task<bool> SlugExistsAsync(string slug, Guid? excludeId = null);
         Task RemoveComboProductVariantsAsync(Guid comboId);
         Task AddComboProductVariantsAsync(List<ComboProductVariant> items);
