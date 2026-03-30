@@ -41,6 +41,7 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<ProductCustomizeType> ProductCustomizeTypes { get; set; }
         public DbSet<VariantCustomizeType> VariantCustomizeTypes { get; set; }
+        public DbSet<ProductCertificate> ProductCertificates { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
         public DbSet<Customer> Customers { get; set; }
@@ -53,7 +54,8 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<ServiceTask> ServiceTasks { get; set; }
         public DbSet<ServiceEvidence> ServiceEvidences { get; set; }
         public DbSet<ServiceAsset> ServiceAssets { get; set; }
-       
+        public DbSet<Rating> Ratings { get; set; }  
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

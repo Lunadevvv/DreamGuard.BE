@@ -42,6 +42,15 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .ToListAsync();
         }
 
+        public async Task<List<VariantCustomizeType>> GetByVariantIdsWithDetailsAsync(IEnumerable<Guid> productVariantIds)
+        {
+            return await _context.VariantCustomizeTypes
+                .Include(vct => vct.ProductCustomizeType)
+                .Where(vct => productVariantIds.Contains(vct.ProductVariantId))
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task AddRangeAsync(IEnumerable<VariantCustomizeType> entities)
         {
             await _context.VariantCustomizeTypes.AddRangeAsync(entities);

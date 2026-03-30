@@ -342,7 +342,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ServicePackageName = soi.ServicePackageMapping.ServicePackage.PackageName,
                     ProductTypeName = soi.ServicePackageMapping.ProductType.ProductTypeName
                 }).ToList(),
-                ImageUrl = serviceOrder.ServiceAssets.Select(sa => sa.Url).ToList()
+                ImageUrl = serviceOrder.ServiceAssets.Select(sa => sa.Url).ToList(),
+                Rating = serviceOrder.Rating == null ? null : _mapper.Map<RatingResponse>(serviceOrder.Rating)
             };
             var staff = serviceOrder.ServiceTask?.Staff;
             if(staff != null)

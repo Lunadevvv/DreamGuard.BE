@@ -21,6 +21,7 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
             builder.Services.AddScoped<IProductVariantService, ProductVariantService>();
+            builder.Services.AddScoped<IProductCertificateService, ProductCertificateService>();
             builder.Services.AddScoped<IComboService, ComboService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<ICustomerService, CustomerService>();
@@ -44,6 +45,7 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IServiceTaskService, ServiceTaskService>();
             builder.Services.AddScoped<IServiceEvidenceService, ServiceEvidenceService>();
             builder.Services.AddScoped<IServicePackageMappingService, ServicePackageMappingService>();
+            builder.Services.AddScoped<IRatingService, RatingService>();
         }
     }
 }

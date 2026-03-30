@@ -47,6 +47,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Staff not found.", 404);
             }
+            if(staff.Position != Role.CleaningStaff)
+            {
+                return Result.Failure("Staff must be cleaning staff to be assigned to service task.", 400);
+            }
             if (serviceOrder.Status != OrderServiceStatus.Confirmed)
             {
                 return Result.Failure("Service order must be confirmed before assigning service task", 400);

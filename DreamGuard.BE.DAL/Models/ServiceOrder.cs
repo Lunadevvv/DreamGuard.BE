@@ -37,5 +37,6 @@ namespace DreamGuard.BE.DAL.Models
         public ICollection<ServiceOrderItem> ServiceOrderItems { get; set; } = new List<ServiceOrderItem>();
         public ICollection<ServiceAsset> ServiceAssets { get; set; } = new List<ServiceAsset>();
         public UserVoucher? UserVoucher { get; set; } 
+        public Rating? Rating { get; set; }
     }
 }

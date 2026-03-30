@@ -20,6 +20,7 @@ namespace DreamGuard.BE.DAL.Configurations
 
             builder.Property(ci => ci.Quantity).IsRequired();
             builder.Property(ci => ci.AddedAt).HasColumnType("TIMESTAMPTZ");
+            builder.Property(ci => ci.CustomizeHash).HasMaxLength(100);
 
             builder.Property(oi => oi.ProductCustomizeDetails)
                 .HasColumnType("jsonb") // Hoặc tương tự theo database

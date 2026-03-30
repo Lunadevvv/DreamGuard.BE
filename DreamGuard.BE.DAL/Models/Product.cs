@@ -24,6 +24,7 @@ namespace DreamGuard.BE.DAL.Models
         [Range(0, int.MaxValue, ErrorMessage = "Return Policy must be a non-negative value.")]
         public int? ReturnPolicyDay { get; set; }
         public ProductStatus Status { get; set; } = ProductStatus.Draft;
+        public FullyCustomizedProductType FullyCustomizedProductType { get; set; } = FullyCustomizedProductType.None;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public double AverageRating { get; set; } = 0.0;
         public int? CateId { get; set; }
@@ -32,5 +33,6 @@ namespace DreamGuard.BE.DAL.Models
         [JsonIgnore]
         public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
         public ICollection<ProductAsset> Assets { get; set; } = new List<ProductAsset>();
+        public ICollection<ProductCertificate> Certificates { get; set; } = new List<ProductCertificate>();
     }
 }

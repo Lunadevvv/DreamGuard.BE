@@ -7,6 +7,7 @@ using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -15,16 +16,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
 {
     public class StaffService : IStaffService
     {
+        private readonly IRatingRepository _ratingRepository;
         private readonly IStaffRepository _repo;
         private readonly IMapper _mapper;
         private readonly UserManager<User> _userManager;
         private readonly IUnitOfWork _unitOfWork;
-        public StaffService(IStaffRepository repo, IMapper mapper, UserManager<User> userManager, IUnitOfWork unitOfWork)
+        public StaffService(IStaffRepository repo, IMapper mapper, UserManager<User> userManager, IUnitOfWork unitOfWork, IRatingRepository ratingRepository)
         {
             _repo = repo;
             _mapper = mapper;
             _userManager = userManager;
             _unitOfWork = unitOfWork;
+            _ratingRepository = ratingRepository;
         }
 
         public async Task<Result<PaginatedList<StaffResponse>>> GetAllAsync(int pageNumber, int pageSize)
@@ -45,7 +48,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var staffResponse = _mapper.Map<Staff, StaffResponse>(result);
             return Result<StaffResponse>.Success(staffResponse);
         }
-
+        public async Task<Result<PaginatedList<RatingResponse>>> GetRatings(Guid staffId, int pageNumber, int pageSize)
+        {
+            var ratings = await _ratingRepository.GetRatingsByStaffIdAsync(staffId, pageNumber, pageSize);
+            var ratingResponses = _mapper.Map<List<RatingResponse>>(ratings.Items);
+            var paginatedResult = new PaginatedList<RatingResponse>(ratingResponses, ratings.TotalCount, ratings.PageNumber, ratings.PageSize);
+            return Result<PaginatedList<RatingResponse>>.Success(paginatedResult);
+        }
         public async Task<Result> UpdateAccountAsync(Guid staffId, StaffAccountUpdateRequest staffUpdateRequest)
         {
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == staffId);

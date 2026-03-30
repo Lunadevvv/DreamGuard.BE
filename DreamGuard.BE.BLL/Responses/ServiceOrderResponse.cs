@@ -34,12 +34,14 @@ namespace DreamGuard.BE.BLL.Responses
         public string PaymentMethod { get; set; }
         public string PaymentStatus { get; set; }
         public StaffResponse? Staff { get; set; }
+        public RatingResponse? Rating { get; set; }
         private class Mapping : Profile
         {
             public Mapping()
             {
                 CreateMap<ServiceOrder, ServiceOrderResponse>()
-                     .ForMember(dest => dest.Staff, opt => opt.MapFrom(src => src.ServiceTask == null ? null : src.ServiceTask.Staff));
+                     .ForMember(dest => dest.Staff, opt => opt.MapFrom(src => src.ServiceTask == null ? null : src.ServiceTask.Staff))
+                     .ForMember(dest => dest.Rating, opt => opt.MapFrom(src => src.Rating));
             }
         }
     }

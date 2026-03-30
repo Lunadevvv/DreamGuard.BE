@@ -17,7 +17,10 @@ namespace DreamGuard.BE.DAL.Models
         public string Gender { get; set; } = string.Empty;
         public DateOnly DateOfBirth { get; set; }
         public string Status { get; set; } = StaffStatus.Active;
+        public double AverageRating { get; set; } = 0.0;
+        public int TotalRating { get; set; } = 0;
         public User User { get; set; } = null!;
         public ICollection<ServiceTask> ServiceTasks { get; set; } = new List<ServiceTask>();
+        public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     }
 }

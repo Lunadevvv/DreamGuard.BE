@@ -19,5 +19,6 @@ namespace DreamGuard.BE.BLL.Responses
         public string CategoryName { get; set; } = string.Empty;
         public int VariantCount { get; set; }
         public ProductStatus Status { get; set; }
+        public FullyCustomizedProductType FullyCustomizedProductType { get; set; }
     }
 }

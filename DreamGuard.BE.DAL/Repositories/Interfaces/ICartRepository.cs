@@ -10,7 +10,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         Task<Cart?> GetCartByCustomerIdAsync(Guid customerId);
         Task<Cart?> GetCartWithItemsAsync(Guid customerId);
-        Task<CartItem?> GetCartItemAsync(Guid cartId, Guid? productVariantId, Guid? comboId);
+        Task<CartItem?> GetCartItemAsync(Guid cartId, Guid? productVariantId, Guid? comboId, string? customizeHash);
         Task<CartItem?> GetCartItemByIdAsync(Guid cartItemId);
         Task AddCartItemAsync(CartItem cartItem);
         Task UpdateCartItemAsync(CartItem cartItem);
