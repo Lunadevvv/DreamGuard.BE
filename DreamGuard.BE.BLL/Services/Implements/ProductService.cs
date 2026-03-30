@@ -269,7 +269,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     MaxPrice = hasVariants ? p.Variants.Max(v => v.BasePrice) : 0,
                     Status = p.Status,
                     CategoryName = p.Category != null ? p.Category.Name : string.Empty,
-                    VariantCount = p.Variants.Count
+                    VariantCount = p.Variants.Count,
+                    FullyCustomizedProductType = p.FullyCustomizedProductType
                 };
             }).ToList();
 
