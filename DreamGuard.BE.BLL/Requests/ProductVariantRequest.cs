@@ -94,13 +94,18 @@ namespace DreamGuard.BE.BLL.Requests
         public Guid CustomizeTypeId { get; set; }
 
         [Range(0, (double)decimal.MaxValue, ErrorMessage = "OverridePrice must be a non-negative value.")]
-        public decimal OverridePrice { get; set; }
+        public decimal? OverridePrice { get; set; }
+
+        [Range(0.01, 100.0, ErrorMessage = "OverrideMultiplier must be greater than 0.")]
+        public double? OverrideMultiplier { get; set; }
     }
 
     public class UpdateCustomizeTypePriceRequest
     {
-        [Required(ErrorMessage = "OverridePrice is required.")]
         [Range(0, (double)decimal.MaxValue, ErrorMessage = "OverridePrice must be a non-negative value.")]
-        public decimal OverridePrice { get; set; }
+        public decimal? OverridePrice { get; set; }
+
+        [Range(0.01, 100.0, ErrorMessage = "OverrideMultiplier must be greater than 0.")]
+        public double? OverrideMultiplier { get; set; }
     }
 }

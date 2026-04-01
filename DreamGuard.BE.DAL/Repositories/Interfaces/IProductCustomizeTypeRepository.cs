@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Constants;
 
 namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
@@ -12,5 +13,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         public Task<PaginatedList<ProductCustomizeType>> GetAllWithPagingAsync(int pageNumber, int pageSize, List<Guid> exceedProductCustomizeIds);
         Task<List<ProductCustomizeType>> GetByIdsAsync(List<Guid> ids);
+        Task<List<Guid>> GetAllCustomizeTypeIds();
+        Task<List<Guid>> GetCustomizeTypeIdsByProductTypeAsync(FullyCustomizedProductType type);
     }
 }

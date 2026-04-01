@@ -11,6 +11,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<VariantCustomizeType?> GetByCompositeKeyAsync(Guid cusId, Guid productVariantId);
         Task<List<VariantCustomizeType>> GetByVariantIdAsync(Guid productVariantId);
         Task<List<VariantCustomizeType>> GetByVariantIdWithDetailsAsync(Guid productVariantId);
+        Task<List<VariantCustomizeType>> GetByVariantIdsWithDetailsAsync(IEnumerable<Guid> productVariantIds);
         Task AddRangeAsync(IEnumerable<VariantCustomizeType> entities);
     }
 }

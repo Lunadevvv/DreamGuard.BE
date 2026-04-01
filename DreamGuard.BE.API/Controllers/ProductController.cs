@@ -86,10 +86,43 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
+        //Create new Product with fully customizable variant
+        [HttpPost("fully-customize")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateFullyCustomizeProductAsync([FromBody] CreateFullyCustomizeProductRequest request)
+        {
+            var result = await _productService.CreateFullyCustomizeProductAsync(request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        //Get fully customizable products
+        [HttpGet("fully-customized")]
+        public async Task<IActionResult> GetFullyCustomizedProductsAsync()
+        {
+            var result = await _productService.GetFullyCustomizedProductsAsync();
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         //Create
         [HttpPost]
         [Authorize(Roles = "Admin, Manager")]
-        public async Task<IActionResult> CreateProductAsync([FromBody] Product product)
+        public async Task<IActionResult> CreateProductAsync([FromBody] CreateProductRequest product)
         {
             var result = await _productService.CreateProductAsync(product);
             if (!result.Succeeded)
@@ -103,9 +136,9 @@ namespace DreamGuard.BE.API.Controllers
             return Ok($"Create product with slug '{product.Slug}' successfully!");
         }
         //Update
-        [HttpPut]
+        [HttpPut()]
         [Authorize(Roles = "Admin, Manager")]
-        public async Task<IActionResult> UpdateProductAsync([FromBody] Product product)
+        public async Task<IActionResult> UpdateProductAsync([FromBody] UpdateProductRequest product)
         {
             var result = await _productService.UpdateProductAsync(product);
             if (!result.Succeeded)

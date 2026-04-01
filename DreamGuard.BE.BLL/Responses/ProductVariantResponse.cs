@@ -23,7 +23,14 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid ProductId { get; set; }
         public int StockQuantity { get; set; }
         public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
-        public List<CustomizeOptionResponse> CustomizeOptions { get; set; } = new();
+        public List<CustomizeCategoryGroupResponse> CustomizeOptionGroups { get; set; } = new();
+    }
+
+    public class CustomizeCategoryGroupResponse
+    {
+        public CustomizeCategory Category { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public List<CustomizeOptionResponse> Options { get; set; } = new();
     }
 
     public class CustomizeOptionResponse
@@ -32,7 +39,10 @@ namespace DreamGuard.BE.BLL.Responses
         public string Name { get; set; } = string.Empty;
         public string Summary { get; set; } = string.Empty;
         public decimal DefaultPrice { get; set; }
-        public decimal OverridePrice { get; set; }
+        public decimal? OverridePrice { get; set; }
+        public PriceCalculationMode CalculationMode { get; set; }
+        public double? DefaultMultiplier { get; set; }
+        public double? OverrideMultiplier { get; set; }
     }
 
     public class ProductVariantGroupResponse

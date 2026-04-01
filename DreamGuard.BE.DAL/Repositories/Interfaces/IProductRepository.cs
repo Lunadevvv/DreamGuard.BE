@@ -15,5 +15,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<Product?> GetProductBySlugAsync(string slug);
         Task<Product?> GetProductByIdAsync(Guid id);
         Task<Product?> GetProductByIdForUpdateAsync(Guid id);
+        Task<List<Product>> GetFullyCustomizedProductsAsync();
+        Task UpdateProductCertificatesAsync(Product product, List<ProductCertificate> certificates);
     }
 }

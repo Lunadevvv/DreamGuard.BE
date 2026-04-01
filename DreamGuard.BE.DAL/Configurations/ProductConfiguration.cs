@@ -18,6 +18,7 @@ namespace DreamGuard.BE.DAL.Configurations
             builder.Property(e => e.Summary).HasMaxLength(500);
             builder.Property(e => e.Description).HasColumnType("TEXT");
             builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            builder.Property(e => e.FullyCustomizedProductType).HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.CreatedAt).HasColumnType("TIMESTAMPTZ");
             builder.ToTable("Products");
             builder.HasOne(p => p.Category)

@@ -24,6 +24,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICustomerRepository _customerRepository;
         private readonly IProductCustomizeTypeRepository _productCustomizeTypeRepository;
+        private readonly IVariantCustomizeTypeRepository _variantCustomizeTypeRepository;
 
         public CartService(
             ICartRepository cartRepository,
@@ -32,7 +33,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IInventoryRepository inventoryRepository,
             IUnitOfWork unitOfWork,
             ICustomerRepository customerRepository,
-            IProductCustomizeTypeRepository productCustomizeTypeRepository)
+            IProductCustomizeTypeRepository productCustomizeTypeRepository,
+            IVariantCustomizeTypeRepository variantCustomizeTypeRepository)
         {
             _cartRepository = cartRepository;
             _variantRepository = variantRepository;
@@ -41,6 +43,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
             _productCustomizeTypeRepository = productCustomizeTypeRepository;
+            _variantCustomizeTypeRepository = variantCustomizeTypeRepository;
         }
 
         public async Task<Result<CartResponse>> GetCartAsync(Guid userId)
@@ -120,23 +123,64 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _cartRepository.CreateAsync(cart);
             }
 
-            //Get all CustomizeType 
-            var customizeTypes = await _productCustomizeTypeRepository.GetAllAsync();
-            //map customize details from request to cart item details
+            List<VariantCustomizeType> variantCustomizations = new();
+            if (request.ProductVariantId.HasValue)
+            {
+                variantCustomizations = await _variantCustomizeTypeRepository.GetByVariantIdWithDetailsAsync(request.ProductVariantId.Value);
+            }
+
+            var requestedCusIds = request.ProductCustomizeDetailRequest.Select(r => r.ProductCustomizeTypeId).ToList();
+            var validCustomizations = variantCustomizations.Where(vc => requestedCusIds.Contains(vc.CusId)).ToList();
+            
+            var materialsCount = validCustomizations.Count(vc => vc.ProductCustomizeType?.Category == CustomizeCategory.Material);
+            var colorsCount = validCustomizations.Count(vc => vc.ProductCustomizeType?.Category == CustomizeCategory.Color);
+            var patternsCount = validCustomizations.Count(vc => vc.ProductCustomizeType?.Category == CustomizeCategory.Pattern);
+
+            if (materialsCount > 1 || colorsCount > 1 || patternsCount > 1)
+            {
+                 return Result.Failure("Only max 1 Material, 1 Color, and 1 Pattern can be selected.", 400);
+            }
+
+            decimal variantSalePrice = 0;
+            if (request.ProductVariantId.HasValue)
+            {
+                var variantInfo = await _variantRepository.GetVariantByIdAsync(request.ProductVariantId.Value);
+                if (variantInfo != null) variantSalePrice = variantInfo.SalePrice;
+            }
+
             var customizeDetails = request.ProductCustomizeDetailRequest.Select(d =>
             {
-                var type = customizeTypes.FirstOrDefault(ct => ct.Id == d.ProductCustomizeTypeId);
+                var vc = validCustomizations.FirstOrDefault(vc => vc.CusId == d.ProductCustomizeTypeId);
+                if (vc == null) return null;
+
+                decimal addOnPrice = 0;
+                var type = vc.ProductCustomizeType;
+                if (type.CalculationMode == PriceCalculationMode.Multiplier)
+                {
+                    double multiplier = vc.OverrideMultiplier ?? type.DefaultMultiplier ?? 1.0;
+                    if (multiplier > 1.0)
+                    {
+                        addOnPrice = variantSalePrice * (decimal)(multiplier - 1.0);
+                    }
+                }
+                else
+                {
+                    addOnPrice = vc.OverridePrice ?? type.DefaultPrice;
+                }
+
                 return new ProductCustomizeDetail
                 {
-                    CustomizeTypeName = type?.Name ?? "Unknown",
+                    CustomizeTypeName = type.Name,
                     CustomizeContent = d.CustomizeContent,
-                    AddOnPrice = type?.DefaultPrice ?? 0
+                    AddOnPrice = addOnPrice
                 };
-            }).ToList();
+            }).Where(d => d != null).Select(d => d!).ToList();
+
+            var customizeHash = GenerateCustomizeHash(customizeDetails);
 
             // Check if item already exists in cart
             var existingItem = await _cartRepository.GetCartItemAsync(
-                cart.Id, request.ProductVariantId, request.ComboId);
+                cart.Id, request.ProductVariantId, request.ComboId, customizeHash);
 
             if (existingItem != null)
             {
@@ -166,7 +210,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ComboId = request.ComboId,
                     Quantity = request.Quantity,
                     AddedAt = DateTime.UtcNow,
-                    ProductCustomizeDetails = customizeDetails
+                    ProductCustomizeDetails = customizeDetails,
+                    CustomizeHash = customizeHash
                 };
                 await _cartRepository.AddCartItemAsync(cartItem);
             }
@@ -316,14 +361,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     .Select(i => i.ProductVariantId!.Value).ToList();
                 var comboIds = request.Items
                     .Where(i => i.ComboId.HasValue)
-                    .Select(i => i.ComboId!.Value).ToList();
+                    .Select(i => i.ComboId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var combosDict = (await _comboRepository.GetCombosWithProductsByIdsAsync(comboIds))
+                    .ToDictionary(c => c.Id);
 
                 var variantsDict = (await _variantRepository.GetVariantsByIdsAsync(variantIds))
                     .ToDictionary(v => v.Id);
                 var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds))
                     .ToDictionary(i => i.ProductVariantId);
                 var existingCartItems = (await _cartRepository.GetCartItemsByCartIdAsync(cart.Id))
-                    .ToDictionary(ci => (ci.ProductVariantId, ci.ComboId));
+                    .GroupBy(ci => (ci.ProductVariantId, ci.ComboId, ci.CustomizeHash))
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var allVariantCusList = await _variantCustomizeTypeRepository.GetByVariantIdsWithDetailsAsync(variantIds);
+                var variantCusDict = allVariantCusList.GroupBy(vc => vc.ProductVariantId).ToDictionary(g => g.Key, g => g.ToList());
 
                 foreach (var item in request.Items)
                 {
@@ -347,17 +401,70 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                     else
                     {
-                        var validationResult = await ValidateComboForCart(item.ComboId!.Value);
-                        if (!validationResult.Succeeded) continue;
-                        availableStock = validationResult.Data;
+                        combosDict.TryGetValue(item.ComboId!.Value, out var combo);
+                        if (combo == null || combo.ComboParentId == null || combo.Status != ProductStatus.Published) continue;
+
+                        var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
+                        if (comboStock <= 0) continue;
+                        
+                        availableStock = comboStock;
                     }
 
                     // Clamp quantity to available stock
                     var quantity = Math.Min(item.Quantity, availableStock);
                     if (quantity <= 0) continue;
 
+                    List<VariantCustomizeType> itemVariantCustomizations = new();
+                    decimal variantSalePrice = 0;
+                    if (item.ProductVariantId.HasValue)
+                    {
+                        variantCusDict.TryGetValue(item.ProductVariantId.Value, out itemVariantCustomizations);
+                        itemVariantCustomizations ??= new List<VariantCustomizeType>();
+                        
+                        variantsDict.TryGetValue(item.ProductVariantId.Value, out var variantInfo);
+                        if (variantInfo != null) variantSalePrice = variantInfo.SalePrice;
+                    }
+
+                    var requestedCusIds = item.ProductCustomizeDetailRequest.Select(r => r.ProductCustomizeTypeId).ToList();
+                    var validCustomizations = itemVariantCustomizations.Where(vc => requestedCusIds.Contains(vc.CusId)).ToList();
+                    
+                    var materialsCount = validCustomizations.Count(vc => vc.ProductCustomizeType?.Category == CustomizeCategory.Material);
+                    var colorsCount = validCustomizations.Count(vc => vc.ProductCustomizeType?.Category == CustomizeCategory.Color);
+                    var patternsCount = validCustomizations.Count(vc => vc.ProductCustomizeType?.Category == CustomizeCategory.Pattern);
+
+                    if (materialsCount > 1 || colorsCount > 1 || patternsCount > 1) continue;
+
+                    var itemCustomizeDetails = item.ProductCustomizeDetailRequest.Select(d =>
+                    {
+                        var vc = validCustomizations.FirstOrDefault(vc => vc.CusId == d.ProductCustomizeTypeId);
+                        if (vc == null) return null;
+
+                        decimal addOnPrice = 0;
+                        var type = vc.ProductCustomizeType;
+                        if (type.CalculationMode == PriceCalculationMode.Multiplier)
+                        {
+                            double multiplier = vc.OverrideMultiplier ?? type.DefaultMultiplier ?? 1.0;
+                            if (multiplier > 1.0)
+                            {
+                                addOnPrice = variantSalePrice * (decimal)(multiplier - 1.0);
+                            }
+                        }
+                        else
+                        {
+                            addOnPrice = vc.OverridePrice ?? type.DefaultPrice;
+                        }
+
+                        return new ProductCustomizeDetail
+                        {
+                            CustomizeTypeName = type.Name,
+                            CustomizeContent = d.CustomizeContent,
+                            AddOnPrice = addOnPrice
+                        };
+                    }).Where(d => d != null).Select(d => d!).ToList();
+                    var itemHash = GenerateCustomizeHash(itemCustomizeDetails);
+
                     // Check if item already exists in cart using pre-loaded data
-                    existingCartItems.TryGetValue((item.ProductVariantId, item.ComboId), out var existingItem);
+                    existingCartItems.TryGetValue((item.ProductVariantId, item.ComboId, itemHash), out var existingItem);
 
                     if (existingItem != null)
                     {
@@ -374,7 +481,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             ProductVariantId = item.ProductVariantId,
                             ComboId = item.ComboId,
                             Quantity = quantity,
-                            AddedAt = DateTime.UtcNow
+                            AddedAt = DateTime.UtcNow,
+                            ProductCustomizeDetails = itemCustomizeDetails,
+                            CustomizeHash = itemHash
                         };
                         await _cartRepository.AddCartItemAsync(cartItem);
                     }
@@ -441,6 +550,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             return Result<int>.Success(comboStock);
+        }
+
+        private static string GenerateCustomizeHash(List<ProductCustomizeDetail> details)
+        {
+            if (details == null || !details.Any()) return string.Empty;
+
+            var sortedDetails = details
+                .OrderBy(d => d.CustomizeTypeName)
+                .ThenBy(d => d.CustomizeContent)
+                .ToList();
+
+            var combinedString = string.Join("|", sortedDetails.Select(d => $"{d.CustomizeTypeName}:{d.CustomizeContent}"));
+
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            var bytes = System.Text.Encoding.UTF8.GetBytes(combinedString);
+            var hashBytes = md5.ComputeHash(bytes);
+            return Convert.ToBase64String(hashBytes);
         }
 
         private static CartItemResponse MapCartItemToResponse(CartItem ci)

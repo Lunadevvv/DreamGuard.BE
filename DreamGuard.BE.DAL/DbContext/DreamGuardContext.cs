@@ -41,6 +41,7 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<ProductCustomizeType> ProductCustomizeTypes { get; set; }
         public DbSet<VariantCustomizeType> VariantCustomizeTypes { get; set; }
+        public DbSet<ProductCertificate> ProductCertificates { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
         public DbSet<Customer> Customers { get; set; }

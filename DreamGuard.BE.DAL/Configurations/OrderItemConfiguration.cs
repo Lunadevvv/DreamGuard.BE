@@ -41,6 +41,9 @@ namespace DreamGuard.BE.DAL.Configurations
                             : JsonSerializer.Deserialize<List<ProductCustomizeDetail>>(JsonSerializer.Serialize(c, (JsonSerializerOptions)null), (JsonSerializerOptions)null)
                 ));
 
+            builder.Property(oi => oi.CustomizeHash)
+                .HasMaxLength(100);
+
             builder.HasOne(oi => oi.Order)
                 .WithMany(o => o.OrderItems)
                 .HasForeignKey(oi => oi.OrderId)

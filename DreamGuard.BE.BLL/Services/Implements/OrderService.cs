@@ -89,12 +89,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Pre-load all variants and inventories
                 var variantIds = cart.CartItems
                     .Where(ci => ci.ProductVariantId.HasValue)
-                    .Select(ci => ci.ProductVariantId!.Value).ToList();
+                    .Select(ci => ci.ProductVariantId!.Value)
+                    .Distinct()
+                    .ToList();
+                
+                var comboIds = cart.CartItems
+                    .Where(ci => ci.ComboId.HasValue)
+                    .Select(ci => ci.ComboId!.Value)
+                    .Distinct()
+                    .ToList();
 
                 var variantsDict = (await _variantRepository.GetVariantsByIdsAsync(variantIds))
                     .ToDictionary(v => v.Id);
                 var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds))
                     .ToDictionary(i => i.ProductVariantId);
+                var combosDict = (await _comboRepository.GetCombosWithProductsByIdsAsync(comboIds))
+                    .ToDictionary(c => c.Id);
 
                 // Validate and prepare each cart item
                 foreach (var cartItem in cart.CartItems)
@@ -126,6 +136,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
                         }
 
+                        // Update RAM inventory state for next consecutive identical items
+                        if (inventory != null)
+                        {
+                            inventory.Quantity -= cartItem.Quantity;
+                        }
+
                         var productName = cartItem.ProductVariant?.Product?.Name ?? "Unknown";
                         var itemPrice = variant.SalePrice;
                         var itemAddonPrice = cartItem.ProductCustomizeDetails?.Sum(d => d.AddOnPrice) ?? 0;
@@ -138,6 +154,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             UnitPrice = itemPrice,
                             TotalPrice = itemPrice * cartItem.Quantity,
                             ItemName = $"{productName} - {variant.Size}",
+                            CustomizeHash = cartItem.CustomizeHash,
                             ProductCustomizeDetails = cartItem.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
                             {
                                 CustomizeTypeName = d.CustomizeTypeName,
@@ -149,7 +166,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                     else if (cartItem.ComboId.HasValue)
                     {
-                        var combo = await _comboRepository.GetComboWithProductsAsync(cartItem.ComboId.Value);
+                        combosDict.TryGetValue(cartItem.ComboId.Value, out var combo);
                         if (combo == null || combo.Status != ProductStatus.Published)
                         {
                             await transaction.RollbackAsync();
@@ -581,6 +598,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Quantity = oi.Quantity,
                     UnitPrice = oi.UnitPrice,
                     TotalPrice = oi.TotalPrice,
+                    CustomizeHash = oi.CustomizeHash,
                     ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
                     {
                         CustomizeTypeName = d.CustomizeTypeName,

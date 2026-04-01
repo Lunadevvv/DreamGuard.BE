@@ -68,6 +68,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             existingType.Summary = customizeType.Summary;
             existingType.Name = customizeType.Name;
             existingType.Status = customizeType.Status;
+            existingType.Category = customizeType.Category;
+            existingType.CalculationMode = customizeType.CalculationMode;
+            existingType.DefaultMultiplier = customizeType.DefaultMultiplier;
+            existingType.ApplicableProductType = customizeType.ApplicableProductType;
 
             var result = await _productCustomizeTypeRepository.UpdateAsync(existingType);
             

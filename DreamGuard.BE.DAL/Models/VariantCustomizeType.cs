@@ -10,7 +10,8 @@ namespace DreamGuard.BE.DAL.Models
     {
         public Guid CusId { get; set; }
         public Guid ProductVariantId { get; set; }
-        public decimal OverridePrice { get; set; }
+        public decimal? OverridePrice { get; set; }
+        public double? OverrideMultiplier { get; set; }
         [JsonIgnore]
         public ProductVariant ProductVariant { get; set; }
         [JsonIgnore]
