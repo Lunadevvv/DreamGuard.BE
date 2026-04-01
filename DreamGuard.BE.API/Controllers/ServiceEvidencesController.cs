@@ -30,7 +30,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
-        [HttpGet("/service-tasks/{serviceTaskId}/service-evidences")]
+        [HttpGet("service-tasks/{serviceTaskId}/service-evidences")]
         public async Task<IActionResult> GetByServiceTaskIdAsync(Guid serviceTaskId, int pageNumber = 1, int pageSize = 4)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
