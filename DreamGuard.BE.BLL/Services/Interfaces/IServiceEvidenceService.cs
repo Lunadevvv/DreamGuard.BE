@@ -12,9 +12,9 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IServiceEvidenceService
     {
-        Task<Result> CreateAsync(Guid staffId, ServiceEvidenceCreateRequest createRequest);
+        public Task<Result> CreateAsync(Guid staffId, ServiceEvidenceCreateRequest createRequest);
         public Task<Result<ServiceEvidenceResponse>> GetByIdAsync(Guid serviceEvidenceId);
-        Task<Result<PaginatedList<ServiceEvidenceResponse>>> GetAllAsync(Guid staffId, int pagenumber, int pageSize, Guid serviceTaskId);
+        public Task<Result<PaginatedList<ServiceEvidenceResponse>>> GetAllAsync(Guid staffId, int pagenumber, int pageSize, Guid serviceTaskId);
         public Task<Result<PaginatedList<ServiceEvidenceResponse>>> AdminSearchSeAsync(int pageNumber, int pageSize, AdminSearchSeRequest adminSearchSeRequest);
     }
 }
