@@ -12,6 +12,8 @@ namespace DreamGuard.BE.DAL.Models
         public Guid Id { get; set; }
         [Range(0, int.MaxValue, ErrorMessage = "Quantity must be a non-negative integer.")]
         public int Quantity { get; set; }
+        [Range(0, int.MaxValue, ErrorMessage = "Defect quantity must be a non-negative integer.")]
+        public int DefectQuantity { get; set; } = 0;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         [Range(0, int.MaxValue, ErrorMessage = "Low stock threshold must be a non-negative integer.")]
         public int LowStockThreshold { get; set; } = 10;

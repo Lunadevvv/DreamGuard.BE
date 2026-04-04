@@ -67,6 +67,7 @@ namespace DreamGuard.BE.DAL.DbContext
             var managerRole = new IdentityRole<Guid>(Role.Manager);
             var sellerRole = new IdentityRole<Guid>(Role.Seller);
             var cleaningStaffRole = new IdentityRole<Guid>(Role.CleaningStaff);
+            var deliveryStaffRole = new IdentityRole<Guid>(Role.DeliveryStaff);
             var userRole = new IdentityRole<Guid>(Role.User);
             if (_roleManager.Roles.All(r => r.Name != adminRole.Name))
             {
@@ -83,6 +84,10 @@ namespace DreamGuard.BE.DAL.DbContext
             if (_roleManager.Roles.All(r => r.Name != cleaningStaffRole.Name))
             {
                 await _roleManager.CreateAsync(cleaningStaffRole);
+            }
+            if (_roleManager.Roles.All(r => r.Name != deliveryStaffRole.Name))
+            {
+                await _roleManager.CreateAsync(deliveryStaffRole);
             }
             if (_roleManager.Roles.All(r => r.Name != userRole.Name))
             {

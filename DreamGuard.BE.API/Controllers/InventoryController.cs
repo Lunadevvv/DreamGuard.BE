@@ -72,5 +72,37 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
+
+        [HttpPost("add-defect-stock")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddDefectStock([FromBody] UpdateInventoryStockRequest request)
+        {
+            var result = await _inventoryService.AddDefectStockAsync(request.ProductVariantId, request.Quantity);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        [HttpPost("reduce-defect-stock")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ReduceDefectStock([FromBody] UpdateInventoryStockRequest request)
+        {
+            var result = await _inventoryService.ReduceDefectStockAsync(request.ProductVariantId, request.Quantity);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
     }
 }

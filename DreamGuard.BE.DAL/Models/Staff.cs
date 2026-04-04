@@ -1,4 +1,4 @@
-﻿using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Constants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,5 +22,6 @@ namespace DreamGuard.BE.DAL.Models
         public User User { get; set; } = null!;
         public ICollection<ServiceTask> ServiceTasks { get; set; } = new List<ServiceTask>();
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+        public ICollection<ShippingTask> ShippingTasks { get; set; } = new List<ShippingTask>();
     }
 }

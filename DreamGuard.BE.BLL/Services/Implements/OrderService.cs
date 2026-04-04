@@ -563,6 +563,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 (OrderStatus.Confirmed, OrderStatus.Cancelled) => true,
                 (OrderStatus.Processing, OrderStatus.Shipping) => true,
                 (OrderStatus.Shipping, OrderStatus.Delivered) => true,
+                (OrderStatus.Shipping, OrderStatus.Returned) => true,
                 (OrderStatus.Delivered, OrderStatus.Completed) => true,
                 _ => false
             };

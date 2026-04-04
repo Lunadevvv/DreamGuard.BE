@@ -457,5 +457,111 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _comboRepository.UpdateAsync(parentCombo);
             }
         }
+
+        public async Task<Result> AddDefectStockAsync(Guid productVariantId, int quantity)
+        {
+            if (quantity <= 0) return Result.Failure("Quantity must be greater than 0.", 400);
+
+            var inventory = await _inventoryRepository.GetInventoryByVariantIdForUpdateAsync(productVariantId);
+            if (inventory == null) return Result.Failure("Inventory not found.", 404);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                inventory.DefectQuantity += quantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+                var res = await _inventoryRepository.UpdateAsync(inventory);
+                if (res <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure("Failed to update inventory defect stock.", 400);
+                }
+                await transaction.CommitAsync();
+                return Result.Success("Defect stock updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure($"An error occurred while updating defect inventory: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<Result> ReduceDefectStockAsync(Guid productVariantId, int quantity)
+        {
+            if (quantity <= 0) return Result.Failure("Quantity must be greater than 0.", 400);
+
+            var inventory = await _inventoryRepository.GetInventoryByVariantIdForUpdateAsync(productVariantId);
+            if (inventory == null) return Result.Failure("Inventory not found.", 404);
+
+            if (inventory.DefectQuantity < quantity)
+                return Result.Failure("Insufficient defect stock to reduce.", 400);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                inventory.DefectQuantity -= quantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+                var res = await _inventoryRepository.UpdateAsync(inventory);
+                if (res <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure("Failed to update inventory defect stock.", 400);
+                }
+                await transaction.CommitAsync();
+                return Result.Success("Defect stock updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure($"An error occurred while updating defect inventory: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<Result> RestoreDefectVariantStockAsync(Guid productVariantId, int quantity)
+        {
+            var inventory = await _inventoryRepository.GetInventoryByVariantIdForUpdateAsync(productVariantId);
+            if (inventory == null) return Result.Failure($"Inventory not found for variant '{productVariantId}'.", 404);
+
+            try
+            {
+                inventory.DefectQuantity += quantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+                await _inventoryRepository.UpdateAsync(inventory);
+                // Note: We DO NOT change ProductStatus since this is defect stock
+                return Result.Success("Defect stock restored successfully.");
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure("Concurrent stock update detected. Please retry.", 409);
+            }
+        }
+
+        public async Task<Result> RestoreDefectComboStockAsync(Guid comboId, int orderQuantity)
+        {
+            var combo = await _comboRepository.GetComboWithProductsForUpdateAsync(comboId);
+            if (combo == null) return Result.Failure("Combo not found.", 404);
+
+            foreach (var cpv in combo.ComboProductVariants)
+            {
+                var inventory = cpv.ProductVariant?.Inventory;
+                if (inventory == null) return Result.Failure($"Inventory not found for variant '{cpv.ProductVariantId}'.", 404);
+
+                var restoreQuantity = cpv.Quantity * orderQuantity;
+                inventory.DefectQuantity += restoreQuantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+                // Note: We DO NOT track or restore ProductStatus for defect stock
+            }
+
+            try
+            {
+                await _unitOfWork.SaveChangeAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure("Concurrent stock update detected. Please retry.", 409);
+            }
+
+            return Result.Success("Defect combo stock restored successfully.");
+        }
     }
 }

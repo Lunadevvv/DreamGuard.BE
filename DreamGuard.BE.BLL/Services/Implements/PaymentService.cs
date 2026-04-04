@@ -240,6 +240,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Status = p.Status,
                 Amount = p.Amount,
                 PaymentMethod = p.PaymentMethod,
+                PaymentType = p.Type,
                 CreatedAt = p.CreatedAt
             }).ToList();
 
@@ -350,6 +351,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Amount = payment.Amount,
                 Description = payment.Description,
                 PaymentMethod = payment.PaymentMethod,
+                PaymentType = payment.Type,
                 CreatedAt = payment.CreatedAt,
                 UpdatedAt = payment.UpdatedAt
             };

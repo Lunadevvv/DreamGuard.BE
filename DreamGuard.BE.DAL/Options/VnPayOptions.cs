@@ -16,6 +16,7 @@ namespace DreamGuard.BE.DAL.Options
         public string Locale { get; set; } = "vn";
         public string CurrCode { get; set; } = "VND";
         public string BaseUrl { get; set; } = string.Empty;
+        public string RefundUrl { get; set; } = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
         public int PaymentExpirationMinutes { get; set; } = 5;
     }
 }
