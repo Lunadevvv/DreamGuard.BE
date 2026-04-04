@@ -8,8 +8,8 @@ namespace DreamGuard.BE.DAL.Constants
 {
     public enum PaymentType
     {
-        Final = 0,
-        Deposit = 2,
-        Refund = 3
+        Deposit = 1,
+        Refund = 2,
+        Purchase = 0,
     }
 }

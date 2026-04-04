@@ -1,4 +1,4 @@
-﻿using DreamGuard.BE.BLL.Services.Implements;
+using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -42,6 +42,7 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IServicePackageService, ServicePackageService>();
             builder.Services.AddScoped<IServiceOrderService, ServiceOrderService>();
             builder.Services.AddScoped<IStaffService, StaffService>();
+            builder.Services.AddScoped<IShippingTaskService, ShippingTaskService>();
             builder.Services.AddScoped<IServiceTaskService, ServiceTaskService>();
             builder.Services.AddScoped<IServiceEvidenceService, ServiceEvidenceService>();
             builder.Services.AddScoped<IServicePackageMappingService, ServicePackageMappingService>();

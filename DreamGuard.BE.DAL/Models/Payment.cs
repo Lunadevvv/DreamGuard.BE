@@ -12,6 +12,7 @@ namespace DreamGuard.BE.DAL.Models
         public string OrderCode { get; set; } = string.Empty;
         public Guid? POrderId { get; set; }
         public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
+        public PaymentType Type { get; set; } = PaymentType.Purchase;
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public PaymentMethod PaymentMethod { get; set; }

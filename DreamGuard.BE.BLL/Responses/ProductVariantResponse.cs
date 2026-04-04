@@ -24,6 +24,7 @@ namespace DreamGuard.BE.BLL.Responses
         public DateTime CreatedAt { get; set; }
         public Guid ProductId { get; set; }
         public int StockQuantity { get; set; }
+        public int DefectQuantity { get; set; }
         public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
         public List<CustomizeCategoryGroupResponse> CustomizeOptionGroups { get; set; } = new();
     }

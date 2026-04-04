@@ -1,4 +1,4 @@
-﻿using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -55,6 +55,8 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<ServiceEvidence> ServiceEvidences { get; set; }
         public DbSet<ServiceAsset> ServiceAssets { get; set; }
         public DbSet<Rating> Ratings { get; set; }  
+        public DbSet<ShippingTask> ShippingTasks { get; set; }
+        public DbSet<ShippingEvidence> ShippingEvidences { get; set; }
         public DbSet<TradeInOrder> TradeInOrders { get; set; }
         public DbSet<TradeInImage> TradeInImages { get; set; }
         public DbSet<Conversation> Conversations { get; set; }

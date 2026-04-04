@@ -103,5 +103,66 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 RedirectUrl = $"{_configuration.PaymentResultPage}?vnp_ResponseCode={vnp_ResponseCode}&vnp_TxnRef={paymentId}"
             };
         }
+
+        public async Task<VnPaymentRefundResponse> RefundPaymentAsync(VnPaymentRefundRequest request)
+        {
+            var requestId = Guid.NewGuid().ToString("N");
+            var version = _configuration.Version!;
+            var command = "refund";
+            var tmnCode = _configuration.TmnCode!;
+            var txType = "02"; // 02 is full refund
+            var txnRef = request.OrderId;
+            var amount = ((int)request.Amount * 100).ToString();
+            var orderInfo = "Hoan tien GD " + txnRef;
+            var txNo = string.IsNullOrEmpty(request.TransactionNo) ? "0" : request.TransactionNo;
+            var txDate = request.PaymentDate.ToString("yyyyMMddHHmmss");
+            var createBy = request.CreateBy;
+            var createDate = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var ipAddr = request.IpAddress;
+
+            var signData = $"{requestId}|{version}|{command}|{tmnCode}|{txType}|{txnRef}|{amount}|{txNo}|{txDate}|{createBy}|{createDate}|{ipAddr}|{orderInfo}";
+            var secureHash = Utils.HmacSHA512(_configuration.HashSecret!, signData);
+
+            var reqData = new
+            {
+                vnp_RequestId = requestId,
+                vnp_Version = version,
+                vnp_Command = command,
+                vnp_TmnCode = tmnCode,
+                vnp_TransactionType = txType,
+                vnp_TxnRef = txnRef,
+                vnp_Amount = amount,
+                vnp_OrderInfo = orderInfo,
+                vnp_TransactionNo = txNo,
+                vnp_TransactionDate = txDate,
+                vnp_CreateBy = createBy,
+                vnp_CreateDate = createDate,
+                vnp_IpAddr = ipAddr,
+                vnp_SecureHash = secureHash
+            };
+
+            using var httpClient = new HttpClient();
+            var json = System.Text.Json.JsonSerializer.Serialize(reqData);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var responseMessage = await httpClient.PostAsync(_configuration.RefundUrl, content);
+            if (!responseMessage.IsSuccessStatusCode)
+            {
+                 return new VnPaymentRefundResponse { Success = false, Message = "HTTP Error: " + responseMessage.StatusCode };
+            }
+
+            var responseJson = await responseMessage.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(responseJson);
+            var root = doc.RootElement;
+            
+            var resCode = root.GetProperty("vnp_ResponseCode").GetString();
+            var resMessage = root.GetProperty("vnp_Message").GetString();
+            return new VnPaymentRefundResponse
+            {
+                Success = resCode == "00",
+                Message = resMessage ?? "",
+                ResponseCode = resCode ?? ""
+            };
+        }
     }
 }

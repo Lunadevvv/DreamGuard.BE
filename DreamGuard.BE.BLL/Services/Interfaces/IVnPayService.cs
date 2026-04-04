@@ -12,5 +12,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     {
         string CreatePaymentUrl( VnPaymentRequest model);
         VnPaymentResponse GetPaymentResult(IQueryCollection collections);
+        Task<VnPaymentRefundResponse> RefundPaymentAsync(VnPaymentRefundRequest request);
     }
 }

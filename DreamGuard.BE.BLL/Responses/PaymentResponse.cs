@@ -15,6 +15,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
+        public PaymentType PaymentType { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime ExpiredAt { get; set; }
@@ -26,6 +27,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string OrderCode { get; set; } = string.Empty;
         public PaymentType PaymentType { get; set; }
         public PaymentStatus Status { get; set; }
+        public PaymentType PaymentType { get; set; }
         public decimal Amount { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
         public DateTime CreatedAt { get; set; }
