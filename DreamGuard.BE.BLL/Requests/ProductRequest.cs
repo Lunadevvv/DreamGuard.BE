@@ -27,7 +27,11 @@ namespace DreamGuard.BE.BLL.Requests
         public FullyCustomizedProductType FullyCustomizedProductType { get; set; } = FullyCustomizedProductType.None;
         public int? CateId { get; set; }
         public List<Guid> CertificateIds { get; set; } = new List<Guid>();
-
+        public bool IsTradeInEligible { get; set; } = false;
+        [Range(0, double.MaxValue, ErrorMessage = "MinTradeInPrice must be a non-negative value.")]
+        public decimal MinTradeInPrice { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "DepositAmount must be a non-negative value.")]
+        public decimal DepositAmount { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
+using DreamGuard.BE.DAL.Models;
 
 namespace DreamGuard.BE.BLL.Responses
 {
@@ -24,6 +26,28 @@ namespace DreamGuard.BE.BLL.Responses
         public int StockQuantity { get; set; }
         public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
         public List<CustomizeCategoryGroupResponse> CustomizeOptionGroups { get; set; } = new();
+    }
+    public class ProductVariantSummaryResponse
+    {
+        public Guid Id { get; set; }
+        public string? Sku { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SalePrice { get; set; }
+        public double? Weight { get; set; }
+        public ProductAttribute? Attributes { get; set; }
+        public string Size { get; set; } = string.Empty;
+        public bool IsNew { get; set; }
+        public bool IsCustomizable { get; set; }
+        public ProductStatus Status { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public Guid ProductId { get; set; }
+        private class Mapping : Profile
+        {
+            public Mapping()
+            {
+                CreateMap<ProductVariant, ProductVariantSummaryResponse>();
+            }
+        }
     }
 
     public class CustomizeCategoryGroupResponse

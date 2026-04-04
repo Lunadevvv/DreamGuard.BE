@@ -46,6 +46,8 @@ namespace DreamGuard.BE.BLL
             builder.Services.AddScoped<IServiceEvidenceService, ServiceEvidenceService>();
             builder.Services.AddScoped<IServicePackageMappingService, ServicePackageMappingService>();
             builder.Services.AddScoped<IRatingService, RatingService>();
+            builder.Services.AddScoped<ITradeInOrderService, TradeInOrderService>();
+            builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
         }
     }
 }

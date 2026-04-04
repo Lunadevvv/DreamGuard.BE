@@ -7,5 +7,7 @@ namespace DreamGuard.BE.DAL.Constants
         Failed = 2,
         COD = 3,
         CODPaid = 4,
+        Refunding = 5,
+        Refunded = 6,
     }
 }

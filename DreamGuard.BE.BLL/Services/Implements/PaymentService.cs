@@ -105,6 +105,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PaymentId = payment.Id,
                 OrderCode = order.OrderCode,
                 PaymentMethod = method,
+                PaymentType = payment.PaymentType,
                 Status = payment.Status,
                 Amount = payment.Amount,
                 PaymentUrl = paymentUrl,
@@ -237,6 +238,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 Id = p.Id,
                 OrderCode = p.OrderCode,
+                PaymentType = p.PaymentType,
                 Status = p.Status,
                 Amount = p.Amount,
                 PaymentMethod = p.PaymentMethod,
@@ -257,6 +259,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 Id = p.Id,
                 OrderCode = p.OrderCode,
+                PaymentType = p.PaymentType,
                 Status = p.Status,
                 Amount = p.Amount,
                 PaymentMethod = p.PaymentMethod,
@@ -346,6 +349,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Id = payment.Id,
                 OrderCode = payment.OrderCode,
                 POrderId = payment.POrderId,
+                TradeInOrderId = payment.TradeInOrderId,
+                PaymentType = payment.PaymentType,
                 Status = payment.Status,
                 Amount = payment.Amount,
                 Description = payment.Description,

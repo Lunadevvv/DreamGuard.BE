@@ -1,4 +1,5 @@
 ﻿using CloudinaryDotNet;
+using DreamGuard.BE.API.Hubs;
 using DreamGuard.BE.BLL;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
@@ -94,6 +95,7 @@ namespace DreamGuard.BE.API
                     {
                         var accessToken = context.Request.Cookies["AccessToken"];
                         context.Token = accessToken;
+
                         return Task.CompletedTask;
                     },
 
@@ -226,6 +228,9 @@ namespace DreamGuard.BE.API
             {
                 serverOptions.Limits.MaxRequestBodySize = 52428800; // 50MB
             });
+            // Thêm SignalR service
+            builder.Services.AddSignalR();
+
 
             builder.AddBLLServices();
             builder.AddDALServices();
@@ -285,6 +290,8 @@ namespace DreamGuard.BE.API
 
 
             app.MapControllers();
+            // Map endpoint cho Hub
+            app.MapHub<ChatHub>("/chathub");
 
             app.Run();
         }

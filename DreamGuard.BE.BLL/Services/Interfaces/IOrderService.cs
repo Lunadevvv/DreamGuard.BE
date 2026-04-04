@@ -16,5 +16,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<PaginatedList<OrderSummaryResponse>>> GetAllOrdersForAdminAsync(int pageNumber, OrderStatus? status, string? orderCode);
         Task<Result> UpdateOrderStatusAsync(Guid orderId, OrderStatus newStatus);
         Task<Result> CancelOrderAsync(Guid userId, Guid orderId);
+        Task<Result<List<OrderItemResponse>>> GetOrdersToTradeInAsync(Guid customerId, Guid productVariantId);
     }
 }

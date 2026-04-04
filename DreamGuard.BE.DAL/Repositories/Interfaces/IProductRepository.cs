@@ -11,6 +11,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IProductRepository : IGenericRepository<Product>
     {
         Task<PaginatedList<Product>> GetAllProductByCategoryAsync(int cateId, int pageNumber, decimal? maxPrice, string? color, int? maxAgeGroup);
+        Task<PaginatedList<Product>> GetAllProductToTradeInAsync(int? cateId, int pageNumber, int pageSize, decimal? maxPrice, string? color, int? maxAgeGroup);
         Task<PaginatedList<Product>> GetAllProductsForAdminAsync(int pageNumber, string? name);
         Task<Product?> GetProductBySlugAsync(string slug);
         Task<Product?> GetProductByIdAsync(Guid id);

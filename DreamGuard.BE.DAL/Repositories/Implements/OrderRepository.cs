@@ -91,5 +91,22 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             await _context.OrderItems.AddRangeAsync(items);
             await _context.SaveChangesAsync();
         }
+        public async Task<List<OrderItem>> GetOrdersToTradeInAsync(Guid customerId, int categoryParentId, decimal basePriceWithDepositReduce)
+        {
+            return await _context.OrderItems
+                .Include(oi => oi.ProductCustomizeDetails)
+                .Where(oi => oi.Order!.CustomerId == customerId
+                && oi.ProductVariant!.Product!.Category!.CateParentId == categoryParentId
+                && oi.IsTradeInUsed == false && (basePriceWithDepositReduce - oi.ProductVariant.Product.MinTradeInPrice >= 0))
+                .ToListAsync();
+        }
+        public async Task<OrderItem?> GetOrderItemByIdAsync(Guid orderItemId)
+        {
+            return await _context.OrderItems
+                .Include(oi => oi.ProductVariant)
+                    .ThenInclude(pv => pv.Product)
+                        .ThenInclude(p => p.Category)
+                .FirstOrDefaultAsync(oi => oi.Id == orderItemId);
+        }
     }
 }

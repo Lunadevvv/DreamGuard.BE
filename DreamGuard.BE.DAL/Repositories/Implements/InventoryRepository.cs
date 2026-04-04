@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
@@ -44,6 +45,18 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Where(i => variantIds.Contains(i.ProductVariantId))
                 .AsTracking()
                 .ToListAsync();
+        }
+
+        public async Task<int> ReduceInventoryStock(Guid productVariantId)
+        {
+            var result = await _context.Inventories
+                .Where(iv => iv.ProductVariantId == productVariantId && iv.Quantity > 0)
+                .ExecuteUpdateAsync(s => 
+                s
+                .SetProperty(iv => iv.Quantity, iv => iv.Quantity - 1)
+                .SetProperty(iv => iv.UpdatedAt, iv => DateTime.UtcNow)
+                );
+            return result;
         }
     }
 }

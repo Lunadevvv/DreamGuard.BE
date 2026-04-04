@@ -23,6 +23,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public string CreatePaymentUrl(VnPaymentRequest model)
         {
             var vnpay = new VnPayLibrary();
+            
             var version = _configuration.Version!;
             var command = _configuration.Command!;
             var locale = _configuration.Locale!;

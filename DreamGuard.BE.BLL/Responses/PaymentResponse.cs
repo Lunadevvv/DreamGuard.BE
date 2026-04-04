@@ -9,6 +9,8 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid Id { get; set; }
         public string OrderCode { get; set; } = string.Empty;
         public Guid? POrderId { get; set; }
+        public Guid? TradeInOrderId { get; set; }
+        public PaymentType PaymentType { get; set; }
         public PaymentStatus Status { get; set; }
         public decimal Amount { get; set; }
         public string? Description { get; set; }
@@ -22,6 +24,7 @@ namespace DreamGuard.BE.BLL.Responses
     {
         public Guid Id { get; set; }
         public string OrderCode { get; set; } = string.Empty;
+        public PaymentType PaymentType { get; set; }
         public PaymentStatus Status { get; set; }
         public decimal Amount { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
@@ -33,6 +36,7 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid PaymentId { get; set; }
         public string OrderCode { get; set; } = string.Empty;
         public PaymentMethod PaymentMethod { get; set; }
+        public PaymentType PaymentType { get; set; }
         public PaymentStatus Status { get; set; }
         public decimal Amount { get; set; }
         public string? PaymentUrl { get; set; }

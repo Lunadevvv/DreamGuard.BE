@@ -27,6 +27,9 @@ namespace DreamGuard.BE.DAL.Models
         public FullyCustomizedProductType FullyCustomizedProductType { get; set; } = FullyCustomizedProductType.None;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public double AverageRating { get; set; } = 0.0;
+        public bool IsTradeInEligible { get; set; } = false;
+        public decimal MinTradeInPrice { get; set; } = 0.0m;
+        public decimal DepositAmount { get; set; } = 0.0m;
         public int? CateId { get; set; }
         [JsonIgnore]
         public Category? Category { get; set; }

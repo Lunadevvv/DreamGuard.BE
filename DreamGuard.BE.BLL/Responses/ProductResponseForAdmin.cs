@@ -18,6 +18,10 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal MinPrice { get; set; }
         public string CategoryName { get; set; } = string.Empty;
         public int VariantCount { get; set; }
+        public bool IsTradeInEligible { get; set; }
+        public decimal MinTradeInPrice { get; set; }
+        public decimal DepositAmount { get; set; }
+
         public ProductStatus Status { get; set; }
         public FullyCustomizedProductType FullyCustomizedProductType { get; set; }
     }
