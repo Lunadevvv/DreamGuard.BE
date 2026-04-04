@@ -165,9 +165,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<RegisterResponse>> CreateStaffAsync(CreateStaffRequest request)
         {
             // Validate role - only Manager, Seller, CleaningStaff allowed
-            var allowedRoles = new[] { Role.Manager, Role.Seller, Role.CleaningStaff };
+            var allowedRoles = new[] { Role.Manager, Role.Seller, Role.CleaningStaff, Role.DeliveryStaff };
             if (!allowedRoles.Contains(request.Role))
-                return Result<RegisterResponse>.Failure("Role must be Manager, Seller, or CleaningStaff", 400);
+                return Result<RegisterResponse>.Failure("Role must be Manager, Seller, CleaningStaff or DeliveryStaff", 400);
 
             // Validate gender
             if (request.Gender != Gender.Male && request.Gender != Gender.Female)
