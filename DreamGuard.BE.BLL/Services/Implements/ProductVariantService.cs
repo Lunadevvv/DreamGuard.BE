@@ -539,6 +539,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 CreatedAt = v.CreatedAt,
                 ProductId = v.ProductId,
                 StockQuantity = v.Inventory?.Quantity ?? 0,
+                DefectQuantity = v.Inventory?.DefectQuantity ?? 0,
                 StockStatus = GetStockStatus(v.Inventory?.Quantity ?? 0, v.Inventory?.LowStockThreshold ?? 10),
                 CustomizeOptionGroups = v.VariantCustomizeTypes?
                     .Where(vct => vct.ProductCustomizeType != null)

@@ -1,0 +1,214 @@
+{
+  "info": {
+    "name": "DreamGuard - Shipping & Return Module",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Get All Tasks (Admin/Manager/Staff)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks?pageNumber=1&status=Pending",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks"],
+          "query": [
+            { "key": "pageNumber", "value": "1" },
+            { "key": "status", "value": "Pending" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "0. Get Task Detail (Admin/Manager/Staff)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks/{{taskId}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks", "{{taskId}}"]
+        }
+      }
+    },
+    {
+      "name": "0. Create Task (Manager)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{manager_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"staffId\": \"YOUR-STAFF-GUID-HERE\",\n  \"orderId\": \"YOUR-ORDER-GUID-HERE\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks"]
+        }
+      }
+    },
+    {
+      "name": "0. Reassign Task (Manager)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{manager_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"newStaffId\": \"YOUR-NEW-STAFF-GUID-HERE\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks/{{taskId}}/reassign",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks", "{{taskId}}", "reassign"]
+        }
+      }
+    },
+    {
+      "name": "1. Start Delivering (Staff)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"evidenceUrls\": [\n    \"https://res.cloudinary.com/demo/image/upload/sample.jpg\"\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks/{{taskId}}/delivering",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks", "{{taskId}}", "delivering"]
+        }
+      }
+    },
+    {
+      "name": "2. Arrived at Destination (Staff)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks/{{taskId}}/arrived",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks", "{{taskId}}", "arrived"]
+        }
+      }
+    },
+    {
+      "name": "3. Delivered Success (Staff)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"evidenceUrls\": [\n    \"https://res.cloudinary.com/demo/image/upload/sample.jpg\"\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks/{{taskId}}/delivered",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks", "{{taskId}}", "delivered"]
+        }
+      }
+    },
+    {
+      "name": "4. Returning / Fail (Staff)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Customer wasn't home\",\n  \"evidenceUrls\": [\n    \"https://res.cloudinary.com/demo/image/upload/sample.jpg\"\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks/{{taskId}}/returned",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks", "{{taskId}}", "returned"]
+        }
+      }
+    },
+    {
+      "name": "5. Process Returned Order (Manager)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{manager_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"damageNote\": \"Box damaged during return\",\n  \"evidenceUrls\": [\n    \"https://res.cloudinary.com/demo/image/upload/sample.jpg\"\n  ],\n  \"damagedItems\": [\n    {\n      \"orderItemId\": \"YOUR-ORDER-ITEM-GUID-HERE\",\n      \"damagedQuantity\": 1\n    }\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ShippingTasks/{{taskId}}/process-returned",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ShippingTasks", "{{taskId}}", "process-returned"]
+        }
+      }
+    },
+    {
+      "name": "6. Add Defect Stock (Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productVariantId\": \"YOUR-PRODUCT-VARIANT-GUID-HERE\",\n  \"quantity\": 1\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Inventory/add-defect-stock",
+          "host": ["{{base_url}}"],
+          "path": ["api", "Inventory", "add-defect-stock"]
+        }
+      }
+    },
+    {
+      "name": "7. Reduce Defect Stock (Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productVariantId\": \"YOUR-PRODUCT-VARIANT-GUID-HERE\",\n  \"quantity\": 1\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Inventory/reduce-defect-stock",
+          "host": ["{{base_url}}"],
+          "path": ["api", "Inventory", "reduce-defect-stock"]
+        }
+      }
+    }
+  ]
+}

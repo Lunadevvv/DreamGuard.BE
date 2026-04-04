@@ -10,6 +10,7 @@ namespace DreamGuard.BE.DAL.Configurations
         {
             builder.HasKey(i => i.Id);
             builder.Property(i => i.Quantity).IsRequired();
+            builder.Property(i => i.DefectQuantity).IsRequired().HasDefaultValue(0);
             builder.Property(i => i.LowStockThreshold).IsRequired();
             builder.Property(i => i.UpdatedAt).IsRequired();
             builder.Property(i => i.UpdatedAt).HasColumnType("TIMESTAMPTZ");
