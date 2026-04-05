@@ -26,6 +26,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal TradeInPrice { get; set; }
         public decimal AmountToPay { get; set; }
         public decimal DepositAmount { get; set; }
+        public List<PaymentSummaryResponse> Payments { get; set; } 
         public List<TradeInImage> TradeInImages { get; set; } = new List<TradeInImage>();
         public OrderItemResponse OrderItem { get; set; }
         public ProductVariantSummaryResponse ProductVariant { get; set; }
@@ -36,7 +37,8 @@ namespace DreamGuard.BE.BLL.Responses
             {
                 CreateMap<TradeInOrder, TradeInOrderDetailResponse>()
                     .ForMember(dest => dest.OrderItem, opt => opt.MapFrom(src => src.OrderItem))
-                    .ForMember(dest => dest.ProductVariant, opt => opt.MapFrom(src => src.ProductVariant));
+                    .ForMember(dest => dest.ProductVariant, opt => opt.MapFrom(src => src.ProductVariant))
+                    .ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments));
             }
         }
     }
@@ -57,7 +59,6 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal TradeInPrice { get; set; }
         public decimal AmountToPay { get; set; }
         public decimal DepositAmount { get; set; }
-        public Conversation Conversation { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

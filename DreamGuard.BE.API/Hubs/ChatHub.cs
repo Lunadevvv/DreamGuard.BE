@@ -1,11 +1,13 @@
 ﻿using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
 namespace DreamGuard.BE.API.Hubs
 {
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly IChatMessageService _chatService;

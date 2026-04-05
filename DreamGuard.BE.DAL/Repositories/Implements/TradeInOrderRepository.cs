@@ -22,9 +22,10 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             return await _context.TradeInOrders
                 .Include(ti => ti.OrderItem)
-                    .ThenInclude(oi => oi.ProductCustomizeDetails)
                 .Include(ti => ti.ProductVariant)
+                    .ThenInclude(pv => pv.Inventory)
                 .Include(ti => ti.TradeInImages)
+                .Include(ti => ti.Payments)
                 .Where(o => o.TradeInOrderId == tradeInOrderId).FirstOrDefaultAsync();
         }
         public async Task<TradeInOrder?> GetTradeInByIdAsync(Guid tradeInOrderId)
@@ -35,6 +36,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                     .ThenInclude(pv => pv.Inventory)
                 .Include(ti => ti.ProductVariant)
                     .ThenInclude(pv => pv.Product)
+                .Include(ti => ti.OrderItem)
                 .Where(o => o.TradeInOrderId == tradeInOrderId).FirstOrDefaultAsync();
         }
 

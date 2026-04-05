@@ -18,8 +18,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IChatMessageRepository _chatRepository;
         private readonly IConversationRepository _conversationRepository;
         private readonly UserManager<User> _usermanager;
-        public ChatMessageService(IChatMessageRepository chatRepository, UserManager<User> userManager)
+        public ChatMessageService(IChatMessageRepository chatRepository, UserManager<User> userManager, IConversationRepository conversationRepository)
         {
+            _conversationRepository = conversationRepository;
             _chatRepository = chatRepository;
             _usermanager = userManager;
         }

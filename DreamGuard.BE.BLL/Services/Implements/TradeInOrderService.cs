@@ -32,7 +32,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IVnPayService _vnPayService;
         private readonly IPaymentRepository _paymentRepository;
         private readonly IConversationRepository _conversationRepository;
-        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository)
+        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository, IInventoryRepository inventoryRepository)
         {
             _productVariantRepository = productVariantRepository;
             _tradeInOrderRepository = tradeInOrderRepository;
@@ -46,6 +46,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _paymentRepository = paymentRepository;
             _customerRepository = customerRepository;
             _conversationRepository = conversationRepository;
+            _inventoryRepository = inventoryRepository;
         }
         private string GenerateOrderCode()
         {
@@ -75,10 +76,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("OrderItem not found", 404);
                 }
+                if(orderItem.Order.Payments.Any(p => p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.Paid) == false)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("The order of this OrderItem has not been paid", 400);
+                }
                 //check if order item is already used for trade-in
                 if (orderItem.IsTradeInUsed)
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in", 400);
+                }
+                //check if they are reordering the failed trade-in order
+                if (orderItem.TradeInOrder != null)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in, please use reorder failed tradeInOrder to complete payment", 400);
                 }
                 //check if the order item belongs to the customer
                 if (orderItem.Order!.CustomerId != customerId)
@@ -161,7 +171,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Description = payment.Description,
                     Amount = (int)tradeInOrder.DepositAmount,
                     IpAddress = ipAddress,
-                    CreatedDate = payment.CreatedAt
+                    CreatedDate = payment.CreatedAt,
+                    ExpiredAt = payment.ExpiredAt.AddHours(7) // Convert to UTC+7 for VnPay
                 };
                 paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
                 if (string.IsNullOrEmpty(paymentUrl))
@@ -171,6 +182,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var response = new CreateTradeInOrderResponse
                 {
                     TradeInOrderId = tradeInOrder.TradeInOrderId,
+                    PaymentId = payment.Id,
                     TradeInPrice = tradeInOrder.TradeInPrice,
                     DepositAmount = tradeInOrder.DepositAmount,
                     AmountToPay = tradeInOrder.AmountToPay,
@@ -188,79 +200,104 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
         public async Task<Result<CreateTradeInOrderResponse>> ReOrderTradeInAsync(Guid tradeInOrderId, Guid customerId, string ipAddress)
         {
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
-            if (tradeInOrder == null)
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return Result<CreateTradeInOrderResponse>.Failure("Trade in order not found", 404);
-            }
-            if (tradeInOrder.CustomerId != customerId)
-            {
-                return Result<CreateTradeInOrderResponse>.Failure("You are not the owner of this order", 403);
-            }
-            if (tradeInOrder.Status != TradeInOrderStatus.Pending)
-            {
-                return Result<CreateTradeInOrderResponse>.Failure("Only pending order can be reordered", 400);
-            }
-            var lastPayment = tradeInOrder.Payments.Where(p => p.PaymentType == PaymentType.Deposit).OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-            if (lastPayment == null)
-            {
-                return Result<CreateTradeInOrderResponse>.Failure("Deposit payment not found for this order", 404);
-            }
-            if (lastPayment.Status == PaymentStatus.Paid)
-            {
-                return Result<CreateTradeInOrderResponse>.Failure("Deposit has already been paid for this order", 400);
-            }
-            if (lastPayment.Status != PaymentStatus.Failed)
-            {
-               return Result<CreateTradeInOrderResponse>.Failure("Only orders with failed deposit payment can be reordered", 400);
-            }
+                var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
+                if (tradeInOrder == null)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Trade in order not found", 404);
+                }
+                if (tradeInOrder.CustomerId != customerId)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("You are not the owner of this order", 403);
+                }
+                if (tradeInOrder.Status != TradeInOrderStatus.Pending)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Only pending order can be reordered", 400);
+                }
+                //check if order item is already used for trade-in (phải check vì expire payment IsTradeInUsed = false)
+                if (tradeInOrder.OrderItem.IsTradeInUsed)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in", 400);
+                }
+                var lastPayment = tradeInOrder.Payments.Where(p => p.PaymentType == PaymentType.Deposit).OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+                if (lastPayment == null)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Deposit payment not found for this order", 404);
+                }
+                if (lastPayment.Status == PaymentStatus.Paid)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Deposit has already been paid for this order", 400);
+                }
+                if (lastPayment.Status != PaymentStatus.Failed)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Only orders with failed deposit payment can be reordered", 400);
+                }
+                //trừ tồn kho
+                var result = await _inventoryRepository.ReduceInventoryStock(tradeInOrder.ProductVariant.Id);
+                if (result == 0)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("This product is out of stock", 400);
+                }
+                //cập nhật IsTradeInUsed = true
+                tradeInOrder.OrderItem.IsTradeInUsed = true;
+                //check if customer exist
+                var customer = await _customerRepository.GetByIdAsync(customerId);
+                if (customer == null)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Customer not found", 404);
+                }
+                Payment payment = new Payment
+                {
+                    PaymentType = PaymentType.Deposit,
+                    Amount = tradeInOrder.DepositAmount,
+                    OrderCode = tradeInOrder.OrderCode,
+                    PaymentMethod = lastPayment.PaymentMethod,
+                    Status = PaymentStatus.Pending,
+                    Description = $"Payment for TradeInOrder {tradeInOrder.OrderCode}",
+                    ExpiredAt = DateTime.UtcNow.AddMinutes(5),
+                    TradeInOrderId = tradeInOrder.TradeInOrderId,
+                };
+                _paymentRepository.AddEntity(payment);
+                _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
+                await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
 
-            //check if customer exist
-            var customer = await _customerRepository.GetByIdAsync(customerId);
-            if (customer == null)
-            {
-                return Result<CreateTradeInOrderResponse>.Failure("Customer not found", 404);
+                // Generate VnPay URL after commit (external call, should not be inside transaction)
+                string? paymentUrl = null;
+                var vnPayRequest = new VnPaymentRequest
+                {
+                    PaymentId = payment.Id.ToString(),
+                    OrderCode = payment.OrderCode,
+                    Description = payment.Description,
+                    Amount = (int)tradeInOrder.DepositAmount,
+                    IpAddress = ipAddress,
+                    CreatedDate = payment.CreatedAt,
+                    ExpiredAt = payment.ExpiredAt.AddHours(7) // Convert to UTC+7 for VnPay
+                };
+                paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
+                if (string.IsNullOrEmpty(paymentUrl))
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Failed to create payment URL", 500);
+                }
+                var response = new CreateTradeInOrderResponse
+                {
+                    TradeInOrderId = tradeInOrder.TradeInOrderId,
+                    PaymentId = payment.Id,
+                    TradeInPrice = tradeInOrder.TradeInPrice,
+                    DepositAmount = tradeInOrder.DepositAmount,
+                    AmountToPay = tradeInOrder.AmountToPay,
+                    PaymentUrl = paymentUrl,
+                    ExpiredAt = payment.ExpiredAt
+                };
+                return Result<CreateTradeInOrderResponse>.Success(response);
             }
-            var newOrderCode = GenerateOrderCode();
-            Payment payment = new Payment
+            catch
             {
-                PaymentType = PaymentType.Deposit,
-                Amount = tradeInOrder.DepositAmount,
-                OrderCode = newOrderCode,
-                PaymentMethod = lastPayment.PaymentMethod,
-                Status = PaymentStatus.Pending,
-                Description = $"Payment for TradeInOrder {tradeInOrder.OrderCode}",
-                ExpiredAt = DateTime.UtcNow.AddMinutes(5),
-                TradeInOrderId = tradeInOrder.TradeInOrderId,
-            };
-            await _paymentRepository.CreateAsync(payment);
-
-            // Generate VnPay URL after commit (external call, should not be inside transaction)
-            string? paymentUrl = null;
-            var vnPayRequest = new VnPaymentRequest
-            {
-                PaymentId = payment.Id.ToString(),
-                OrderCode = newOrderCode,
-                Description = payment.Description,
-                Amount = (int)tradeInOrder.DepositAmount,
-                IpAddress = ipAddress,
-                CreatedDate = payment.CreatedAt
-            };
-            paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
-            if (string.IsNullOrEmpty(paymentUrl))
-            {
-                return Result<CreateTradeInOrderResponse>.Failure("Failed to create payment URL", 500);
+                await transaction.RollbackAsync();
+                throw;
             }
-            var response = new CreateTradeInOrderResponse
-            {
-                TradeInOrderId = tradeInOrder.TradeInOrderId,
-                TradeInPrice = tradeInOrder.TradeInPrice,
-                DepositAmount = tradeInOrder.DepositAmount,
-                AmountToPay = tradeInOrder.AmountToPay,
-                PaymentUrl = paymentUrl,
-                ExpiredAt = payment.ExpiredAt
-            };
-            return Result<CreateTradeInOrderResponse>.Success(response);
         }
         public async Task<Result> UploadTradeInOrderImageAsync(Guid tradeInOrderId, TradeInOrderImageCreateRequest request)
         {
@@ -327,6 +364,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<TradeInOrderDetailResponse>.Failure("TradeInOrder not found", 404);
             }
             var response = _mapper.Map<TradeInOrderDetailResponse>(tradeInOrder);
+            //với mỗi payment type lấy ra cái mới nhất
+            response.Payments = response.Payments.GroupBy(p => p.PaymentType).Select(g => g.OrderByDescending(p => p.CreatedAt).First()).ToList();
             return Result<TradeInOrderDetailResponse>.Success(response);
         }
 
@@ -352,12 +391,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaginatedList<TradeInOrderSummaryResponse>>.Success(paginatedResponse);
         }
 
-        public async Task<Result> CancelAsync(Guid tradeInOrderId)
+        public async Task<Result> CancelAsync(Guid tradeInOrderId, bool isAdmin)
         {
             using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                // 1. Define allowed statuses
+                var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
+                if (tradeInOrder == null)
+                {
+                    return Result.Failure("TradeInOrder not found", 404);
+                }
+                var firstStatus = tradeInOrder.Status;
+                // Define allowed statuses
                 var cancellableStatuses = new List<TradeInOrderStatus>
                 {
                     TradeInOrderStatus.Pending,
@@ -367,10 +412,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     TradeInOrderStatus.PROCESSING
                 };
 
-                // 2. Try update status at DB level (ANTI RACE CONDITION), lúc này gọi inventory sẽ ko bị double nếu có race condition
+                //Try update status at DB level (ANTI RACE CONDITION), lúc này gọi inventory sẽ ko bị double nếu có race condition
+                var statusToUpdate = isAdmin ? TradeInOrderStatus.ADMINCANCELLED : TradeInOrderStatus.CANCELLED;
                 var affected = await _tradeInOrderRepository.UpdateStatusIfMatch(
                     tradeInOrderId,
-                    TradeInOrderStatus.CANCELLED,
+                    statusToUpdate,
                     cancellableStatuses
                 );
 
@@ -379,21 +425,27 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result.Failure("Order already updated or not cancellable", 409);
                 }
 
-                // 3. Load order again (fresh data after update)
-                var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
-                if (tradeInOrder == null)
-                {
-                    return Result.Failure("TradeInOrder not found", 404);
-                }
 
-                // 4. Check if deposit was paid
+                // Check if deposit was paid
                 var lastPaymentPaid = tradeInOrder.Payments
                     .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
                     .OrderByDescending(p => p.CreatedAt)
                     .FirstOrDefault();
-                
-                // 5. Nếu đã trả tiền thì tạo payment REFUNDING 
-                if (lastPaymentPaid != null)
+                var isLastPaymentFailed = tradeInOrder.Payments
+                    .Where(p => p.PaymentType == PaymentType.Deposit)
+                    .OrderByDescending(p => p.CreatedAt).Select(p => p.Status).FirstOrDefault() == PaymentStatus.Failed;
+
+
+                var preConfirmedStatuses = new[] {
+                    TradeInOrderStatus.Pending,
+                    TradeInOrderStatus.NEGOTIATING,
+                    TradeInOrderStatus.WAITING_FOR_STAFF
+                };
+
+                bool isRefund = preConfirmedStatuses.Contains(firstStatus);
+
+                //Nếu đã trả tiền và  tradeInOrder firstStatus là các status trước CONFIRMED thì tạo payment REFUND
+                if (lastPaymentPaid != null && isRefund)
                 {
                     var paymentRefund = new Payment
                     {
@@ -402,20 +454,39 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         OrderCode = tradeInOrder.OrderCode,
                         PaymentType = PaymentType.Refund,
                         PaymentMethod = lastPaymentPaid.PaymentMethod,
-                        Status = PaymentStatus.Refunding,
+                        Status = PaymentStatus.Refunded,
                         Description = $"Refund for cancelled TradeInOrder {tradeInOrder.OrderCode}",
                     };
-                    tradeInOrder.Status = TradeInOrderStatus.REFUNDING;
+                    tradeInOrder.Status = TradeInOrderStatus.REFUNDED;
+                    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                    {
+                        OrderId = lastPaymentPaid.Id.ToString(),
+                        Amount = lastPaymentPaid.Amount,
+                        PaymentDate = lastPaymentPaid.CreatedAt,
+                    };
+                    var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+                    //vnpay fail refund thì để status là REFUNDING, admin sẽ vào refund thủ công
+                    if (!refundResult.Success)
+                    {
+                        tradeInOrder.Status = TradeInOrderStatus.REFUNDING;
+                        paymentRefund.Status = PaymentStatus.Failed;
+                        paymentRefund.Description = $"failed reason: {refundResult.Message}";
+                    }
                     _paymentRepository.AddEntity(paymentRefund);
                 }
 
-                // 6. Update inventory
-                var inventory = tradeInOrder.ProductVariant!.Inventory;
-                inventory.UpdatedAt = DateTime.UtcNow;
-                inventory.Quantity += 1;
-                _inventoryRepository.UpdateEntity(inventory);
-                // 7. Update order
-                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+                // Update inventory
+                //tradeInOrder có status là pending và payment failed thì ko cộng inventory vì đơn failed đã trừ tồn rồi
+                if (!(firstStatus == TradeInOrderStatus.Pending && isLastPaymentFailed))
+                {
+                    var inventory = tradeInOrder.ProductVariant!.Inventory;
+                    await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariantId);
+                }
+
+                // Trả lượt trade-in cho order item
+                tradeInOrder.OrderItem.IsTradeInUsed = false;
+                // Update order
+                _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
 
                 var result = await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
@@ -458,7 +529,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TradeInOrderId = tradeInOrder.TradeInOrderId,
                 Amount = tradeInOrder.AmountToPay,
                 OrderCode = tradeInOrder.OrderCode,
-                PaymentType = PaymentType.Final,
+                PaymentType = PaymentType.Purchase,
                 PaymentMethod = PaymentMethod.COD,
                 Status = PaymentStatus.COD,
                 Description = $"Final payment for TradeInOrder {tradeInOrder.OrderCode}",
@@ -526,7 +597,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             tradeInOrder.Status = TradeInOrderStatus.COMPLETED;
             _tradeInOrderRepository.UpdateEntity(tradeInOrder);
-            var lastFinalPayment = tradeInOrder.Payments.Where(p => p.PaymentType == PaymentType.Final && p.Status == PaymentStatus.COD).OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            var lastFinalPayment = tradeInOrder.Payments.Where(p => p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.COD).OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastFinalPayment == null)
             {
                 return Result.Failure("Final payment not found for this order", 404);

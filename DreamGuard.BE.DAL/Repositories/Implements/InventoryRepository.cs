@@ -58,5 +58,16 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 );
             return result;
         }
+        public async Task<int> IncreaseInventoryStock(Guid productVariantId)
+        {
+            var result = await _context.Inventories
+                .Where(iv => iv.ProductVariantId == productVariantId)
+                .ExecuteUpdateAsync(s =>
+                s
+                .SetProperty(iv => iv.Quantity, iv => iv.Quantity + 1)
+                .SetProperty(iv => iv.UpdatedAt, iv => DateTime.UtcNow)
+                );
+            return result;
+        }
     }
 }

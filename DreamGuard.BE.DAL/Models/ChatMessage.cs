@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace DreamGuard.BE.DAL.Models
@@ -14,6 +15,7 @@ namespace DreamGuard.BE.DAL.Models
         public string Message { get; set; }
         public string SenderType { get; set; } // "Customer" or "Staff"
         public DateTime CreatedAt { get; set; }
+        [JsonIgnore]
         public Conversation Conversation { get; set; }
     }
 }

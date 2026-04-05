@@ -17,6 +17,7 @@ namespace DreamGuard.BE.DAL.Constants
         COMPLETED = 6,
         CANCELLED = 7,
         REFUNDING = 8,
-        REFUNDED = 9
+        REFUNDED = 9,
+        ADMINCANCELLED = 10
     }
 }

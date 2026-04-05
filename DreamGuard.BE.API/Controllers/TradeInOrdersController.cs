@@ -3,6 +3,7 @@ using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -15,14 +16,15 @@ namespace DreamGuard.BE.API.Controllers
     public class TradeInOrdersController : ControllerBase
     {
         private readonly ITradeInOrderService _service;
-
-        public TradeInOrdersController(ITradeInOrderService service)
+        private readonly IPaymentService _paymentService;
+        public TradeInOrdersController(ITradeInOrderService service, IPaymentService paymentService)
         {
             _service = service;
+            _paymentService = paymentService;
         }
 
         [HttpPost]
-        [Authorize(Roles = $"{Role.User})")]
+        [Authorize(Roles = $"{Role.User}")]
         public async Task<IActionResult> CreateTradeInOrder([FromBody] CreateTradeInOrderRequest request)
         {
             
@@ -40,11 +42,12 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
+            BackgroundJob.Schedule<PaymentService>(job => job.ExpirePayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
             return Ok(result.Data);
         }
 
         [HttpPost("{tradeInOrderId}/ReOrderFailedTradeIn")]
-        [Authorize(Roles = $"{Role.User})")]
+        [Authorize(Roles = $"{Role.User}")]
         public async Task<IActionResult> ReOrderFailedTradeIn(Guid tradeInOrderId)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
@@ -61,6 +64,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
+            BackgroundJob.Schedule<PaymentService>(job => job.ExpirePayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
             return Ok(result.Data);
         }
 
@@ -81,7 +85,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost("calculate-trade-in-order-price")]
-        [Authorize(Roles = $"{Role.User})")]
+        [Authorize(Roles = $"{Role.User}")]
         public async Task<IActionResult> CalculateTradeInOrderPrice([FromBody] CalculateTradeInOrderPriceRequest request)
         {
             var result = await _service.CalculatePriceAsync(request);
@@ -112,7 +116,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("my-orders")]
-        [Authorize(Roles = $"{Role.User})")]
+        [Authorize(Roles = $"{Role.User}")]
         public async Task<IActionResult> GetMyOrders(int pageNumber = 1, int pageSize = 4)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
@@ -148,7 +152,7 @@ namespace DreamGuard.BE.API.Controllers
         }
         [HttpGet("AdminSearchTradeInOrder")]
         [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
-        public async Task<IActionResult> AdminSearchTradeInOrder([FromBody] AdminSearchTradeInOrderRequest request,int pageNumber = 1, int pageSize = 4)
+        public async Task<IActionResult> AdminSearchTradeInOrder([FromQuery] AdminSearchTradeInOrderRequest request,int pageNumber = 1, int pageSize = 4)
         {
             var result = await _service.AdminSearchTradeInOrder(
                 request.CustomerId,
@@ -209,7 +213,7 @@ namespace DreamGuard.BE.API.Controllers
         [Authorize(Roles = $"{Role.User}")]
         public async Task<IActionResult> CustomerCancel(Guid tradeInOrderId)
         {
-            var result = await _service.CancelAsync(tradeInOrderId);
+            var result = await _service.CancelAsync(tradeInOrderId, false);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -225,7 +229,7 @@ namespace DreamGuard.BE.API.Controllers
         [Authorize(Roles = $"{Role.Manager}, {Role.Seller}, {Role.Admin}")]
         public async Task<IActionResult> AdminCancel(Guid tradeInOrderId)
         {
-            var result = await _service.CancelAsync(tradeInOrderId);
+            var result = await _service.CancelAsync(tradeInOrderId, true);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

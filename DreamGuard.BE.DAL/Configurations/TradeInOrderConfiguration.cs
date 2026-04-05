@@ -15,7 +15,7 @@ namespace DreamGuard.BE.DAL.Configurations
         {
             builder.ToTable("TradeInOrders");
             builder.HasKey(tio => tio.TradeInOrderId);
-            
+            builder.Property(ti => ti.Status).HasConversion<string>().HasMaxLength(20);
             //1-n TradeInImage
             builder.HasMany(tio => tio.TradeInImages)
                    .WithOne(ti => ti.TradeInOrder)

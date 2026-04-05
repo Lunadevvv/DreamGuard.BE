@@ -14,5 +14,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<List<Inventory>> GetInventoriesByVariantIdsAsync(List<Guid> variantIds);
         Task<List<Inventory>> GetInventoriesByVariantIdsForUpdateAsync(List<Guid> variantIds);
         Task<int> ReduceInventoryStock(Guid productVariantId);
+        Task<int> IncreaseInventoryStock(Guid productVariantId);
     }
 }

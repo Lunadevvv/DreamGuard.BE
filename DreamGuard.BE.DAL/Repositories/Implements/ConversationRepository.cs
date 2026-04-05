@@ -28,7 +28,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
 
         public async Task<PaginatedList<Conversation>> GetMyConversationAsync(Guid staffId, int pageNumber, int pageSize)
         {
-            var query = _context.Conversations.Include(c => c.TradeInOrder).Where(m => m.StaffId == staffId && m.TradeInOrder.Status == TradeInOrderStatus.WAITING_FOR_STAFF);
+            var query = _context.Conversations.Include(c => c.TradeInOrder).Where(m => m.StaffId == staffId && m.TradeInOrder.Status == TradeInOrderStatus.NEGOTIATING);
             return await PaginatedList<Conversation>.CreateAsync(query, pageNumber, pageSize);
         }
 

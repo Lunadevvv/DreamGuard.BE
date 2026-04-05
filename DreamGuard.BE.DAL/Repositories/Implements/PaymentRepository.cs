@@ -19,6 +19,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             return await _context.Payments
                 .Include(p => p.POrder)
+                .Include(p => p.TradeInOrder)
+                    .ThenInclude(ti => ti.OrderItem)
+                .Include(p => p.TradeInOrder)
+                    .ThenInclude(ti => ti.ProductVariant)
+                        .ThenInclude(pv => pv.Inventory)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == paymentId);
         }

@@ -13,7 +13,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface ITradeInOrderService
     {
-        Task<Result> CancelAsync(Guid tradeInOrderId);
+        Task<Result> CancelAsync(Guid tradeInOrderId, bool isAdmin);
         Task<Result> ConfirmAsync(Guid tradeInOrderId, decimal tradeInPrice);
         Task<Result> ProcessingAsync(Guid tradeInOrderId);
         Task<Result> DeliveredAsync(Guid tradeInOrderId);
