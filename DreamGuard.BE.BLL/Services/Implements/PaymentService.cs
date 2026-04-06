@@ -408,7 +408,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         {
                             tradeInOrder.OrderItem.IsTradeInUsed = false; // Release the reserved trade-in item
                             _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
-                            //inventory có ROW VERSION ko xài update bình thường nên phải atomic update riêng
+                            //update inventory atomically 
                             await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariant.Id);
                         }
                     }

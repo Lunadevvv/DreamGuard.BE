@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -56,6 +56,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .SetProperty(iv => iv.Quantity, iv => iv.Quantity - 1)
                 .SetProperty(iv => iv.UpdatedAt, iv => DateTime.UtcNow)
                 );
+            if (result > 0)
+            {
+                // Kiểm tra xem sau khi trừ có về 0 không để cập nhật Status của Variant
+                await _context.ProductVariants
+                    .Where(pv => pv.Id == productVariantId && _context.Inventories.Any(iv => iv.ProductVariantId == pv.Id && iv.Quantity == 0))
+                    .ExecuteUpdateAsync(s => s.SetProperty(pv => pv.Status, ProductStatus.OutOfStock));
+            }
             return result;
         }
         public async Task<int> IncreaseInventoryStock(Guid productVariantId)
@@ -67,6 +74,16 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .SetProperty(iv => iv.Quantity, iv => iv.Quantity + 1)
                 .SetProperty(iv => iv.UpdatedAt, iv => DateTime.UtcNow)
                 );
+            if (result > 0)
+            {
+                // Nếu hàng tăng lên > 0, phải mở lại Status cho khách mua
+                // Chỉ update nếu Status hiện tại đang là OutOfStock
+                await _context.ProductVariants
+                    .Where(pv => pv.Id == productVariantId
+                                 && pv.Status == ProductStatus.OutOfStock
+                                 && _context.Inventories.Any(iv => iv.ProductVariantId == pv.Id && iv.Quantity > 0))
+                    .ExecuteUpdateAsync(s => s.SetProperty(pv => pv.Status, ProductStatus.Published));
+            }
             return result;
         }
     }
