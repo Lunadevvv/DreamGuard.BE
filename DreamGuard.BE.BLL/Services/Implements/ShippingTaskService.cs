@@ -199,7 +199,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (task.Status != ShippingTaskStatus.Arrived) return Result.Failure($"Cannot complete from status '{task.Status}'.", 400);
 
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId);
-            if (order == null || order.Status != OrderStatus.Shipping) return Result.Failure("Order is not in Shipping status.", 400);
+            if (order == null || (order.Status != OrderStatus.Shipping && order.Status != OrderStatus.Shipping_Replacement)) return Result.Failure("Order is not in Shipping status.", 400);
 
             var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
             bool isVnPay = payment != null && payment.PaymentMethod == PaymentMethod.VnPay;
@@ -455,6 +455,125 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
+        public async Task<Result> ProcessExchangeOrderAsync(Guid taskId, ProcessExchangeRequest request)
+        {
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+
+            if (task.Status != ShippingTaskStatus.Returning)
+            {
+                return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
+            }
+
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId);
+            if (order == null) return Result.Failure("Order not found.", 404);
+
+            bool isDamaged = request.DamagedItems != null && request.DamagedItems.Any(d => d.DamagedQuantity > 0);
+
+            //validate damaged items quantity
+            if (isDamaged)
+            {
+                foreach (var damageReq in request.DamagedItems!)
+                {
+                    var orderItem = order.OrderItems.FirstOrDefault(oi => oi.Id == damageReq.OrderItemId);
+                    if (orderItem == null)
+                    {
+                        return Result.Failure($"Order item with ID {damageReq.OrderItemId} not found in the order.", 404);
+                    }
+                    if (damageReq.DamagedQuantity <= 0 || damageReq.DamagedQuantity > orderItem.Quantity)
+                    {
+                        return Result.Failure($"Invalid damaged quantity for order item {orderItem.Id}. It must be between 1 and {orderItem.Quantity}.", 400);
+                    }
+                }
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Update Order Status
+                order.Status = OrderStatus.Shipping_Replacement;
+                order.UpdatedAt = DateTime.UtcNow;
+                await _orderRepository.UpdateAsync(order);
+
+                // Task status (Closed)
+                task.Status = ShippingTaskStatus.ExchangeRequested;
+                task.CompletionDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(request.ExchangeNote))
+                {
+                    task.StaffNote = string.IsNullOrEmpty(task.StaffNote) 
+                        ? $"Manager Note (Exchange): {request.ExchangeNote}" 
+                        : $"{task.StaffNote} | Manager Note (Exchange): {request.ExchangeNote}";
+                }
+                await _taskRepository.UpdateAsync(task);
+
+                // Add Defect Stock & Deduct New Stock for Replacement
+                foreach (var item in order.OrderItems)
+                {
+                    var damageReq = request.DamagedItems?.FirstOrDefault(d => d.OrderItemId == item.Id);
+                    int damagedQty = damageReq != null ? damageReq.DamagedQuantity : 0;
+                    
+                    if (damagedQty > 0)
+                    {
+                        if (item.ProductVariantId.HasValue)
+                        {
+                            // Put broken into defect
+                            var dr = await _inventoryService.RestoreDefectVariantStockAsync(item.ProductVariantId.Value, damagedQty);
+                            if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+                            
+                            // Take new one from normal stock
+                            var ds = await _inventoryService.DeductVariantStockAsync(item.ProductVariantId.Value, damagedQty);
+                            if (!ds.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(ds.Error!, ds.StatusCode); }
+                        }
+                        else if (item.ComboId.HasValue)
+                        {
+                            var dr = await _inventoryService.RestoreDefectComboStockAsync(item.ComboId.Value, damagedQty);
+                            if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+
+                            var ds = await _inventoryService.DeductComboStockAsync(item.ComboId.Value, damagedQty);
+                            if (!ds.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(ds.Error!, ds.StatusCode); }
+                        }
+                    }
+                }
+
+                // Save Evidences (if damaged)
+                if (isDamaged && request.EvidenceUrls != null && request.EvidenceUrls.Any())
+                {
+                    foreach (var url in request.EvidenceUrls)
+                    {
+                        var evidence = new ShippingEvidence
+                        {
+                            EvidenceId = Guid.NewGuid(),
+                            ShippingTaskId = task.ShippingTaskId,
+                            EvidenceUrl = url,
+                            // Could store the damage note inside the evidence or task. Let's make it EvidenceType = "ExchangeReport".
+                            EvidenceType = "ExchangeReport",
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await _evidenceRepository.CreateAsync(evidence);
+                    }
+                }
+
+                // Create new Replacement Task
+                var newShippingTask = new ShippingTask
+                {
+                    ShippingTaskId = Guid.NewGuid(),
+                    OrderId = order.Id,
+                    StaffId = request.NewStaffId,
+                    Status = ShippingTaskStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _taskRepository.CreateAsync(newShippingTask);
+
+                await transaction.CommitAsync();
+                return Result.Success("Exchange processed successfully. Replacement task created.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to process exchange order.", 500);
+            }
+        }
+
         public async Task<Result<ShippingTaskResponse>> GetTaskByIdAsync(Guid taskId)
         {
             var task = await _taskRepository.GetTaskWithDetailsAsync(taskId);
@@ -465,9 +584,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<ShippingTaskResponse>.Success(MapToResponse(task));
         }
 
-        public async Task<Result<PaginatedList<ShippingTaskResponse>>> GetAllTasksForAdminAsync(int pageNumber, string? status = null)
+        public async Task<Result<PaginatedList<ShippingTaskResponse>>> GetAllTasksForAdminAsync(int pageNumber, string? status = null, Guid? orderId = null)
         {
-            var data = await _taskRepository.GetAllTasksForAdminAsync(pageNumber, status);
+            var data = await _taskRepository.GetAllTasksForAdminAsync(pageNumber, status, orderId);
 
             var responses = data.Items.Select(MapToResponse).ToList();
 

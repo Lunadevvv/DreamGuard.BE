@@ -16,6 +16,7 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime? ShippingDate { get; set; }
         public DateTime? CompletionDate { get; set; }
         public string StaffNote { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Staff Staff { get; set; } = null!;
         public Order Order { get; set; } = null!;

@@ -60,6 +60,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal SalePrice { get; set; }
         public decimal? BasePrice { get; set; }
         public int StockQuantity { get; set; }
+        public int DefectQuantity { get; set; }
         public string StockStatus { get; set; } = string.Empty; // "In Stock", "Low Stock", "Out of Stock"
         public string Status { get; set; } = string.Empty; // "Active", "Draft", "Hidden"
     }

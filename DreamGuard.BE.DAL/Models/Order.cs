@@ -44,6 +44,6 @@ namespace DreamGuard.BE.DAL.Models
         [JsonIgnore]
         public List<Payment> Payments { get; set; } = new List<Payment>();
         [JsonIgnore]
-        public ShippingTask? ShippingTask { get; set; }
+        public ICollection<ShippingTask> ShippingTasks { get; set; } = new List<ShippingTask>();
     }
 }
