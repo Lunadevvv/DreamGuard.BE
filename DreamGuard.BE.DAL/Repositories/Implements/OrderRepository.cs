@@ -91,5 +91,14 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             await _context.OrderItems.AddRangeAsync(items);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<OrderItem?> GetOrderItemByIdAsync(Guid orderItemId)
+        {
+            return await _context.OrderItems
+                .Include(oi => oi.Order)
+                .Include(oi => oi.ProductVariant)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(oi => oi.Id == orderItemId);
+        }
     }
 }

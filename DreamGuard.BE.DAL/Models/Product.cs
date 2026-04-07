@@ -27,6 +27,7 @@ namespace DreamGuard.BE.DAL.Models
         public FullyCustomizedProductType FullyCustomizedProductType { get; set; } = FullyCustomizedProductType.None;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public double AverageRating { get; set; } = 0.0;
+        public int TotalRating { get; set; } = 0;
         public int? CateId { get; set; }
         [JsonIgnore]
         public Category? Category { get; set; }
@@ -34,5 +35,7 @@ namespace DreamGuard.BE.DAL.Models
         public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
         public ICollection<ProductAsset> Assets { get; set; } = new List<ProductAsset>();
         public ICollection<ProductCertificate> Certificates { get; set; } = new List<ProductCertificate>();
+        [JsonIgnore]
+        public ICollection<ProductFeedback> ProductFeedbacks { get; set; } = new List<ProductFeedback>();
     }
 }
