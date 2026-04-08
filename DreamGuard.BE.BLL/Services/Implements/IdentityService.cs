@@ -109,12 +109,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
             // Check email uniqueness
             var existingByEmail = await _userManager.FindByEmailAsync(email);
             if (existingByEmail != null)
-                return Result<RegisterResponse>.Failure("Email already registered", 400);
+            {
+                var roleExists = await _userManager.GetRolesAsync(existingByEmail);
+                if (roleExists.Contains(Role.User))
+                    return Result<RegisterResponse>.Failure("Email already registered", 400);
+            }
 
             // Check phone uniqueness
             var user = await _authRepository.GetUserByPhoneAsync(phoneNumber);
             if (user != null)
-                return Result<RegisterResponse>.Failure("Phone number already registered", 400);
+            {
+                var roleExists = await _userManager.GetRolesAsync(user);
+                if (roleExists.Contains(Role.User))
+                    return Result<RegisterResponse>.Failure("Phone number already registered", 400);
+            }
+                
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
@@ -175,13 +184,26 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             // Check phone uniqueness
             var existingByPhone = await _authRepository.GetUserByPhoneAsync(request.PhoneNumber);
+            
             if (existingByPhone != null)
-                return Result<RegisterResponse>.Failure("Phone number already registered", 400);
+            {
+                var roleExists = await _userManager.GetRolesAsync(existingByPhone);
+                if (!roleExists.Contains(Role.User))
+                {
+                    return Result<RegisterResponse>.Failure("Phone number already registered", 400);
+                }
+            }
 
             // Check email uniqueness
             var existingByEmail = await _userManager.FindByEmailAsync(request.Email);
             if (existingByEmail != null)
-                return Result<RegisterResponse>.Failure("Email already registered", 400);
+            {
+                var roleExists = await _userManager.GetRolesAsync(existingByEmail);
+                if (!roleExists.Contains(Role.User))
+                {
+                    return Result<RegisterResponse>.Failure("Email already registered", 400);
+                }
+            }
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try

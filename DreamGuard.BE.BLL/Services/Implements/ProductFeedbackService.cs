@@ -33,7 +33,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             Guid orderItemId, Guid customerId,
             ProductFeedbackCreateRequest request)
         {
-            // 1. Load OrderItem with Order and ProductVariant in a single query (no N+1)
+            // 1. Load OrderItem with Order and ProductVariant
             var orderItem = await _orderRepository.GetOrderItemByIdAsync(orderItemId);
             if (orderItem == null)
             {
@@ -62,7 +62,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Feedback can only be submitted for completed orders.", 400);
             }
 
-            // 5. Check uniqueness — single AnyAsync query
+            // 5. Check uniqueness
             bool alreadyExists = await _feedbackRepository.ExistsAsync(customerId, productId, orderId);
             if (alreadyExists)
             {

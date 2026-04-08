@@ -23,7 +23,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = $"{Role.CleaningStaff}, {Role.Manager}, {Role.Seller}")]
+        [Authorize(Roles = $"{Role.CleaningStaff}, {Role.Manager}, {Role.Seller}, {Role.DeliveryStaff}")]
         public async Task<IActionResult> GetByIdAsync()
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
