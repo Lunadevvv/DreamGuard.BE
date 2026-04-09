@@ -1,5 +1,6 @@
 ﻿using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.DbContext;
+using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,30 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await _context.UserVouchers
                 .Include(uv => uv.Voucher)
                 .FirstOrDefaultAsync(uv => uv.UserVoucherId == userVoucherId);
+        }
+
+        public async Task<PaginatedList<UserVoucher>> GetAllByUserAsync(Guid userId, int pageNumber, bool? isUsed = null)
+        {
+            var query = _context.UserVouchers
+                .Include(uv => uv.Voucher)
+                .Include(uv => uv.Customer)
+                .Where(uv => uv.Customer.CustomerId == userId)
+                .AsSplitQuery();
+
+            if (isUsed.HasValue)
+            {
+                query = query.Where(uv => uv.IsUsed == isUsed.Value);
+            }
+
+            return await PaginatedList<UserVoucher>.CreateAsync(query, pageNumber, 10);
+        }
+
+        public Task<List<Guid>> GetClaimedVoucherIdsByUserAsync(Guid userId)
+        {
+            return _context.UserVouchers
+                .Where(uv => uv.Customer.CustomerId == userId)
+                .Select(uv => uv.VoucherId)
+                .ToListAsync();
         }
     }
 }

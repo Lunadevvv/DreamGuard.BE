@@ -14,7 +14,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     public interface IVoucherService
     {
         Task<Result<PaginatedList<VoucherResponse>>> GetAllByAdminAsync(int pageNumber);
-        Task<Result<PaginatedList<VoucherResponse>>> GetAllAsync(Guid userId, int pageNumber);
+        Task<Result<PaginatedList<VoucherResponse>>> GetAllForUserAsync(Guid userId, int pageNumber);
         Task<Result<VoucherResponse>> GetByIdAsync(Guid userId, Guid voucherId);
         Task<Result<VoucherResponse>> GetByIdAsync(Guid voucherId);
         Task<Result> CreateAsync(Voucher voucher);

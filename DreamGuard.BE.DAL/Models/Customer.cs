@@ -7,6 +7,7 @@ namespace DreamGuard.BE.DAL.Models
         public string AvatarUrl { get; set; } = string.Empty;
         public string Gender { get; set; } = string.Empty;
         public DateOnly DateOfBirth { get; set; }
+        public int MemberCoin { get; set; } = 0;
         public User User { get; set; } = null!;
         public ICollection<ServiceOrder> ServiceOrders { get; set; } = new List<ServiceOrder>();
         public ICollection<BabyProfile> BabyProfiles { get; set; } = new List<BabyProfile>();

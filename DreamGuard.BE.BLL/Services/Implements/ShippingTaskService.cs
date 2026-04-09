@@ -24,6 +24,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IUnitOfWork _unitOfWork;
         private readonly IVnPayService _vnPayService;
         private readonly IPaymentRepository _paymentRepository;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
         public ShippingTaskService(
             IShippingTaskRepository taskRepository,
@@ -33,7 +35,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IInventoryService inventoryService,
             IUnitOfWork unitOfWork,
             IVnPayService vnPayService,
-            IPaymentRepository paymentRepository)
+            IPaymentRepository paymentRepository,
+            ICustomerRepository customerRepository,
+            ISystemConfigRepository systemConfigRepository)
         {
             _taskRepository = taskRepository;
             _orderRepository = orderRepository;
@@ -43,6 +47,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _unitOfWork = unitOfWork;
             _vnPayService = vnPayService;
             _paymentRepository = paymentRepository;
+            _customerRepository = customerRepository;
+            _systemConfigRepository = systemConfigRepository;
         }
 
         public async Task<Result<ShippingTaskResponse>> CreateShippingTaskAsync(ShippingTaskCreateRequest request)
@@ -59,10 +65,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<ShippingTaskResponse>.Failure("Order not found.", 404);
             }
 
-            if (order.Status != OrderStatus.Confirmed)
+            if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Processing)
             {
                 return Result<ShippingTaskResponse>.Failure(
-                    $"Cannot create shipping task. Order must be in 'Confirmed' status but is currently '{order.Status}'.", 400);
+                    $"Cannot create shipping task. Order must be in 'Confirmed' or 'Processing' status but is currently '{order.Status}'.", 400);
             }
 
             var existingTask = await _taskRepository.GetTaskByOrderIdAsync(order.Id);
@@ -211,6 +217,24 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 order.Status = isVnPay ? OrderStatus.Completed : OrderStatus.Delivered;
                 order.UpdatedAt = DateTime.UtcNow;
                 await _orderRepository.UpdateAsync(order);
+
+                // Award points if order is Completed
+                if (order.Status == OrderStatus.Completed)
+                {
+                    var customer = await _customerRepository.GetByIdAsync(order.CustomerId);
+                    if (customer != null)
+                    {
+                        var config = await _systemConfigRepository.GetByKeyAsync("OrderCoinPercent");
+                        decimal percent = 1.0m; // default 1%
+                        if (config != null && decimal.TryParse(config.ConfigValue, out decimal parsed))
+                        {
+                            percent = parsed;
+                        }
+                        int coinsEarned = (int)(order.TotalAmount * percent / 100);
+                        customer.MemberCoin += coinsEarned;
+                        _customerRepository.UpdateEntity(customer);
+                    }
+                }
 
                 // Update Task Status
                 task.Status = ShippingTaskStatus.Delivered;

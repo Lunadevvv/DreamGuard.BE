@@ -8,6 +8,8 @@ using System.Security.Claims;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.ModelExtensions;
+using DreamGuard.BE.BLL.Common;
 
 namespace DreamGuard.BE.API.Controllers
 {
@@ -23,7 +25,7 @@ namespace DreamGuard.BE.API.Controllers
             _voucherService = VoucherService;
             _mapper = mapper;
         }
-        [HttpGet]
+        [HttpGet("admin")]
         public async Task<IActionResult> GetAllByAdminAsync(int pageNumber = 1)
         {
             var result = await _voucherService.GetAllByAdminAsync(pageNumber);
@@ -37,6 +39,31 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAllForUserAsync(int pageNumber = 1)
+        {
+            Result<PaginatedList<VoucherResponse>> result;
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                result = await _voucherService.GetAllByAdminAsync(pageNumber);
+            }
+            else
+            {
+                result = await _voucherService.GetAllForUserAsync(userId, pageNumber);
+            }
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpGet("{voucherId}")]
         public async Task<IActionResult> GetByIdAsync(Guid voucherId)
         {

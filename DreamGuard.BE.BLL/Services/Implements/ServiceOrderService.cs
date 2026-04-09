@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -216,8 +216,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     decimal discountAmount = 0;
                     discountAmount = subTotalPrice * voucher.DiscountValue;
                     discountAmount = Math.Min(discountAmount, voucher.MaxDiscountAmount);
-                    discountAmount = Math.Max(discountAmount, voucher.MinDiscountAmount);
                     discountAmount = Math.Min(discountAmount, subTotalPrice); // Discount cannot exceed subtotal
+
+                    if (voucher.VoucherType == DAL.Constants.VoucherType.Product)
+                    {
+                        return Result<OrderServiceResponse>.Failure("This voucher is specifically for products only.", 400);
+                    }
 
                     serviceOrder.UserVoucherId = userVoucher.UserVoucherId;
                     serviceOrder.TotalPrice = Math.Max(serviceOrder.SubTotalPrice - discountAmount, 0); // Total price cannot be negative

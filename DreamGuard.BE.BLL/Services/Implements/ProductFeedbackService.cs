@@ -16,17 +16,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IOrderRepository _orderRepository;
         private readonly IProductRepository _productRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
         public ProductFeedbackService(
             IProductFeedbackRepository feedbackRepository,
             IOrderRepository orderRepository,
             IProductRepository productRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            ICustomerRepository customerRepository,
+            ISystemConfigRepository systemConfigRepository)
         {
             _feedbackRepository = feedbackRepository;
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
+            _systemConfigRepository = systemConfigRepository;
         }
 
         public async Task<Result> CreateFeedbackAsync(
@@ -94,6 +100,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _feedbackRepository.AddEntity(feedback);
             _productRepository.UpdateEntity(product);
 
+            // Award coins to customer
+            var customer = await _customerRepository.GetByIdAsync(customerId);
+            if (customer != null)
+            {
+                var rewardConfig = await _systemConfigRepository.GetByKeyAsync("FeedbackCoinReward");
+                int rewardCoins = 50; // default
+                if (rewardConfig != null && int.TryParse(rewardConfig.ConfigValue, out int parsedReward))
+                {
+                    rewardCoins = parsedReward;
+                }
+                customer.MemberCoin += rewardCoins;
+                _customerRepository.UpdateEntity(customer);
+            }
+
             var saved = await _unitOfWork.SaveChangeAsync();
             if (saved == 0)
             {
@@ -147,9 +167,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var (totalCount, averageScore) = await _feedbackRepository
                 .GetVisibleRatingStatsByProductIdAsync(feedback.ProductId);
 
-            // Adjust for the status change happening in the current transaction:
-            // If we're hiding this feedback, it was counted in the aggregate (still Visible in DB).
-            // If we're showing this feedback, it wasn't counted (still Hidden in DB).
+            // Adjust for the status change happening in the current transaction
             if (status == ProductFeedbackStatus.Hidden)
             {
                 // This feedback is still Visible in DB, so subtract it

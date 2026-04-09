@@ -29,6 +29,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IVnPayService _vnPayService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICustomerRepository _customerRepository;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
@@ -42,7 +43,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IPaymentRepository paymentRepository,
             IVnPayService vnPayService,
             IUnitOfWork unitOfWork,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            ISystemConfigRepository systemConfigRepository)
         {
             _orderRepository = orderRepository;
             _cartRepository = cartRepository;
@@ -56,6 +58,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
+            _systemConfigRepository = systemConfigRepository;
         }
 
         public async Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
@@ -248,8 +251,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                     // Calculate discount
                     discountAmount = subTotal * voucher.DiscountValue;
-                    discountAmount = Math.Max(voucher.MinDiscountAmount, Math.Min(discountAmount, voucher.MaxDiscountAmount));
+                    discountAmount = Math.Min(discountAmount, voucher.MaxDiscountAmount);
                     discountAmount = Math.Min(discountAmount, subTotal); // Discount cannot exceed subtotal
+
+                    // Check Voucher Type
+                    if (voucher.VoucherType == DAL.Constants.VoucherType.Service)
+                    {
+                        await transaction.RollbackAsync();
+                        return Result<OrderResponse>.Failure("This voucher is specifically for services only.", 400);
+                    }
 
                     // Mark voucher as used
                     userVoucher.IsUsed = true;
@@ -455,6 +465,24 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return await CancelOrderInternalAsync(order);
             }
 
+            // Award points if order becomes Completed
+            if (order.Status != OrderStatus.Completed && newStatus == OrderStatus.Completed)
+            {
+                var customer = await _customerRepository.GetByIdAsync(order.CustomerId);
+                if (customer != null)
+                {
+                    var config = await _systemConfigRepository.GetByKeyAsync("OrderCoinPercent");
+                    decimal percent = 1.0m; // default 1%
+                    if (config != null && decimal.TryParse(config.ConfigValue, out decimal parsed))
+                    {
+                        percent = parsed;
+                    }
+                    int coinsEarned = (int)(order.TotalAmount * percent / 100);
+                    customer.MemberCoin += coinsEarned;
+                    _customerRepository.UpdateEntity(customer);
+                }
+            }
+
             order.Status = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
             await _orderRepository.UpdateAsync(order);
@@ -615,7 +643,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 VoucherDiscountValue = order.UserVoucher?.Voucher?.DiscountValue,
                 Note = order.Note,
                 CreatedAt = order.CreatedAt,
-                UpdatedAt = order.UpdatedAt
+                UpdatedAt = order.UpdatedAt,
+                PaymentMethod = order.Payments?.OrderByDescending(p => p.CreatedAt).FirstOrDefault()?.PaymentMethod ?? PaymentMethod.COD,
+                PaymentStatus = order.Payments?.OrderByDescending(p => p.CreatedAt).FirstOrDefault()?.Status ?? PaymentStatus.Pending,
+                ShippingStaffName = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.FullName ?? "N/A",
+                ShippingStatus = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Status.ToString() ?? "N/A",
+                ShippingStaffAvatarUrl = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.AvatarUrl ?? string.Empty
             };
         }
 

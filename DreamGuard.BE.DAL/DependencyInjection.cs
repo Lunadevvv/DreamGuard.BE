@@ -53,6 +53,7 @@ namespace DreamGuard.BE.DAL
             builder.Services.AddScoped<IShippingTaskRepository, ShippingTaskRepository>();
             builder.Services.AddScoped<IShippingEvidenceRepository, ShippingEvidenceRepository>();
             builder.Services.AddScoped<IProductFeedbackRepository, ProductFeedbackRepository>();
+            builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
         }
     }
 }

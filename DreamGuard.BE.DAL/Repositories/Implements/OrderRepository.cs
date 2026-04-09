@@ -33,6 +33,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                     .ThenInclude(oi => oi.Combo)
                 .Include(o => o.UserVoucher)
                     .ThenInclude(uv => uv!.Voucher)
+                .Include(o => o.ShippingTasks)
+                    .ThenInclude(st => st.Staff)
+                .Include(o => o.Payments)
                 .AsSplitQuery()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.Id == orderId);

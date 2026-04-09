@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +14,8 @@ namespace DreamGuard.BE.DAL.Models
         public string Description { get; set; } = string.Empty;
         public decimal DiscountValue { get; set; } = 0.1m;
         public decimal MaxDiscountAmount { get; set; } = 1000000;
-        public decimal MinDiscountAmount { get; set; } = 1000;
+        public int RequiredCoin { get; set; } = 0;
+        public string VoucherType { get; set; } = Constants.VoucherType.Both;
         public DateTime StartDate { get; set; } = DateTime.UtcNow;
         public DateTime EndDate { get; set; } = DateTime.UtcNow.AddMonths(1);
         public bool IsActive { get; set; } = true;

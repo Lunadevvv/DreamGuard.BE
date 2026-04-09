@@ -1,4 +1,5 @@
 ﻿using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -13,5 +14,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<bool> ExistsAsync(Guid customerId, Guid voucherId);
         Task<bool> MarkAsUsedAsync(Guid userVoucherId);
         Task<UserVoucher?> GetByIdAsync(Guid userVoucherId);
+        Task<PaginatedList<UserVoucher>> GetAllByUserAsync(Guid userId, int pageNumber, bool? isUsed = null);
+        Task<List<Guid>> GetClaimedVoucherIdsByUserAsync(Guid userId);
     }
 }

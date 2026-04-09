@@ -58,7 +58,7 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<ShippingTask> ShippingTasks { get; set; }
         public DbSet<ShippingEvidence> ShippingEvidences { get; set; }
         public DbSet<ProductFeedback> ProductFeedbacks { get; set; }
-
+        public DbSet<SystemConfig> SystemConfigs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

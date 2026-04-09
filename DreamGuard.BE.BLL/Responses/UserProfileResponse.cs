@@ -11,6 +11,7 @@ namespace DreamGuard.BE.BLL.Responses
         public DateOnly DateOfBirth { get; set; }
         public string Gender { get; set; } = string.Empty;
         public string? AvatarUrl { get; set; }
+        public int MemberCoin {get; set;}
 
         private class Mapping : Profile
         {
