@@ -39,6 +39,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<ShippingTask?> GetTaskByOrderIdAsync(Guid orderId)
         {
             return await _context.ShippingTasks
+                .OrderByDescending(t => t.CreatedAt)
                 .FirstOrDefaultAsync(t => t.OrderId == orderId);
         }
 
@@ -47,13 +48,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             var query = _context.ShippingTasks
                 .Include(t => t.Order)
                 .Where(t => t.StaffId == staffId)
-                .OrderByDescending(t => t.ShippingDate ?? t.CompletionDate ?? DateTime.UtcNow)
+                .OrderByDescending(t => t.CreatedAt)
                 .AsQueryable();
 
             return await PaginatedList<ShippingTask>.CreateAsync(query, pageNumber, 10);
         }
 
-        public async Task<PaginatedList<ShippingTask>> GetAllTasksForAdminAsync(int pageNumber, string? status)
+        public async Task<PaginatedList<ShippingTask>> GetAllTasksForAdminAsync(int pageNumber, string? status, Guid? orderId)
         {
             var query = _context.ShippingTasks
                 .Include(t => t.Staff)
@@ -63,6 +64,10 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             if (!string.IsNullOrEmpty(status))
             {
                 query = query.Where(t => t.Status == status);
+            }
+            if(orderId.HasValue)
+            {
+                query = query.Where(t => t.OrderId == orderId.Value);
             }
 
             query = query.OrderByDescending(t => t.ShippingDate ?? t.CompletionDate ?? DateTime.UtcNow);

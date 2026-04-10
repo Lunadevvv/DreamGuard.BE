@@ -52,6 +52,8 @@ namespace DreamGuard.BE.DAL
             builder.Services.AddScoped<IRatingRepository, RatingRepository>();
             builder.Services.AddScoped<IShippingTaskRepository, ShippingTaskRepository>();
             builder.Services.AddScoped<IShippingEvidenceRepository, ShippingEvidenceRepository>();
+            builder.Services.AddScoped<IProductFeedbackRepository, ProductFeedbackRepository>();
+            builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
             builder.Services.AddScoped<ITradeInOrderRepository, TradeInOrderRepository>();
             builder.Services.AddScoped<ITradeInImageRepository, TradeInImageRepository>();
             builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();

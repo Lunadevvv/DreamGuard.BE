@@ -43,18 +43,17 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<PaginatedList<Voucher>> GetAllAsync(Guid customerId, int pageNumber)
+        public async Task<PaginatedList<Voucher>> GetAllAsync(int pageNumber, List<Guid> claimedVoucherIds)
         {
             try
             {
-                var query = _context.UserVouchers
-                    .Where(uv => uv.CustomerId == customerId && uv.Voucher.IsActive)
-                    .Select(uv => uv.Voucher);
+                var query = _context.Vouchers
+                    .Where(uv => uv.IsActive && !claimedVoucherIds.Contains(uv.VoucherId));
                 return await PaginatedList<Voucher>.CreateAsync(query, pageNumber, 4);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving Vouchers for customer {customerId}: {ex.Message}");
+                throw new Exception($"Error retrieving Vouchers: {ex.Message}");
             }
         }
         public async Task<PaginatedList<Voucher>> GetAllByAdminAsync(int pageNumber)

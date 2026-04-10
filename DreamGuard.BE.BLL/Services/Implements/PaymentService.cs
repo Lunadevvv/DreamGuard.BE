@@ -387,7 +387,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 UpdatedAt = payment.UpdatedAt
             };
         }
-        public async Task<Result> ExpirePayment(Guid paymentId)
+        public async Task<Result> ExpireTradeinPayment(Guid paymentId)
         {
             //có lỗi xảy ra => rollback và hangfire retry 
             var transaction = await _unitOfWork.BeginTransactionAsync();
@@ -410,6 +410,39 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
                             //update inventory atomically 
                             await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariant.Id);
+                        }
+                    }
+                }
+                var result = await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
+                return Result.Success($"Update sucessfully");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<Result> ExpireProductOrderPayment(Guid paymentId)
+        {
+            //có lỗi xảy ra => rollback và hangfire retry 
+            var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var payment = await _paymentRepository.GetPaymentByIdAsync(paymentId);
+                if (payment != null && payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(payment);
+                    // Also update product order status to Cancelled
+                    if (payment.POrderId.HasValue)
+                    {
+                        var updatedResult = await _orderService.UpdateOrderStatusAsync(payment.POrderId.Value, OrderStatus.Cancelled);
+                        if (!updatedResult.Succeeded){
+                            await transaction.RollbackAsync();
+                            return Result.Failure("Failed to cancel order after payment expiration.", 400);
                         }
                     }
                 }

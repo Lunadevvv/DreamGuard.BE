@@ -37,6 +37,8 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal DiscountAmount { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal TotalAddonPrice { get; set; }
+        public Guid PaymentId { get; set; }
+        public DateTime PaymentExpiredAt { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
         public string? PaymentUrl { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -64,10 +66,14 @@ namespace DreamGuard.BE.BLL.Responses
 
         public string? VoucherCode { get; set; }
         public decimal? VoucherDiscountValue { get; set; }
-
+        public PaymentMethod PaymentMethod { get; set; }
+        public PaymentStatus PaymentStatus { get; set; }
         public string? Note { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public string? ShippingStaffName { get; set; }
+        public string? ShippingStatus { get; set; }
+        public string? ShippingStaffAvatarUrl { get; set; }
     }
 
     public class OrderSummaryResponse

@@ -4,8 +4,10 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +23,28 @@ namespace DreamGuard.BE.API.Controllers
         public OrderController(IOrderService orderService)
         {
             _orderService = orderService;
+        }
+
+        [HttpPost("create")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}, {Role.Seller}")]
+        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderByAdminRequest request)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _orderService.CreateOrderByAdminAsync(request, GetIpAddress());
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            
+            return Ok(result.Data);
         }
 
         [HttpPost]
@@ -40,6 +64,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
+            BackgroundJob.Schedule<PaymentService>(job => job.ExpireProductOrderPayment(result.Data!.PaymentId), result.Data!.PaymentExpiredAt.AddSeconds(30));
             return Ok(result.Data);
         }
 

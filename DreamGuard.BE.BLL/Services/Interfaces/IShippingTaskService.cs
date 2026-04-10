@@ -17,9 +17,10 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> CompleteShippingAsync(Guid taskId, Guid staffId, CompleteShippingRequest request);
         Task<Result> FailShippingAsync(Guid taskId, Guid staffId, FailShippingRequest request);
         Task<Result> ProcessReturnedOrderAsync(Guid taskId, ProcessReturnedRequest request);
+        Task<Result> ProcessExchangeOrderAsync(Guid taskId, ProcessExchangeRequest request);
         
         Task<Result<ShippingTaskResponse>> GetTaskByIdAsync(Guid taskId);
-        Task<Result<PaginatedList<ShippingTaskResponse>>> GetAllTasksForAdminAsync(int pageNumber, string? status = null);
+        Task<Result<PaginatedList<ShippingTaskResponse>>> GetAllTasksForAdminAsync(int pageNumber, string? status = null, Guid? orderId = null );
         Task<Result<PaginatedList<ShippingTaskResponse>>> GetTasksForStaffAsync(Guid staffId, int pageNumber = 1);
     }
 }

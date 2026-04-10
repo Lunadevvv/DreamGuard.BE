@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -15,6 +15,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -34,15 +35,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _userVoucherRepo = userVoucherRepository;
             _customerRepository = customerRepository;
         }
-        public async Task<Result<PaginatedList<VoucherResponse>>> GetAllAsync(Guid userId, int pageNumber)
+        public async Task<Result<PaginatedList<VoucherResponse>>> GetAllForUserAsync(Guid userId, int pageNumber)
         {
-            var customer = await _customerRepository.GetByUserIdAsync(userId);
-            if (customer == null)
-                return Result<PaginatedList<VoucherResponse>>.Failure("Customer profile not found", 404);
+            var claimedVouchers = await _userVoucherRepo.GetClaimedVoucherIdsByUserAsync(userId);
 
-            var customerId = customer.CustomerId;
-
-            var vouchers = await  _repo.GetAllAsync(customerId, pageNumber);
+            var vouchers = await  _repo.GetAllAsync(pageNumber, claimedVouchers);
             if (vouchers == null || vouchers.TotalCount == 0)
             {
                 return Result<PaginatedList<VoucherResponse>>.Failure("No vouchers found", 404);
@@ -162,6 +159,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("You have already claimed this voucher", 400);
             }
+            if (customer.MemberCoin < voucher.RequiredCoin)
+            {
+                return Result.Failure($"You need {voucher.RequiredCoin} coins to claim this voucher. You have {customer.MemberCoin}.", 400);
+            }
+
+            customer.MemberCoin -= voucher.RequiredCoin;
+            _customerRepository.UpdateEntity(customer);
+
             var userVoucher = new UserVoucher
             {
                 CustomerId = customerId,

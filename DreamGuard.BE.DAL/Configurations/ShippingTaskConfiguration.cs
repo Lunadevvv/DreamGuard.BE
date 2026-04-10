@@ -23,8 +23,8 @@ namespace DreamGuard.BE.DAL.Configurations
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(x => x.Order)
-                   .WithOne(o => o.ShippingTask)
-                   .HasForeignKey<ShippingTask>(x => x.OrderId)
+                   .WithMany(o => o.ShippingTasks)
+                   .HasForeignKey(x => x.OrderId)
                    .OnDelete(DeleteBehavior.Cascade);
         }
     }

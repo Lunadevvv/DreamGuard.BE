@@ -11,6 +11,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
     public interface IOrderService
     {
         Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress);
+        Task<Result<OrderResponse>> CreateOrderByAdminAsync(CreateOrderByAdminRequest request, string ipAddress);
         Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid orderId);
         Task<Result<PaginatedList<OrderSummaryResponse>>> GetOrdersAsync(Guid userId, int pageNumber, OrderStatus? status);
         Task<Result<PaginatedList<OrderSummaryResponse>>> GetAllOrdersForAdminAsync(int pageNumber, OrderStatus? status, string? orderCode);

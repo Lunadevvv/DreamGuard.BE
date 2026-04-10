@@ -68,11 +68,11 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpGet]
         [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.DeliveryStaff)]
-        public async Task<IActionResult> GetTasks([FromQuery] int pageNumber = 1, [FromQuery] string? status = null)
+        public async Task<IActionResult> GetTasks([FromQuery] int pageNumber = 1, [FromQuery] string? status = null, [FromQuery] Guid? orderId = null)
         {
             if (User.IsInRole(Role.Admin) || User.IsInRole(Role.Manager))
             {
-                var result = await _shippingTaskService.GetAllTasksForAdminAsync(pageNumber, status);
+                var result = await _shippingTaskService.GetAllTasksForAdminAsync(pageNumber, status, orderId);
                 return StatusCode(result.StatusCode, result.Data);
             }
             else if (User.IsInRole(Role.DeliveryStaff))
@@ -192,6 +192,23 @@ namespace DreamGuard.BE.API.Controllers
                 return StatusCode(result.StatusCode, result.Error);
             }
             return Ok();
+        }
+
+        [HttpPost("{id}/process-exchange")]
+        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.Seller)]
+        public async Task<IActionResult> ProcessExchangeOrder(Guid id, [FromBody] ProcessExchangeRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _shippingTaskService.ProcessExchangeOrderAsync(id, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok(result.Message);
         }
     }
 }
