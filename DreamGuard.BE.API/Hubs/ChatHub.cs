@@ -51,5 +51,20 @@ namespace DreamGuard.BE.API.Hubs
             // 2. Broadcast tin nhắn tới những ai đang trong Group này
             await Clients.Group(conversationId.ToString()).SendAsync("ReceiveMessage", result.Data);
         }
+
+        public async override Task OnDisconnectedAsync(Exception? exception)
+        {
+            // Logic khi người dùng mất kết nối hoặc đóng trình duyệt
+            var userId = Context.UserIdentifier;
+            await Clients.Others.SendAsync("UserOffline", userId);
+
+            await base.OnDisconnectedAsync(exception);
+        }
+        // Gửi tín hiệu đang gõ cho một người dùng cụ thể
+        public async Task SendTypingSignal(string receiverId, bool isTyping)
+        {
+            string senderId = Context.ConnectionId; // Hoặc User Id của bạn
+            await Clients.User(receiverId).SendAsync("ReceiveTypingStatus", senderId, isTyping);
+        }
     }
 }
