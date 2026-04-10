@@ -4,8 +4,10 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -40,6 +42,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
+            BackgroundJob.Schedule<PaymentService>(job => job.ExpireProductOrderPayment(result.Data!.PaymentId), result.Data!.PaymentExpiredAt.AddSeconds(30));
             return Ok(result.Data);
         }
 

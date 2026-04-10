@@ -8,7 +8,9 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,6 +33,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICustomerRepository _customerRepository;
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly VnPayOptions _vnPayOptions;
 
         public OrderService(
             IOrderRepository orderRepository,
@@ -45,7 +48,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IVnPayService vnPayService,
             IUnitOfWork unitOfWork,
             ICustomerRepository customerRepository,
-            ISystemConfigRepository systemConfigRepository)
+            ISystemConfigRepository systemConfigRepository,
+            IOptions<VnPayOptions> vnPayOptions)
         {
             _orderRepository = orderRepository;
             _cartRepository = cartRepository;
@@ -60,6 +64,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
             _systemConfigRepository = systemConfigRepository;
+            _vnPayOptions = vnPayOptions.Value;
         }
 
         public async Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
@@ -335,7 +340,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Description = $"Payment for Order {order.OrderCode}",
                     PaymentMethod = request.PaymentMethod,
                     CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    ExpiredAt = DateTime.UtcNow.AddMinutes(_vnPayOptions.PaymentExpirationMinutes) // Payment expires in 30 minutes
                 };
 
                 var paymentCreateResult = await _paymentRepository.CreateAsync(payment);
@@ -377,7 +383,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     TotalAddonPrice = order.TotalAddonPrice,
                     PaymentMethod = request.PaymentMethod,
                     PaymentUrl = paymentUrl,
-                    CreatedAt = order.CreatedAt
+                    CreatedAt = order.CreatedAt,
+                    PaymentId = payment.Id,
+                    PaymentExpiredAt = payment.ExpiredAt
                 });
             }
             catch (Exception)

@@ -37,6 +37,8 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal DiscountAmount { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal TotalAddonPrice { get; set; }
+        public Guid PaymentId { get; set; }
+        public DateTime PaymentExpiredAt { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
         public string? PaymentUrl { get; set; }
         public DateTime CreatedAt { get; set; }

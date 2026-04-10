@@ -42,7 +42,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            BackgroundJob.Schedule<PaymentService>(job => job.ExpirePayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+            BackgroundJob.Schedule<PaymentService>(job => job.ExpireTradeinPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
             return Ok(result.Data);
         }
 
@@ -64,7 +64,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            BackgroundJob.Schedule<PaymentService>(job => job.ExpirePayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+            BackgroundJob.Schedule<PaymentService>(job => job.ExpireTradeinPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
             return Ok(result.Data);
         }
 
