@@ -17,4 +17,21 @@ namespace DreamGuard.BE.BLL.Requests
         [Required(ErrorMessage = "PaymentMethod is required.")]
         public PaymentMethod PaymentMethod { get; set; }
     }
+
+    public class CreateOrderByAdminRequest
+    {
+        [Required(ErrorMessage = "CustomerId is required.")]
+        public Guid CustomerId { get; set; }
+
+        [Required(ErrorMessage = "AddressId is required.")]
+        public Guid AddressId { get; set; }
+
+        public Guid? UserVoucherId { get; set; }
+
+        [MaxLength(500)]
+        public string? Note { get; set; }
+
+        [Required(ErrorMessage = "PaymentMethod is required.")]
+        public PaymentMethod PaymentMethod { get; set; }
+    }
 }

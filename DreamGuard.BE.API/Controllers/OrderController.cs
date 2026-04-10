@@ -25,6 +25,28 @@ namespace DreamGuard.BE.API.Controllers
             _orderService = orderService;
         }
 
+        [HttpPost("create")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}, {Role.Seller}")]
+        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderByAdminRequest request)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _orderService.CreateOrderByAdminAsync(request, GetIpAddress());
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            
+            return Ok(result.Data);
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
         {

@@ -67,6 +67,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _vnPayOptions = vnPayOptions.Value;
         }
 
+        public Task<Result<OrderResponse>> CreateOrderByAdminAsync(CreateOrderByAdminRequest request, string ipAddress)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
         {
             var customer = await _customerRepository.GetByUserIdAsync(userId);
