@@ -48,10 +48,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(v => v.Inventory)
                 .Include(v => v.VariantCustomizeTypes)
                     .ThenInclude(vct => vct.ProductCustomizeType)
+                .Include(v => v.Product)
+                    .ThenInclude(p => p.Category)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(v => v.Id == id);
         }
-
         public async Task<List<ProductVariant>> GetVariantsByProductIdForAdminAsync(Guid productId)
         {
             return await _context.ProductVariants

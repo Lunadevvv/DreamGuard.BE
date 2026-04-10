@@ -1,15 +1,21 @@
 ﻿using CloudinaryDotNet;
+using DreamGuard.BE.API.Hubs;
 using DreamGuard.BE.BLL;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL;
 using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using Hangfire;
+using Hangfire.Dashboard;
+using Hangfire.PostgreSql;
+using Hangfire.PostgreSql.Properties;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.Features;
@@ -20,6 +26,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Net;
 using System.Reflection;
@@ -69,7 +76,7 @@ namespace DreamGuard.BE.API
             builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
             builder.Services.Configure<OtpOptions>(builder.Configuration.GetSection("OtpOptions"));
             builder.Services.Configure<VnPayOptions>(builder.Configuration.GetSection("VnpayOptions"));
-            
+
             //Add authentication with JWT
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -93,7 +100,19 @@ namespace DreamGuard.BE.API
                     OnMessageReceived = context =>
                     {
                         var accessToken = context.Request.Cookies["AccessToken"];
-                        context.Token = accessToken;
+                        // 2. Nếu Cookie trống, thử tìm trong Query String với tên "access_token" 
+                        // (Dành cho lúc test bằng HTML hoặc mốt Mobile App xài)
+                        if (string.IsNullOrEmpty(accessToken))
+                        {
+                            accessToken = context.Request.Query["access_token"];
+                        }
+
+                        // 3. Nếu tìm thấy token ở 1 trong 2 nơi, gán vào hệ thống
+                        if (!string.IsNullOrEmpty(accessToken))
+                        {
+                            context.Token = accessToken;
+                        }
+
                         return Task.CompletedTask;
                     },
 
@@ -175,7 +194,8 @@ namespace DreamGuard.BE.API
                         policy.WithOrigins(
                             "http://localhost:5173",
                             "https://localhost:5173",
-                            "https://dream-guard.vercel.app"
+                            "https://dream-guard.vercel.app",
+                            "http://127.0.0.1:5500" // Thêm localhost với cổng 5500 để test static files
                         )
                             .AllowAnyHeader()
                             .AllowAnyMethod()
@@ -226,6 +246,17 @@ namespace DreamGuard.BE.API
             {
                 serverOptions.Limits.MaxRequestBodySize = 52428800; // 50MB
             });
+            // Thêm SignalR service
+            // Bật chế độ báo lỗi chi tiết của SignalR lên
+            builder.Services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true; // <--- THÊM DÒNG NÀY
+            });
+            // Them HangFire
+            builder.Services.AddHangfire(config =>
+            config.UsePostgreSqlStorage(options => options.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DreamGuardConnection"))));
+            builder.Services.AddHangfireServer();
+
 
             builder.AddBLLServices();
             builder.AddDALServices();
@@ -233,6 +264,7 @@ namespace DreamGuard.BE.API
             builder.Services.AddHttpContextAccessor();
 
             var app = builder.Build();
+
 
             app.UseForwardedHeaders(new ForwardedHeadersOptions
             {
@@ -277,16 +309,34 @@ namespace DreamGuard.BE.API
             //app.UseSwaggerUI();
             //await app.Initialise();
 
+
             // CORS phải được đặt TRƯỚC Authentication/Authorization
             app.UseCors("AllowFrontend");
             // Use authentication and authorization
             app.UseAuthentication();
             app.UseAuthorization();
+            // UI: /hangfire
+            app.UseHangfireDashboard("/hangfire", new DashboardOptions
+            {
+                Authorization = new[] { new HangfireAuthorizationFilter() }
+            }); 
+            
 
 
             app.MapControllers();
+            // Map endpoint cho Hub
+            app.MapHub<ChatHub>("/chathub");
 
             app.Run();
+        }
+    }
+    public class HangfireAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
+    {
+        public bool Authorize(Hangfire.Dashboard.DashboardContext context)
+        {
+            // Chỉ cho phép truy cập dashboard nếu người dùng đã đăng nhập và có role "Admin"
+            var httpContext = context.GetHttpContext();
+            return httpContext.User.Identity != null && httpContext.User.Identity.IsAuthenticated && httpContext.User.IsInRole(Role.Admin);
         }
     }
 }

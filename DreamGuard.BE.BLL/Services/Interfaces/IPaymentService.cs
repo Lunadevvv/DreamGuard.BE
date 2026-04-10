@@ -17,5 +17,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<PaginatedList<PaymentSummaryResponse>>> GetAllPaymentsForAdminAsync(int pageNumber, PaymentStatus? status, PaymentMethod? method, string? orderCode);
         Task<Result<PaymentResponse>> GetPaymentDetailForAdminAsync(Guid paymentId);
         Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus);
+        Task<Result> ExpirePayment(Guid paymentId);
     }
 }

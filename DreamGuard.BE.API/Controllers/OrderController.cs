@@ -65,6 +65,26 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
+        [HttpGet("{productVariantId}/GetOrderItemsToTradeInAsync")]
+        [Authorize]
+        public async Task<IActionResult> GetOrderItemsToTradeIn(Guid productVariantId)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _orderService.GetOrdersToTradeInAsync(customerId, productVariantId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpGet("{orderId}")]
         public async Task<IActionResult> GetOrderById(Guid orderId)
         {

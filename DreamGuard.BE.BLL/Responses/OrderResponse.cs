@@ -1,7 +1,9 @@
-using System;
-using System.Collections.Generic;
+using AutoMapper;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
+using DreamGuard.BE.DAL.Models;
+using System;
+using System.Collections.Generic;
 
 namespace DreamGuard.BE.BLL.Responses
 {
@@ -14,8 +16,16 @@ namespace DreamGuard.BE.BLL.Responses
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
+        public bool IsTradeInUsed { get; set; }
         public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new();
         public string? CustomizeHash { get; set; }
+        private class Mapping : Profile
+        {
+            public Mapping()
+            {
+                CreateMap<OrderItem, OrderItemResponse>();
+            }
+        }
     }
 
     public class OrderResponse

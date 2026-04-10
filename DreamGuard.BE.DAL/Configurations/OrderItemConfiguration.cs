@@ -50,9 +50,10 @@ namespace DreamGuard.BE.DAL.Configurations
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(oi => oi.ProductVariant)
-                .WithMany()
+                .WithMany(pv => pv.OrderItems)
                 .HasForeignKey(oi => oi.ProductVariantId)
                 .OnDelete(DeleteBehavior.SetNull);
+
 
             builder.HasOne(oi => oi.Combo)
                 .WithMany()

@@ -9,7 +9,7 @@ namespace DreamGuard.BE.DAL.ModelExtensions
 {
     public class PaginatedList<T>
     {
-        public IReadOnlyCollection<T> Items { get; }
+        public IReadOnlyCollection<T> Items { get; set; }
         public int PageNumber { get; }
         public int PageSize { get; }
         public int TotalPages { get; }

@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -12,6 +9,10 @@ using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -422,6 +423,42 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 new PaginatedList<OrderSummaryResponse>(
                     responses, orders.TotalCount, orders.PageNumber, orders.PageSize));
         }
+        public async Task<Result<List<OrderItemResponse>>> GetOrdersToTradeInAsync(Guid customerId, Guid productVariantId)
+        {
+            //check if it is customer
+            var customer = await _customerRepository.GetByUserIdAsync(customerId);
+            if (customer == null)
+                return Result<List<OrderItemResponse>>.Failure("Customer profile not found.", 404);
+            //check if product variant exists
+            var variant = await _variantRepository.GetVariantByIdAsync(productVariantId);
+            if (variant == null)
+                return Result<List<OrderItemResponse>>.Failure("Product variant not found.", 404);
+            //check if product variant has category parent
+            var categoryParentId = variant.Product!.Category!.CateParentId;
+            if (categoryParentId == null)
+                return Result<List<OrderItemResponse>>.Failure("Product category parent not found.", 404);
+            var basePriceWithDepositReduce = variant.BasePrice - variant.Product.DepositAmount;
+            var orderItems = await _orderRepository.GetOrdersToTradeInAsync(customerId, categoryParentId.Value, basePriceWithDepositReduce);
+            var orderItemResponseList = orderItems.Select(oi => new OrderItemResponse
+            {
+                Id = oi.Id,
+                ProductVariantId = oi.ProductVariantId,
+                ComboId = oi.ComboId,
+                ItemName = oi.ItemName,
+                Quantity = oi.Quantity,
+                UnitPrice = oi.UnitPrice,
+                TotalPrice = oi.TotalPrice,
+                CustomizeHash = oi.CustomizeHash,
+                IsTradeInUsed = oi.IsTradeInUsed,
+                ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
+                {
+                    CustomizeTypeName = d.CustomizeTypeName,
+                    CustomizeContent = d.CustomizeContent,
+                    AddOnPrice = d.AddOnPrice
+                }).ToList() ?? new List<ProductCustomizeDetail>()
+            }).ToList();
+            return Result<List<OrderItemResponse>>.Success(orderItemResponseList);
+        }
 
         public async Task<Result<PaginatedList<OrderSummaryResponse>>> GetAllOrdersForAdminAsync(
             int pageNumber, OrderStatus? status, string? orderCode)
@@ -628,6 +665,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     UnitPrice = oi.UnitPrice,
                     TotalPrice = oi.TotalPrice,
                     CustomizeHash = oi.CustomizeHash,
+                    IsTradeInUsed = oi.IsTradeInUsed,
                     ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
                     {
                         CustomizeTypeName = d.CustomizeTypeName,

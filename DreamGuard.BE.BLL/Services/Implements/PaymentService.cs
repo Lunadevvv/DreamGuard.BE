@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Common;
@@ -17,6 +17,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
 {
     public class PaymentService : IPaymentService
     {
+        private readonly IOrderItemRepository _orderItemRepository;
+        private readonly IInventoryRepository _inventoryRepository;
         private readonly IPaymentRepository _paymentRepository;
         private readonly IOrderRepository _orderRepository;
         private readonly IVnPayService _vnPayService;
@@ -24,7 +26,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly VnPayOptions _vnPayOptions;
         private readonly IOrderService _orderService;
         private readonly ICustomerRepository _customerRepository;
-
+        private readonly ITradeInOrderRepository _tradeInOrderRepository;
         public PaymentService(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
@@ -32,7 +34,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IUnitOfWork unitOfWork,
             IOptions<VnPayOptions> vnPayOptions,
             IOrderService orderService,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            ITradeInOrderRepository tradeInOrderRepository,
+            IOrderItemRepository orderItemRepository,
+            IInventoryRepository inventoryRepository)
         {
             _paymentRepository = paymentRepository;
             _orderRepository = orderRepository;
@@ -41,6 +46,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _vnPayOptions = vnPayOptions.Value;
             _orderService = orderService;
             _customerRepository = customerRepository;
+            _tradeInOrderRepository = tradeInOrderRepository;
+            _orderItemRepository = orderItemRepository;
+            _inventoryRepository = inventoryRepository;
         }
 
         public async Task<Result<CreatePaymentResponse>> CreatePaymentAsync(Guid orderId, PaymentMethod method, string ipAddress)
@@ -105,6 +113,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PaymentId = payment.Id,
                 OrderCode = order.OrderCode,
                 PaymentMethod = method,
+                PaymentType = payment.PaymentType,
                 Status = payment.Status,
                 Amount = payment.Amount,
                 PaymentUrl = paymentUrl,
@@ -151,10 +160,30 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             await _orderRepository.UpdateAsync(order);
                         }
                     }
+                    //update trade-in order status to WAITING_FOR_STAFF when payment succeeds
+                    if (payment.TradeInOrderId.HasValue)
+                    {
+                        var tradeInOrder = await _tradeInOrderRepository.GetByIdAsync(payment.TradeInOrderId.Value);
+                        if (tradeInOrder != null && tradeInOrder.Status == TradeInOrderStatus.Pending)
+                        {
+                            tradeInOrder.Status = TradeInOrderStatus.WAITING_FOR_STAFF;
+                            await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
+                        }
+                    }
                 }
                 else
                 {
                     payment.Status = PaymentStatus.Failed;
+                    if (payment.TradeInOrderId.HasValue)
+                    {
+                        var tradeInOrder = await _tradeInOrderRepository.GetOrderDetailById(payment.TradeInOrderId.Value);
+                        if (tradeInOrder != null && tradeInOrder.Status == TradeInOrderStatus.Pending)
+                        {
+                            tradeInOrder.OrderItem.IsTradeInUsed = false; // Release the reserved trade-in item
+                            tradeInOrder.ProductVariant!.Inventory!.Quantity += 1; // Restock the reserved item
+                            await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
+                        }
+                    }
                 }
 
                 payment.UpdatedAt = DateTime.UtcNow;
@@ -162,7 +191,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _paymentRepository.UpdateAsync(payment);
 
                 await transaction.CommitAsync();
-                
+
                 // Auto-cancel order when payment fails (runs in separate transaction)
                 if (payment.Status == PaymentStatus.Failed && payment.POrderId.HasValue)
                 {
@@ -237,10 +266,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 Id = p.Id,
                 OrderCode = p.OrderCode,
+                PaymentType = p.PaymentType,
                 Status = p.Status,
                 Amount = p.Amount,
                 PaymentMethod = p.PaymentMethod,
-                PaymentType = p.Type,
                 CreatedAt = p.CreatedAt
             }).ToList();
 
@@ -258,6 +287,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 Id = p.Id,
                 OrderCode = p.OrderCode,
+                PaymentType = p.PaymentType,
                 Status = p.Status,
                 Amount = p.Amount,
                 PaymentMethod = p.PaymentMethod,
@@ -347,14 +377,52 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Id = payment.Id,
                 OrderCode = payment.OrderCode,
                 POrderId = payment.POrderId,
+                TradeInOrderId = payment.TradeInOrderId,
+                PaymentType = payment.PaymentType,
                 Status = payment.Status,
                 Amount = payment.Amount,
                 Description = payment.Description,
                 PaymentMethod = payment.PaymentMethod,
-                PaymentType = payment.Type,
                 CreatedAt = payment.CreatedAt,
                 UpdatedAt = payment.UpdatedAt
             };
         }
+        public async Task<Result> ExpirePayment(Guid paymentId)
+        {
+            //có lỗi xảy ra => rollback và hangfire retry 
+            var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var payment = await _paymentRepository.GetPaymentByIdAsync(paymentId);
+                if (payment != null && payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(payment);
+                    // Also update trade-in order status to Cancelled
+                    if (payment.TradeInOrderId.HasValue)
+                    {
+                        var tradeInOrder = payment.TradeInOrder;
+
+                        if (tradeInOrder != null && tradeInOrder.Status == TradeInOrderStatus.Pending)
+                        {
+                            tradeInOrder.OrderItem.IsTradeInUsed = false; // Release the reserved trade-in item
+                            _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
+                            //update inventory atomically 
+                            await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariant.Id);
+                        }
+                    }
+                }
+                var result = await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
+                return Result.Success($"Update sucessfully");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
     }
 }

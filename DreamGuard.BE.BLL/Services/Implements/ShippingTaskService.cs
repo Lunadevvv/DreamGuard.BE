@@ -374,7 +374,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 // --- REFUND VNPay ---
                 var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
-                if (payment != null && payment.PaymentMethod == PaymentMethod.VnPay && payment.Status == PaymentStatus.Paid && payment.Type == PaymentType.Purchase)
+                if (payment != null && payment.PaymentMethod == PaymentMethod.VnPay && payment.Status == PaymentStatus.Paid && payment.PaymentType == PaymentType.Purchase)
                 {
                     var refundReq = new VnPaymentRefundRequest
                     {
@@ -399,7 +399,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         OrderCode = order.OrderCode,
                         POrderId = order.Id,
                         Status = PaymentStatus.Paid,
-                        Type = PaymentType.Refund,
+                        PaymentType = PaymentType.Refund,
                         Amount = payment.Amount,
                         Description = $"Refund for Order {order.OrderCode}.",
                         PaymentMethod = PaymentMethod.VnPay,

@@ -17,5 +17,8 @@ namespace DreamGuard.BE.DAL.Models
         public ICollection<Order> Orders { get; set; } = new List<Order>();
         public ICollection<FavoriteProduct> FavoriteProducts { get; set; } = new List<FavoriteProduct>();
         public ICollection<ProductFeedback> ProductFeedbacks { get; set; } = new List<ProductFeedback>();
+        public ICollection<TradeInOrder> TradeInOrders { get; set; } = new List<TradeInOrder>();
+        public ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
+
     }
 }
