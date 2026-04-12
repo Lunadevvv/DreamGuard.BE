@@ -161,9 +161,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ExpiredAt = DateTime.UtcNow.AddMinutes(5)
                 };
                 tradeInOrder.Payments.Add(payment);
-                _tradeInOrderRepository.AddEntity(tradeInOrder);
-
-                await _unitOfWork.SaveChangeAsync();
+                await _tradeInOrderRepository.CreateAsync(tradeInOrder);
                 await transaction.CommitAsync();
 
                 // Generate VnPay URL after commit
@@ -269,8 +267,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ExpiredAt = DateTime.UtcNow.AddMinutes(5),
                     TradeInOrderId = tradeInOrder.TradeInOrderId,
                 };
-                _paymentRepository.AddEntity(payment);
-                await _unitOfWork.SaveChangeAsync();
+                await _paymentRepository.CreateAsync(payment);
                 await transaction.CommitAsync();
 
                 // Generate VnPay URL after commit (external call, should not be inside transaction)
@@ -481,7 +478,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         paymentRefund.Status = PaymentStatus.Failed;
                         paymentRefund.Description = $"failed reason: {refundResult.Message}";
                     }
-                    _paymentRepository.AddEntity(paymentRefund);
+                    await _paymentRepository.CreateAsync(paymentRefund);
                 }
 
                 // Update inventory và tradeInUsedAmount
@@ -502,12 +499,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 }
 
-                var result = await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
-                if(result == 0)
-                {
-                    return Result.Failure("Failed to cancel order", 500);
-                }
                 return Result.Success("Trade-in order cancelled successfully");
             }
             catch
