@@ -11,7 +11,7 @@ namespace DreamGuard.BE.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    // [Authorize]
     public class SystemConfigsController : ControllerBase
     {
         private readonly ISystemConfigService _configService;
