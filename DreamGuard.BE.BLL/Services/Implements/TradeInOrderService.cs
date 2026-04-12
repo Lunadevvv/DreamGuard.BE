@@ -81,7 +81,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result<CreateTradeInOrderResponse>.Failure("The order of this OrderItem has not been paid", 400);
                 }
                 //check if order item is already used for trade-in
-                if (orderItem.IsTradeInUsed)
+                if (orderItem.TradeInUsedAmount == orderItem.Quantity)
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in", 400);
                 }
@@ -114,7 +114,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
                 var minTradeInPrice = oldProductVariant.Product.MinTradeInPrice;
                 var depositAmount = productVariant.Product!.DepositAmount;
-                var amountToPay = productVariant.BasePrice - minTradeInPrice - depositAmount;
+                var salePrice = productVariant.SalePrice > 0 ? productVariant.SalePrice : productVariant.BasePrice;
+                var amountToPay = salePrice - minTradeInPrice - depositAmount;
                 if (amountToPay < 0)
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("The amount to pay cannot be negative. Please choose a different product variant or check the trade-in price of your old product.", 400);
@@ -124,6 +125,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 if (result == 0)
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("This product is out of stock", 400);
+                }
+                //cập nhật lượt trade-in đã dùng của order item
+                var increaseResult = await _orderItemRepository.IncreaseTradeInUsedAmountAsync(orderItem.Id);
+                if (!increaseResult)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Failed to IncreaseTradeInUsedAmount, please try again", 500);
                 }
                 var tradeInOrder = new TradeInOrder
                 {
@@ -140,8 +147,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     DepositAmount = depositAmount,
                     AmountToPay = amountToPay,
                 };
-                orderItem.IsTradeInUsed = true;
-                _orderItemRepository.UpdateEntity(orderItem);
+
 
                 Payment payment = new Payment
                 {
@@ -216,8 +222,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("Only pending order can be reordered", 400);
                 }
-                //check if order item is already used for trade-in (phải check vì expire payment IsTradeInUsed = false)
-                if (tradeInOrder.OrderItem.IsTradeInUsed)
+                //check if order item is already used for trade-in
+                if (tradeInOrder.OrderItem.TradeInUsedAmount == tradeInOrder.OrderItem.Quantity)
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in", 400);
                 }
@@ -240,8 +246,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("This product is out of stock", 400);
                 }
-                //cập nhật IsTradeInUsed = true
-                tradeInOrder.OrderItem.IsTradeInUsed = true;
+                //cập nhật lượt trade-in đã dùng của order item
+                var increaseResult = await _orderItemRepository.IncreaseTradeInUsedAmountAsync(tradeInOrder.OrderItem.Id);
+                if (!increaseResult)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("Failed to IncreaseTradeInUsedAmount, please try again", 500);
+                }
                 //check if customer exist
                 var customer = await _customerRepository.GetByIdAsync(customerId);
                 if (customer == null)
@@ -260,7 +270,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     TradeInOrderId = tradeInOrder.TradeInOrderId,
                 };
                 _paymentRepository.AddEntity(payment);
-                _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
                 await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
 
@@ -346,12 +355,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result<CalculateTradeInOrderPriceResponse>.Failure("Old ProductVariant not found", 404);
             }
-
+            var salePrice = productVariant.SalePrice > 0 ? productVariant.SalePrice : productVariant.BasePrice;
             var calculateResponse = new CalculateTradeInOrderPriceResponse
             {
                 TradeInPrice = oldProductVariant.Product.MinTradeInPrice,
                 DepositAmount = productVariant.Product.DepositAmount,
-                AmountToPay = productVariant.BasePrice - oldProductVariant.Product.MinTradeInPrice - productVariant.Product.DepositAmount
+                AmountToPay = salePrice - oldProductVariant.Product.MinTradeInPrice - productVariant.Product.DepositAmount
             };
             return Result<CalculateTradeInOrderPriceResponse>.Success(calculateResponse);
         }
@@ -475,18 +484,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     _paymentRepository.AddEntity(paymentRefund);
                 }
 
-                // Update inventory
-                //tradeInOrder có status là pending và payment failed thì ko cộng inventory vì đơn failed đã trừ tồn rồi
+                // Update inventory và tradeInUsedAmount
+                //tradeInOrder có status là pending và payment failed thì ko cộng inventory và trừ TradeInUsedAmount vì đơn failed đã trừ tồn và trừ TradeInUsedAmount rồi
                 if (!(firstStatus == TradeInOrderStatus.Pending && isLastPaymentFailed))
                 {
                     var inventory = tradeInOrder.ProductVariant!.Inventory;
-                    await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariantId);
+                    // trả lượt tradein cho order item
+                    var increaseResult = await _orderItemRepository.DecreaseTradeInUsedAmountAsync(tradeInOrder.OrderItem.Id);
+                    if (!increaseResult)
+                    {
+                        return Result.Failure("Failed to decrease TradeInUsedAmount, please try again", 500);
+                    }
+                    var inventoryResult = await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariantId);
+                    if (inventoryResult == 0)
+                    {
+                        return Result.Failure("Failed to update inventory", 500);
+                    }
                 }
-
-                // Trả lượt trade-in cho order item
-                tradeInOrder.OrderItem.IsTradeInUsed = false;
-                // Update order
-                _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
 
                 var result = await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();

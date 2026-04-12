@@ -179,9 +179,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         var tradeInOrder = await _tradeInOrderRepository.GetOrderDetailById(payment.TradeInOrderId.Value);
                         if (tradeInOrder != null && tradeInOrder.Status == TradeInOrderStatus.Pending)
                         {
-                            tradeInOrder.OrderItem.IsTradeInUsed = false; // Release the reserved trade-in item
-                            tradeInOrder.ProductVariant!.Inventory!.Quantity += 1; // Restock the reserved item
-                            await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
+                            var tradeInResult = await _orderItemRepository.DecreaseTradeInUsedAmountAsync(tradeInOrder.OrderItem.Id); 
+                            if(!tradeInResult)
+                            {
+                                return Result<VnPaymentResponse>.Failure("Failed to increase tradeinUsedAmount trade-in item.", 500);
+                            }
+                            var inventoryResult = await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariant.Id); // Restock the reserved item
+                            if(inventoryResult == 0)
+                            {
+                                return Result<VnPaymentResponse>.Failure("Failed to restock inventory for trade-in item.", 500);
+                            }
                         }
                     }
                 }
@@ -406,8 +413,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                         if (tradeInOrder != null && tradeInOrder.Status == TradeInOrderStatus.Pending)
                         {
-                            tradeInOrder.OrderItem.IsTradeInUsed = false; // Release the reserved trade-in item
-                            _orderItemRepository.UpdateEntity(tradeInOrder.OrderItem);
+                            await _orderItemRepository.DecreaseTradeInUsedAmountAsync(tradeInOrder.OrderItem.Id);
                             //update inventory atomically 
                             await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariant.Id);
                         }

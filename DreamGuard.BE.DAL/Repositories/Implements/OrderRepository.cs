@@ -99,7 +99,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await _context.OrderItems
                 .Where(oi => oi.Order!.CustomerId == customerId
                 && oi.ProductVariant!.Product!.Category!.CateParentId == categoryParentId
-                && oi.IsTradeInUsed == false && (basePriceWithDepositReduce - oi.ProductVariant.Product.MinTradeInPrice >= 0)
+                && oi.TradeInUsedAmount < oi.Quantity && (basePriceWithDepositReduce - oi.ProductVariant.Product.MinTradeInPrice >= 0)
                 && oi.Order.Payments.Any(p => p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.Paid))
                 .ToListAsync();
         }

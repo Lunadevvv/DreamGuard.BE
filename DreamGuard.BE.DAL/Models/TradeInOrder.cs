@@ -30,5 +30,6 @@ namespace DreamGuard.BE.DAL.Models
         public ProductVariant ProductVariant { get; set; }
         public Customer Customer { get; set; }
         public Conversation? Conversation { get; set; }
+        public ICollection<ShippingTask> ShippingTasks { get; set; }
     }
 }
