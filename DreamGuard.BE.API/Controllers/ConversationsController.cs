@@ -20,7 +20,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("{conversationId}/Messages")]
-        [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
+        [Authorize(Roles = $"{Role.Seller}, {Role.User}")]
         public async Task<IActionResult> GetMessageHistory(Guid conversationId, int pageNumber = 1, int pageSize = 30)
         {
             var result = await _service.GetMessageHistoryAsync(conversationId, pageNumber, pageSize);
@@ -35,7 +35,7 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
         [HttpGet()]
-        [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
+        [Authorize(Roles = $"{Role.Seller}, {Role.User}")]
         public async Task<IActionResult> GetMyConversation(int pageNumber = 1, int pageSize = 4)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out Guid staffId))
