@@ -26,10 +26,10 @@ namespace DreamGuard.BE.DAL.Configurations
                    .WithOne(p => p.TradeInOrder)
                    .HasForeignKey(p => p.TradeInOrderId)
                    .OnDelete(DeleteBehavior.Restrict);
-            //1-1 OrderItem
+            //n-1 OrderItem
             builder.HasOne(tio => tio.OrderItem)
-                   .WithOne(oi => oi.TradeInOrder)
-                   .HasForeignKey<TradeInOrder>(tio => tio.POrderItemId)
+                   .WithMany(oi => oi.TradeInOrders)
+                   .HasForeignKey(tio => tio.POrderItemId)
                    .OnDelete(DeleteBehavior.Restrict);
             // n-1 ProductVariant
             builder.HasOne(tio => tio.ProductVariant)

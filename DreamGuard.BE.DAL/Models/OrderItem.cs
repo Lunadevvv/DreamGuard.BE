@@ -26,6 +26,6 @@ namespace DreamGuard.BE.DAL.Models
         public ProductVariant? ProductVariant { get; set; }
         [JsonIgnore]
         public Combo? Combo { get; set; }
-        public TradeInOrder? TradeInOrder { get; set; }
+        public ICollection<TradeInOrder> TradeInOrders { get; set; }
     }
 }

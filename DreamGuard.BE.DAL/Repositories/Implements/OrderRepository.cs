@@ -111,7 +111,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                         .ThenInclude(p => p.Category)
                 .Include(oi => oi.Order)
                     .ThenInclude(o => o.Payments)
-                .Include(oi => oi.TradeInOrder)
+                .Include(oi => oi.TradeInOrders)
                 .FirstOrDefaultAsync(oi => oi.Id == orderItemId);
         }
     }

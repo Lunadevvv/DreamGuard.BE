@@ -86,9 +86,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in", 400);
                 }
                 //check if they are reordering the failed trade-in order
-                if (orderItem.TradeInOrder != null && orderItem.TradeInOrder.Status == TradeInOrderStatus.Pending)
+                var pendingTradeInOrder = orderItem.TradeInOrders.FirstOrDefault(ti => ti.Status == TradeInOrderStatus.Pending);
+                if (pendingTradeInOrder != null)
                 {
-                    return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in, please use reorder failed tradeInOrder to complete payment", 400);
+                    string errorMessage = $"please cancel or reOrder this order to be able to make a new order {pendingTradeInOrder.TradeInOrderId}";
+                    return Result<CreateTradeInOrderResponse>.Failure(errorMessage, 409);
                 }
                 //check if the order item belongs to the customer
                 if (orderItem.Order!.CustomerId != customerId)
