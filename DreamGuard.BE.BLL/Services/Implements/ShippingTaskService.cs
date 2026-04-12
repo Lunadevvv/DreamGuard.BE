@@ -128,13 +128,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if(task.OrderId == null)
+            {
+                return Result.Failure("Associated order not found for this task.", 404);
+            }
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
             if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
 
             if (task.Status != ShippingTaskStatus.Pending) return Result.Failure($"Cannot start delivering from status '{task.Status}'.", 400);
 
-            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId);
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null || order.Status != OrderStatus.Processing)
                 return Result.Failure($"Cannot start delivering. Order must be in 'Processing' status, but is currently '{order?.Status}'.", 400);
 
@@ -204,7 +208,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             if (task.Status != ShippingTaskStatus.Arrived) return Result.Failure($"Cannot complete from status '{task.Status}'.", 400);
 
-            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId);
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null || (order.Status != OrderStatus.Shipping && order.Status != OrderStatus.Shipping_Replacement)) return Result.Failure("Order is not in Shipping status.", 400);
 
             var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
@@ -272,6 +276,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if(task.OrderId == null)
+            {
+                return Result.Failure("Associated order not found for this task.", 404);
+            }
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
             if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
@@ -281,7 +289,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure($"Cannot return from status '{task.Status}'.", 400);
             }
 
-            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId);
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null) return Result.Failure("Order not found.", 404);
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
@@ -325,13 +333,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
-
+            if (task.OrderId == null) return Result.Failure("Associated order not found for this task.", 404);
             if (task.Status != ShippingTaskStatus.Returning)
             {
                 return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
             }
 
-            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId);
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null) return Result.Failure("Order not found.", 404);
 
             bool isDamaged = request.DamagedItems != null && request.DamagedItems.Any(d => d.DamagedQuantity > 0);
@@ -483,13 +491,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
-
+            if (task.OrderId == null) return Result.Failure("Associated order not found for this task.", 404);
             if (task.Status != ShippingTaskStatus.Returning)
             {
                 return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
             }
 
-            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId);
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null) return Result.Failure("Order not found.", 404);
 
             bool isDamaged = request.DamagedItems != null && request.DamagedItems.Any(d => d.DamagedQuantity > 0);

@@ -30,7 +30,7 @@ namespace DreamGuard.BE.BLL.Responses
         public List<TradeInImage> TradeInImages { get; set; } = new List<TradeInImage>();
         public OrderItemResponse OrderItem { get; set; }
         public ProductVariantSummaryResponse ProductVariant { get; set; }
-        public Conversation Conversation { get; set; }
+        public Conversation? Conversation { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

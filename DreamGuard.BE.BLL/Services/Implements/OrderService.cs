@@ -450,7 +450,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var categoryParentId = variant.Product!.Category!.CateParentId;
             if (categoryParentId == null)
                 return Result<List<OrderItemResponse>>.Failure("Product category parent not found.", 404);
-            var basePriceWithDepositReduce = variant.BasePrice - variant.Product.DepositAmount;
+            var salePrice = variant.SalePrice > 0 ? variant.SalePrice : variant.BasePrice;
+            var basePriceWithDepositReduce = salePrice - variant.Product.DepositAmount;
             var orderItems = await _orderRepository.GetOrdersToTradeInAsync(customerId, categoryParentId.Value, basePriceWithDepositReduce);
             var orderItemResponseList = orderItems.Select(oi => new OrderItemResponse
             {
@@ -462,7 +463,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 UnitPrice = oi.UnitPrice,
                 TotalPrice = oi.TotalPrice,
                 CustomizeHash = oi.CustomizeHash,
-                IsTradeInUsed = oi.IsTradeInUsed,
+                TradeInUsedAmount = oi.TradeInUsedAmount,
                 ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
                 {
                     CustomizeTypeName = d.CustomizeTypeName,
@@ -678,7 +679,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     UnitPrice = oi.UnitPrice,
                     TotalPrice = oi.TotalPrice,
                     CustomizeHash = oi.CustomizeHash,
-                    IsTradeInUsed = oi.IsTradeInUsed,
+                    TradeInUsedAmount = oi.TradeInUsedAmount,
                     ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
                     {
                         CustomizeTypeName = d.CustomizeTypeName,

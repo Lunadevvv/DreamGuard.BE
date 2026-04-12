@@ -10,5 +10,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IOrderItemRepository : IGenericRepository<OrderItem>
     {
+        Task<bool> IncreaseTradeInUsedAmountAsync(Guid orderItemId);
+        Task<bool> DecreaseTradeInUsedAmountAsync(Guid orderItemId);
     }
 }

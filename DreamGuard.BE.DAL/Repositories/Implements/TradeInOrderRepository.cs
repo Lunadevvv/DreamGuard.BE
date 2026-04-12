@@ -26,6 +26,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                     .ThenInclude(pv => pv.Inventory)
                 .Include(ti => ti.TradeInImages)
                 .Include(ti => ti.Payments)
+                .Include(ti => ti.Conversation)
                 .Where(o => o.TradeInOrderId == tradeInOrderId).FirstOrDefaultAsync();
         }
         public async Task<TradeInOrder?> GetTradeInByIdAsync(Guid tradeInOrderId)
