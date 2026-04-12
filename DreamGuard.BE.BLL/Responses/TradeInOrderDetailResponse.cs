@@ -38,7 +38,8 @@ namespace DreamGuard.BE.BLL.Responses
                 CreateMap<TradeInOrder, TradeInOrderDetailResponse>()
                     .ForMember(dest => dest.OrderItem, opt => opt.MapFrom(src => src.OrderItem))
                     .ForMember(dest => dest.ProductVariant, opt => opt.MapFrom(src => src.ProductVariant))
-                    .ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments));
+                    .ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments))
+                    .ForMember(dest => dest.Conversation, opt => opt.MapFrom(src => src.Conversation));
             }
         }
     }
