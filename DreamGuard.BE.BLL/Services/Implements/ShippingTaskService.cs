@@ -139,14 +139,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (task.Status != ShippingTaskStatus.Pending) return Result.Failure($"Cannot start delivering from status '{task.Status}'.", 400);
 
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
-            if (order == null || order.Status != OrderStatus.Processing)
-                return Result.Failure($"Cannot start delivering. Order must be in 'Processing' status, but is currently '{order?.Status}'.", 400);
+            if (order == null) return Result.Failure("Order not found.", 404);
+
+            if (order.Status != OrderStatus.Processing && order.Status != OrderStatus.ExchangeRequested)
+                return Result.Failure($"Cannot start delivering. Order must be in 'Processing' or 'ExchangeRequested' status, but is currently '{order?.Status}'.", 400);
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 // Update Order Status
-                order.Status = OrderStatus.Shipping;
+                if(order.Status == OrderStatus.Processing)
+                {
+                    order.Status = OrderStatus.Shipping;
+                }
+                else if(order.Status == OrderStatus.ExchangeRequested)
+                {
+                    order.Status = OrderStatus.Shipping_Replacement;
+                }
                 order.UpdatedAt = DateTime.UtcNow;
                 await _orderRepository.UpdateAsync(order);
 
@@ -523,7 +532,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             try
             {
                 // Update Order Status
-                order.Status = OrderStatus.Shipping_Replacement;
+                order.Status = OrderStatus.ExchangeRequested;
                 order.UpdatedAt = DateTime.UtcNow;
                 await _orderRepository.UpdateAsync(order);
 
