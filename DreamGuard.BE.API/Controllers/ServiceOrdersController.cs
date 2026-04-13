@@ -109,7 +109,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost("AdminSearchOrderService")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> AdminSearchOrderServiceAsync([FromQuery]ServiceOrderSearchRequest searchRequest, int pageNumber = 1, int pageSize = 4)
         {
             var result = await _serviceOrderService.GetAllByAdminAsync(pageNumber, pageSize, searchRequest);

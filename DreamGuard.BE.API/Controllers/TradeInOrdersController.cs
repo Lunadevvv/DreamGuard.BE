@@ -262,7 +262,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPatch("{tradeInOrderId}/completed")]
-        [Authorize(Roles = $"{Role.DeliveryStaff}, {Role.Manager}, {Role.Admin}")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
         public async Task<IActionResult> Complete(Guid tradeInOrderId)
         {
             var result = await _service.CompletedAsync(tradeInOrderId);
