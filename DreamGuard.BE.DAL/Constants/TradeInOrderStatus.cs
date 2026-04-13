@@ -18,6 +18,11 @@ namespace DreamGuard.BE.DAL.Constants
         CANCELLED = 7,
         REFUNDING = 8,
         REFUNDED = 9,
-        ADMINCANCELLED = 10
+        ADMINCANCELLED = 10,
+        RETURNING = 11,
+        RefundedAndRestocked = 12,
+        RefundedAndDamaged = 13,
+        Shipping_Replacement = 14,
+        FORCED_CANCELLED = 15
     }
 }

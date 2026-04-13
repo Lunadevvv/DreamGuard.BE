@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,6 +26,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IPaymentRepository _paymentRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly ITradeInOrderRepository _tradeInOrderRepository;
 
         public ShippingTaskService(
             IShippingTaskRepository taskRepository,
@@ -37,7 +38,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IVnPayService vnPayService,
             IPaymentRepository paymentRepository,
             ICustomerRepository customerRepository,
-            ISystemConfigRepository systemConfigRepository)
+            ISystemConfigRepository systemConfigRepository,
+            ITradeInOrderRepository tradeInOrderRepository)
         {
             _taskRepository = taskRepository;
             _orderRepository = orderRepository;
@@ -49,6 +51,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _paymentRepository = paymentRepository;
             _customerRepository = customerRepository;
             _systemConfigRepository = systemConfigRepository;
+            _tradeInOrderRepository = tradeInOrderRepository;
         }
 
         public async Task<Result<ShippingTaskResponse>> CreateShippingTaskAsync(ShippingTaskCreateRequest request)
@@ -58,41 +61,77 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result<ShippingTaskResponse>.Failure("Invalid staff or staff is not a Delivery Staff.", 400);
             }
-
-            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(request.OrderId);
-            if (order == null)
+            if (request.OrderId != null && request.TradeInOrderId == null)
             {
-                return Result<ShippingTaskResponse>.Failure("Order not found.", 404);
+                var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(request.OrderId.Value);
+                if (order == null)
+                {
+                    return Result<ShippingTaskResponse>.Failure("Order not found.", 404);
+                }
+
+                if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Processing)
+                {
+                    return Result<ShippingTaskResponse>.Failure(
+                        $"Cannot create shipping task. Order must be in 'Confirmed' or 'Processing' status but is currently '{order.Status}'.", 400);
+                }
+
+                var existingTask = await _taskRepository.GetTaskByOrderIdAsync(order.Id);
+                if (existingTask != null)
+                {
+                    return Result<ShippingTaskResponse>.Failure("Order already has a shipping task.", 400);
+                }
+
+                var task = new ShippingTask
+                {
+                    ShippingTaskId = Guid.NewGuid(),
+                    StaffId = request.StaffId,
+                    OrderId = request.OrderId,
+                    Status = ShippingTaskStatus.Pending,
+                    StaffNote = string.Empty
+                };
+
+                await _taskRepository.CreateAsync(task);
+
+                // Re-fetch to map properly with navigation properties
+                task.Staff = staff;
+                task.Order = order;
+
+                return Result<ShippingTaskResponse>.Success(MapToResponse(task));
             }
-
-            if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Processing)
+            else if (request.TradeInOrderId != null && request.OrderId == null)
             {
-                return Result<ShippingTaskResponse>.Failure(
-                    $"Cannot create shipping task. Order must be in 'Confirmed' or 'Processing' status but is currently '{order.Status}'.", 400);
+                var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(request.TradeInOrderId.Value);
+                if (tradeInOrder == null)
+                {
+                    return Result<ShippingTaskResponse>.Failure("Trade-in order not found.", 404);
+                }
+                if (tradeInOrder.Status != TradeInOrderStatus.CONFIRMED)
+                {
+                    return Result<ShippingTaskResponse>.Failure(
+                        $"Cannot create shipping task. Trade-in order must be in 'CONFIRMED' status but is currently '{tradeInOrder.Status}'.", 400);
+                }
+                if (tradeInOrder.ShippingTasks.Any())
+                {
+                    return Result<ShippingTaskResponse>.Failure("Trade-in order already has a shipping task.", 400);
+                }
+                var task = new ShippingTask
+                {
+                    ShippingTaskId = Guid.NewGuid(),
+                    StaffId = request.StaffId,
+                    TradeInOrderId = request.TradeInOrderId,
+                    Status = ShippingTaskStatus.Pending,
+                    StaffNote = string.Empty
+                };
+                await _taskRepository.CreateAsync(task);
+                // Re-fetch to map properly with navigation properties
+                task.Staff = staff;
+                task.TradeInOrder = tradeInOrder;
+                return Result<ShippingTaskResponse>.Success(MapToResponse(task));
             }
-
-            var existingTask = await _taskRepository.GetTaskByOrderIdAsync(order.Id);
-            if (existingTask != null)
+            else
             {
-                return Result<ShippingTaskResponse>.Failure("Order already has a shipping task.", 400);
+                return Result<ShippingTaskResponse>.Failure("Either OrderId or TradeInOrderId must be provided.", 400);
             }
-
-            var task = new ShippingTask
-            {
-                ShippingTaskId = Guid.NewGuid(),
-                StaffId = request.StaffId,
-                OrderId = request.OrderId,
-                Status = ShippingTaskStatus.Pending,
-                StaffNote = string.Empty
-            };
-
-            await _taskRepository.CreateAsync(task);
-            
-            // Re-fetch to map properly with navigation properties
-            task.Staff = staff;
-            task.Order = order;
-
-            return Result<ShippingTaskResponse>.Success(MapToResponse(task));
         }
 
         public async Task<Result> ReassignStaffAsync(Guid taskId, ReassignStaffRequest request)
@@ -128,16 +167,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
-            if(task.OrderId == null)
-            {
-                return Result.Failure("Associated order not found for this task.", 404);
-            }
+
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
             if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
 
             if (task.Status != ShippingTaskStatus.Pending) return Result.Failure($"Cannot start delivering from status '{task.Status}'.", 400);
 
+            if (task.OrderId == null)
+            {
+                return Result.Failure("Associated order not found for this task.", 404);
+            }
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null || order.Status != OrderStatus.Processing)
                 return Result.Failure($"Cannot start delivering. Order must be in 'Processing' status, but is currently '{order?.Status}'.", 400);
@@ -168,6 +208,67 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     });
                 }
 
+                await transaction.CommitAsync();
+                return Result.Success("Task is now in Delivering status.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to update status.", 500);
+            }
+        }
+
+        public async Task<Result> UpdateTaskToDeliveringForTradeInAsync(Guid taskId, Guid staffId, StartShippingRequest request)
+        {
+            if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
+            {
+                return Result.Failure("At least one evidence image is required to start delivery.", 400);
+            }
+
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+
+            if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
+
+            if (task.Status != ShippingTaskStatus.Pending) return Result.Failure($"Cannot start delivering from status '{task.Status}'.", 400);
+
+            if (task.TradeInOrderId == null)
+            {
+                return Result.Failure("Associated TradeInOrder not found for this task.", 404);
+            }
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            if (tradeInOrder == null)
+            {
+                return Result.Failure("Associated TradeInOrder not found for this task.", 404);
+            }
+            if (tradeInOrder.Status != TradeInOrderStatus.PROCESSING)
+                return Result.Failure($"Cannot start delivering. TradeInOrder must be in 'Processing' status, but is currently '{tradeInOrder?.Status}'.", 400);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Update Task Status
+                task.Status = ShippingTaskStatus.Delivering;
+                _taskRepository.UpdateEntity(task);
+
+                // Save Evidence
+                foreach (var url in request.EvidenceUrls)
+                {
+                    _evidenceRepository.AddEntity(new ShippingEvidence
+                    {
+                        EvidenceId = Guid.NewGuid(),
+                        ShippingTaskId = task.ShippingTaskId,
+                        EvidenceUrl = url,
+                        EvidenceType = "PickedUp",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                var result = await _unitOfWork.SaveChangeAsync();
+                if (result == 0)
+                {
+                    return Result.Failure("Failed to save changes to the database.", 500);
+                }
                 await transaction.CommitAsync();
                 return Result.Success("Task is now in Delivering status.");
             }
@@ -267,6 +368,62 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Failed to complete shipping.", 500);
             }
         }
+        public async Task<Result> CompleteShippingForTradeInOrderAsync(Guid taskId, Guid staffId, CompleteShippingRequest request)
+        {
+            if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
+            {
+                return Result.Failure("At least one evidence image is required.", 400);
+            }
+
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+
+            if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
+
+            if (task.Status != ShippingTaskStatus.Arrived) return Result.Failure($"Cannot complete from status '{task.Status}'.", 400);
+            if (task.TradeInOrderId == null) return Result.Failure("Associated TradeInOrder not found for this task.", 404);
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            if (tradeInOrder == null) return Result.Failure("Trade-in order not found.", 404);
+            if (tradeInOrder.Status != TradeInOrderStatus.PROCESSING) return Result.Failure("TradeInOrder is not in processing status.", 400);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Update Order Status
+                tradeInOrder.Status = TradeInOrderStatus.DELIVERED;
+                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+
+                // Update Task Status
+                task.Status = ShippingTaskStatus.Delivered;
+                task.CompletionDate = DateTime.UtcNow;
+                _taskRepository.UpdateEntity(task);
+
+                // Save Evidences
+                foreach (var url in request.EvidenceUrls)
+                {
+                    _evidenceRepository.AddEntity(new ShippingEvidence
+                    {
+                        EvidenceId = Guid.NewGuid(),
+                        ShippingTaskId = task.ShippingTaskId,
+                        EvidenceUrl = url,
+                        EvidenceType = "Delivered",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                var result = await _unitOfWork.SaveChangeAsync();
+                if (result == 0)
+                {
+                    return Result.Failure("Failed to save changes to the database.", 500);
+                }
+                await transaction.CommitAsync();
+                return Result.Success("Shipping completed successfully.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to complete shipping.", 500);
+            }
+        }
 
         public async Task<Result> FailShippingAsync(Guid taskId, Guid staffId, FailShippingRequest request)
         {
@@ -276,10 +433,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
-            if(task.OrderId == null)
-            {
-                return Result.Failure("Associated order not found for this task.", 404);
-            }
+
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
             if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
@@ -287,6 +441,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (task.Status != ShippingTaskStatus.Arrived && task.Status != ShippingTaskStatus.Delivering)
             {
                 return Result.Failure($"Cannot return from status '{task.Status}'.", 400);
+            }
+
+            if (task.OrderId == null)
+            {
+                return Result.Failure("Associated order not found for this task.", 404);
             }
 
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
@@ -326,6 +485,136 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 await transaction.RollbackAsync();
                 return Result.Failure("Failed to mark shipping as returning.", 500);
+            }
+        }
+        public async Task<Result> FailShippingForTradeInAsync(Guid taskId, Guid staffId, FailShippingRequest request)
+        {
+            if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
+            {
+                return Result.Failure("At least one evidence image is required.", 400);
+            }
+
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+
+            if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
+            //task phải có status là Arrived hoặc Delivering mới được phép fail (đánh dấu returning)
+            if (task.Status != ShippingTaskStatus.Arrived && task.Status != ShippingTaskStatus.Delivering)
+            {
+                return Result.Failure($"Cannot return from status '{task.Status}'.", 400);
+            }
+
+            if (task.TradeInOrderId == null)
+            {
+                return Result.Failure("Associated order not found for this task.", 404);
+            }
+
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            if (tradeInOrder == null) return Result.Failure("tradeInOrder not found.", 404);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Unhappy Case: Order status -> Returning (No refund or restock yet)
+                tradeInOrder.Status = TradeInOrderStatus.RETURNING;
+                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+
+                // Task status -> Returning
+                task.Status = ShippingTaskStatus.Returning;
+                task.StaffNote = request.Reason;
+                // Don't set CompletionDate yet, the manager finishes it.
+                _taskRepository.UpdateEntity(task);
+
+                // Save Evidences
+                foreach (var url in request.EvidenceUrls)
+                {
+                    _evidenceRepository.AddEntity(new ShippingEvidence
+                    {
+                        EvidenceId = Guid.NewGuid(),
+                        ShippingTaskId = task.ShippingTaskId,
+                        EvidenceUrl = url,
+                        EvidenceType = "Returning",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                var result = await _unitOfWork.SaveChangeAsync();   
+                if (result == 0)
+                {
+                    return Result.Failure("Failed to save changes to the database.", 500);
+                }
+                await transaction.CommitAsync();
+                return Result.Success("Shipping marked as returning successfully. Pending manager review.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to mark shipping as returning.", 500);
+            }
+        }
+        public async Task<Result> ForcedCancelShippingForTradeInAsync(Guid taskId, Guid staffId, FailShippingRequest request)
+        {
+            if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
+            {
+                return Result.Failure("At least one evidence image is required.", 400);
+            }
+
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+
+            if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
+            //task phải có status là Delivered
+            if (task.Status != ShippingTaskStatus.Delivered)
+            {
+                return Result.Failure($"Cannot return from status '{task.Status}. Must be Delivered to do this action'.", 400);
+            }
+
+            if (task.TradeInOrderId == null)
+            {
+                return Result.Failure("Associated order not found for this task.", 404);
+            }
+
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            if (tradeInOrder == null) return Result.Failure("tradeInOrder not found.", 404);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Unhappy Case: FORCED_CANCELLED by staff
+                tradeInOrder.Status = TradeInOrderStatus.FORCED_CANCELLED;
+                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+
+                // Task status -> FORCED_CANCELLED
+                task.Status = ShippingTaskStatus.FORCED_CANCELLED;
+                task.StaffNote = request.Reason;
+                task.CompletionDate = DateTime.UtcNow;
+                _taskRepository.UpdateEntity(task);
+
+                // Save Evidences
+                foreach (var url in request.EvidenceUrls)
+                {
+                    _evidenceRepository.AddEntity(new ShippingEvidence
+                    {
+                        EvidenceId = Guid.NewGuid(),
+                        ShippingTaskId = task.ShippingTaskId,
+                        EvidenceUrl = url,
+                        EvidenceType = "Forced_Cancelled",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                var result = await _unitOfWork.SaveChangeAsync();
+                if (result == 0)
+                {
+                    return Result.Failure("Failed to save changes to the database.", 500);
+                }
+                await transaction.CommitAsync();
+                return Result.Success("Shipping marked as forced_cancelled successfully");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to mark shipping as forced_cancelled.", 500);
             }
         }
 
@@ -486,6 +775,123 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Failed to process returned order.", 500);
             }
         }
+        public async Task<Result> ProcessReturnedTradeInOrderAsync(Guid taskId, ProcessReturnedTradeInRequest request)
+        {
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+            if (task.TradeInOrderId == null) return Result.Failure("Associated tradeInOrder not found for this task.", 404);
+            if (task.Status != ShippingTaskStatus.Returning)
+            {
+                return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
+            }
+
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            if (tradeInOrder == null) return Result.Failure("trade in order not found.", 404);
+
+            bool isDamaged = request.ProductVariantId != Guid.Empty;
+
+            //validate damaged 
+            if (isDamaged)
+            {
+                var productVariant = tradeInOrder.ProductVariant;
+                if (productVariant.Id != request.ProductVariantId)
+                {
+                    return Result.Failure($"ProductVariant with ID {request.ProductVariantId} not found in the trade in order.", 404);
+                }
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Update Order Status
+                tradeInOrder.Status = isDamaged ? TradeInOrderStatus.RefundedAndDamaged : TradeInOrderStatus.RefundedAndRestocked;
+                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+
+                // Task status
+                task.Status = isDamaged ? ShippingTaskStatus.RefundedAndDamaged : ShippingTaskStatus.RefundedAndRestocked;
+                task.CompletionDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(request.DamageNote))
+                {
+                    task.StaffNote = string.IsNullOrEmpty(task.StaffNote)
+                        ? $"Manager Note: {request.DamageNote}"
+                        : $"{task.StaffNote} | Manager Note: {request.DamageNote}";
+                }
+                await _taskRepository.UpdateAsync(task);
+
+                // --- REFUND VNPay ---
+                // Check if deposit was paid
+                var lastPaymentPaid = tradeInOrder.Payments
+                    .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .FirstOrDefault();
+                if (lastPaymentPaid != null)
+                {
+                    var paymentRefund = new Payment
+                    {
+                        TradeInOrderId = tradeInOrder.TradeInOrderId,
+                        Amount = lastPaymentPaid.Amount,
+                        OrderCode = tradeInOrder.OrderCode,
+                        PaymentType = PaymentType.Refund,
+                        PaymentMethod = lastPaymentPaid.PaymentMethod,
+                        Status = PaymentStatus.Refunded,
+                        Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
+                    };
+                    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                    {
+                        OrderId = lastPaymentPaid.Id.ToString(),
+                        Amount = lastPaymentPaid.Amount,
+                        PaymentDate = lastPaymentPaid.CreatedAt,
+                    };
+                    //fire and forget this because refund can't not use for now
+                    //var refundResult = _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+                    _paymentRepository.AddEntity(paymentRefund);
+                }
+
+                // Rollback Stock (Split between Normal and Defect)
+                int damagedQty = isDamaged ? 1 : 0;
+                int healthyQty = isDamaged ? 0 : 1;
+
+                if (healthyQty > 0)
+                {
+                    var hr = await _inventoryService.RestoreVariantStockAsync(request.ProductVariantId, healthyQty);
+                    if (!hr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(hr.Error!, hr.StatusCode); }
+                }
+                if (damagedQty > 0)
+                {
+                    var dr = await _inventoryService.RestoreDefectVariantStockAsync(request.ProductVariantId, damagedQty);
+                    if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+                }
+
+                // Save Evidences (if damaged)
+                if (isDamaged && request.EvidenceUrls != null && request.EvidenceUrls.Any())
+                {
+                    foreach (var url in request.EvidenceUrls)
+                    {
+                        var evidence = new ShippingEvidence
+                        {
+                            EvidenceId = Guid.NewGuid(),
+                            ShippingTaskId = task.ShippingTaskId,
+                            EvidenceUrl = url,
+                            EvidenceType = "DamageReport",
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _evidenceRepository.AddEntity(evidence);
+                    }
+                }
+                var result = await _unitOfWork.SaveChangeAsync();
+                if (result == 0)
+                {
+                    return Result.Failure("Failed to save changes to the database.", 500);
+                }
+                await transaction.CommitAsync();
+                return Result.Success("Return processed successfully.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to process returned order.", 500);
+            }
+        }
 
         public async Task<Result> ProcessExchangeOrderAsync(Guid taskId, ProcessExchangeRequest request)
         {
@@ -606,6 +1012,105 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
+        public async Task<Result> ProcessExchangeTradeInOrderAsync(Guid taskId, ProcessExchangeTradeInRequest request)
+        {
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+            if (task.TradeInOrderId == null) return Result.Failure("Associated TradeInOrder not found for this task.", 404);
+            if (task.Status != ShippingTaskStatus.Returning)
+            {
+                return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
+            }
+
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            if (tradeInOrder == null) return Result.Failure("TradeInOrder not found.", 404);
+
+            bool isDamaged = request.ProductVariantId != Guid.Empty;
+
+            //validate damaged 
+            if (isDamaged)
+            {
+                var productVariant = tradeInOrder.ProductVariant;
+                if (productVariant.Id != request.ProductVariantId)
+                {
+                    return Result.Failure($"ProductVariant with ID {request.ProductVariantId} not found in the trade in order.", 404);
+                }
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Update Order Status
+                tradeInOrder.Status = TradeInOrderStatus.Shipping_Replacement;
+                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+
+                // Task status (Closed)
+                task.Status = ShippingTaskStatus.ExchangeRequested;
+                task.CompletionDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(request.ExchangeNote))
+                {
+                    task.StaffNote = string.IsNullOrEmpty(task.StaffNote)
+                        ? $"Manager Note (Exchange): {request.ExchangeNote}"
+                        : $"{task.StaffNote} | Manager Note (Exchange): {request.ExchangeNote}";
+                }
+                _taskRepository.UpdateEntity(task);
+                int damagedQty = isDamaged ? 1 : 0;
+                // Add Defect Stock & Deduct New Stock for Replacement
+                if (damagedQty > 0)
+                {
+                    // Put broken into defect
+                    var dr = await _inventoryService.RestoreDefectVariantStockAsync(tradeInOrder.ProductVariantId, damagedQty);
+                    if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+
+                    // Take new one from normal stock
+                    var ds = await _inventoryService.DeductVariantStockAsync(tradeInOrder.ProductVariantId, damagedQty);
+                    if (!ds.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(ds.Error!, ds.StatusCode); }
+                }
+                
+
+                // Save Evidences (if damaged)
+                if (isDamaged && request.EvidenceUrls != null && request.EvidenceUrls.Any())
+                {
+                    foreach (var url in request.EvidenceUrls)
+                    {
+                        var evidence = new ShippingEvidence
+                        {
+                            EvidenceId = Guid.NewGuid(),
+                            ShippingTaskId = task.ShippingTaskId,
+                            EvidenceUrl = url,
+                            // Could store the damage note inside the evidence or task. Let's make it EvidenceType = "ExchangeReport".
+                            EvidenceType = "ExchangeReport",
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _evidenceRepository.AddEntity(evidence);
+                    }
+                }
+
+                // Create new Replacement Task
+                var newShippingTask = new ShippingTask
+                {
+                    ShippingTaskId = Guid.NewGuid(),
+                    TradeInOrderId = tradeInOrder.TradeInOrderId,
+                    StaffId = request.NewStaffId,
+                    Status = ShippingTaskStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _taskRepository.AddEntity(newShippingTask);
+                var result = await _unitOfWork.SaveChangeAsync();   
+                if (result == 0)
+                {
+                    return Result.Failure("Failed to save changes to the database.", 500);
+                }
+                await transaction.CommitAsync();
+                return Result.Success("Exchange processed successfully. Replacement task created.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to process exchange order.", 500);
+            }
+        }
+
         public async Task<Result<ShippingTaskResponse>> GetTaskByIdAsync(Guid taskId)
         {
             var task = await _taskRepository.GetTaskWithDetailsAsync(taskId);
@@ -645,6 +1150,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ShippingTaskId = task.ShippingTaskId,
                 StaffId = task.StaffId,
                 OrderId = task.OrderId,
+                TradeInOrderId = task.TradeInOrderId,
                 StaffName = task.Staff?.FullName ?? string.Empty,
                 OrderCode = task.Order?.OrderCode ?? string.Empty,
                 Status = task.Status,

@@ -18,5 +18,6 @@ namespace DreamGuard.BE.DAL.Constants
         public const string RefundedAndRestocked = nameof(RefundedAndRestocked);
         public const string RefundedAndDamaged = nameof(RefundedAndDamaged);
         public const string ExchangeRequested = nameof(ExchangeRequested);
+        public const string FORCED_CANCELLED = nameof(FORCED_CANCELLED);    
     }
 }

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -32,7 +33,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IVnPayService _vnPayService;
         private readonly IPaymentRepository _paymentRepository;
         private readonly IConversationRepository _conversationRepository;
-        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository, IInventoryRepository inventoryRepository)
+        private readonly IShippingTaskRepository _shippingTaskRepository;
+        private readonly ISystemConfigRepository _systemConfigRepository;
+        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository, IInventoryRepository inventoryRepository, IShippingTaskRepository shippingTaskRepository, ISystemConfigRepository systemConfigRepository)
         {
             _productVariantRepository = productVariantRepository;
             _tradeInOrderRepository = tradeInOrderRepository;
@@ -47,6 +50,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _customerRepository = customerRepository;
             _conversationRepository = conversationRepository;
             _inventoryRepository = inventoryRepository;
+            _shippingTaskRepository = shippingTaskRepository;
+            _systemConfigRepository = systemConfigRepository;
         }
         private string GenerateOrderCode()
         {
@@ -416,8 +421,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     TradeInOrderStatus.Pending,
                     TradeInOrderStatus.WAITING_FOR_STAFF,
                     TradeInOrderStatus.NEGOTIATING,
-                    TradeInOrderStatus.CONFIRMED,
-                    TradeInOrderStatus.PROCESSING
+                    TradeInOrderStatus.CONFIRMED
                 };
 
                 //Try update status at DB level (ANTI RACE CONDITION), lúc này gọi inventory sẽ ko bị double nếu có race condition
@@ -472,14 +476,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         Amount = lastPaymentPaid.Amount,
                         PaymentDate = lastPaymentPaid.CreatedAt,
                     };
-                    var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
-                    //vnpay fail refund thì để status là REFUNDING, admin sẽ vào refund thủ công
-                    if (!refundResult.Success)
-                    {
-                        tradeInOrder.Status = TradeInOrderStatus.REFUNDING;
-                        paymentRefund.Status = PaymentStatus.Failed;
-                        paymentRefund.Description = $"failed reason: {refundResult.Message}";
-                    }
+                    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
                     await _paymentRepository.CreateAsync(paymentRefund);
                 }
 
@@ -500,7 +497,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         return Result.Failure("Failed to update inventory", 500);
                     }
                 }
-
+                if (firstStatus == TradeInOrderStatus.CONFIRMED)
+                {
+                    tradeInOrder.ShippingTasks.ToList().ForEach(st =>
+                    {
+                        st.Status = ShippingTaskStatus.Cancelled;
+                        _shippingTaskRepository.UpdateEntity(st);
+                    });
+                    await _unitOfWork.SaveChangeAsync();
+                }
+                
                 await transaction.CommitAsync();
                 return Result.Success("Trade-in order cancelled successfully");
             }
@@ -552,9 +558,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success("Trade-in order confirmed successfully");
         }
 
-        public async Task<Result> ProcessingAsync(Guid tradeInOrderId)
+        public async Task<Result> ProcessingAsync(Guid tradeInOrderId, Guid staffId, DateTime shippingDate)
         {
-            var tradeInOrder = await _tradeInOrderRepository.GetByIdAsync(tradeInOrderId);
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
             if(tradeInOrder == null)
             {
                 return Result.Failure("TradeInOrder not found", 404);
@@ -563,9 +569,28 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Only orders in CONFIRMED status can be moved to PROCESSING", 400);
             }
+            var shippingTask = tradeInOrder.ShippingTasks.FirstOrDefault(st => st.Status == ShippingTaskStatus.Pending);
+            if (shippingTask == null)
+            {
+                return Result.Failure("No pending shipping task found for this order", 404);
+            }
+            if (shippingTask.StaffId != staffId)
+            {
+                return Result.Failure("You are not assigned to this shipping task", 403);
+            }
+            if (shippingDate < DateTime.UtcNow)
+            {
+                return Result.Failure("Shipping date cannot be in the past", 400);
+            }
+
+            //update shipping task shipping date 
+            shippingTask.ShippingDate = shippingDate;
+            _shippingTaskRepository.UpdateEntity(shippingTask);
+            //update tradein order status
             tradeInOrder.Status = TradeInOrderStatus.PROCESSING;
-            var result = await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
-            if(result == 0)
+            _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+            var result = await _unitOfWork.SaveChangeAsync();
+            if (result == 0)
             {
                 return Result.Failure("Failed to update trade-in order status", 500);
             }
@@ -610,9 +635,27 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Final payment not found for this order", 404);
             }
+
             lastFinalPayment.Status = PaymentStatus.CODPaid;
             lastFinalPayment.UpdatedAt = DateTime.UtcNow;
             _paymentRepository.UpdateEntity(lastFinalPayment);
+            // Award points if order is Completed
+            if (tradeInOrder.Status == TradeInOrderStatus.COMPLETED)
+            {
+                var customer = await _customerRepository.GetByIdAsync(tradeInOrder.CustomerId);
+                if (customer != null)
+                {
+                    var config = await _systemConfigRepository.GetByKeyAsync("OrderCoinPercent");
+                    decimal percent = 1.0m; // default 1%
+                    if (config != null && decimal.TryParse(config.ConfigValue, out decimal parsed))
+                    {
+                        percent = parsed;
+                    }
+                    int coinsEarned = (int)(tradeInOrder.AmountToPay * percent / 100);
+                    customer.MemberCoin += coinsEarned;
+                    _customerRepository.UpdateEntity(customer);
+                }
+            }
             var result = await _unitOfWork.SaveChangeAsync();
             if (result == 0)
             {

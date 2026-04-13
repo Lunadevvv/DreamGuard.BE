@@ -9,6 +9,7 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid ShippingTaskId { get; set; }
         public Guid StaffId { get; set; }
         public Guid? OrderId { get; set; }
+        public Guid? TradeInOrderId { get; set; }
         public string StaffName { get; set; } = string.Empty;
         public string OrderCode { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;

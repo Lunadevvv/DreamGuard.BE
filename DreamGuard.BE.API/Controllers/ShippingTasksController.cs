@@ -112,6 +112,28 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok();
         }
+        [HttpPut("{id}/delivering-for-tradeIn")]
+        [Authorize(Roles = Role.DeliveryStaff)]
+        public async Task<IActionResult> UpdateToDeliveringForTradeIn(Guid id, [FromBody] StartShippingRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var staffIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdStr) || !Guid.TryParse(staffIdStr, out var staffId))
+            {
+                return Unauthorized("Invalid staff token.");
+            }
+
+            var result = await _shippingTaskService.UpdateTaskToDeliveringForTradeInAsync(id, staffId, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
 
         [HttpPut("{id}/arrived")]
         [Authorize(Roles = Role.DeliveryStaff)]
@@ -154,6 +176,29 @@ namespace DreamGuard.BE.API.Controllers
             return Ok();
         }
 
+        [HttpPut("{id}/delivered-for-tradeIn")]
+        [Authorize(Roles = Role.DeliveryStaff)]
+        public async Task<IActionResult> CompleteShippingForTradeIn(Guid id, [FromBody] CompleteShippingRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var staffIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdStr) || !Guid.TryParse(staffIdStr, out var staffId))
+            {
+                return Unauthorized("Invalid staff token.");
+            }
+
+            var result = await _shippingTaskService.CompleteShippingForTradeInOrderAsync(id, staffId, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
+
         [HttpPut("{id}/returned")]
         [Authorize(Roles = Role.DeliveryStaff)]
         public async Task<IActionResult> FailShipping(Guid id, [FromBody] FailShippingRequest request)
@@ -170,6 +215,50 @@ namespace DreamGuard.BE.API.Controllers
             }
 
             var result = await _shippingTaskService.FailShippingAsync(id, staffId, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
+        [HttpPut("{id}/returned-for-TradeIn")]
+        [Authorize(Roles = Role.DeliveryStaff)]
+        public async Task<IActionResult> FailShippingForTradeIn(Guid id, [FromBody] FailShippingRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var staffIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdStr) || !Guid.TryParse(staffIdStr, out var staffId))
+            {
+                return Unauthorized("Invalid staff token.");
+            }
+
+            var result = await _shippingTaskService.FailShippingForTradeInAsync(id, staffId, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
+        [HttpPut("{id}/forced-cancelled-TradeIn")]
+        [Authorize(Roles = Role.DeliveryStaff)]
+        public async Task<IActionResult> ForceCancelShipping(Guid id, [FromBody] FailShippingRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var staffIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdStr) || !Guid.TryParse(staffIdStr, out var staffId))
+            {
+                return Unauthorized("Invalid staff token.");
+            }
+
+            var result = await _shippingTaskService.ForcedCancelShippingForTradeInAsync(id, staffId, request);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, result.Error);
@@ -193,6 +282,22 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok();
         }
+        [HttpPost("{id}/process-returned-for-tradeIn")]
+        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.Seller)]
+        public async Task<IActionResult> ProcessReturnedTradeInOrder(Guid id, [FromBody] ProcessReturnedTradeInRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _shippingTaskService.ProcessReturnedTradeInOrderAsync(id, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
 
         [HttpPost("{id}/process-exchange")]
         [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.Seller)]
@@ -204,6 +309,22 @@ namespace DreamGuard.BE.API.Controllers
             }
 
             var result = await _shippingTaskService.ProcessExchangeOrderAsync(id, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok(result.Message);
+        }
+        [HttpPost("{id}/process-exchange-for-tradeIn")]
+        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.Seller)]
+        public async Task<IActionResult> ProcessExchangeTradeInOrder(Guid id, [FromBody] ProcessExchangeTradeInRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _shippingTaskService.ProcessExchangeTradeInOrderAsync(id, request);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, result.Error);

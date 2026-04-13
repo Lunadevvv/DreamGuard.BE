@@ -194,10 +194,10 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPatch("{tradeInOrderId}/processing")]
-        [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
-        public async Task<IActionResult> Processing(Guid tradeInOrderId)
+        [Authorize(Roles = $"{Role.DeliveryStaff}, {Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> Processing(ProcessingTradeInOrderRequest request)
         {
-            var result = await _service.ProcessingAsync(tradeInOrderId);
+            var result = await _service.ProcessingAsync(request.TradeInOrderId, request.StaffId, request.ShippingDate);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
