@@ -195,9 +195,13 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpPatch("{tradeInOrderId}/processing")]
         [Authorize(Roles = $"{Role.DeliveryStaff}, {Role.Manager}, {Role.Admin}")]
-        public async Task<IActionResult> Processing(ProcessingTradeInOrderRequest request)
+        public async Task<IActionResult> Processing(Guid tradeInOrderId, ProcessingTradeInOrderRequest request)
         {
-            var result = await _service.ProcessingAsync(request.TradeInOrderId, request.StaffId, request.ShippingDate);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _service.ProcessingAsync(tradeInOrderId, staffId, request.ShippingDate);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -242,7 +246,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPatch("{tradeInOrderId}/delivered")]
-        [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
+        [Authorize(Roles = $"{Role.DeliveryStaff}, {Role.Manager}, {Role.Admin}")]
         public async Task<IActionResult> Delivered(Guid tradeInOrderId)
         {
             var result = await _service.DeliveredAsync(tradeInOrderId);
@@ -258,7 +262,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPatch("{tradeInOrderId}/completed")]
-        [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
+        [Authorize(Roles = $"{Role.DeliveryStaff}, {Role.Manager}, {Role.Admin}")]
         public async Task<IActionResult> Complete(Guid tradeInOrderId)
         {
             var result = await _service.CompletedAsync(tradeInOrderId);

@@ -8,8 +8,6 @@ namespace DreamGuard.BE.BLL.Requests
 {
     public class ProcessingTradeInOrderRequest
     {
-        public Guid TradeInOrderId { get; set; }
-        public Guid StaffId { get; set; }
         public DateTime ShippingDate { get; set; }
     }
 }
