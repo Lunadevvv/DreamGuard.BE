@@ -38,6 +38,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(ti => ti.ProductVariant)
                     .ThenInclude(pv => pv.Product)
                 .Include(ti => ti.OrderItem)
+                .Include(ti => ti.ShippingTasks)
                 .Where(o => o.TradeInOrderId == tradeInOrderId).FirstOrDefaultAsync();
         }
 
