@@ -28,11 +28,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
 
         public async Task<ShippingTask?> GetTaskWithDetailsForUpdateAsync(Guid taskId)
         {
+            //please commit this
             return await _context.ShippingTasks
                 .Include(t => t.Staff)
                 .Include(t => t.Order)
                 .Include(t => t.ShippingEvidences)
                 .Include(t => t.TradeInOrder)
+                    .ThenInclude(ti => ti.ProductVariant)
                 .AsTracking()
                 .FirstOrDefaultAsync(t => t.ShippingTaskId == taskId);
         }
