@@ -12,6 +12,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         Task<ShippingTask?> GetTaskWithDetailsAsync(Guid taskId);
         Task<ShippingTask?> GetTaskWithDetailsForUpdateAsync(Guid taskId);
+        Task<ShippingTask?> GetTaskWithDetailsForUpdateNoTrackingAsync(Guid taskId);
         Task<ShippingTask?> GetTaskByOrderIdAsync(Guid orderId);
         Task<PaginatedList<ShippingTask>> GetTasksByStaffIdAsync(Guid staffId, int pageNumber = 1);
         Task<PaginatedList<ShippingTask>> GetAllTasksForAdminAsync(int pageNumber, string? status, Guid? orderId);

@@ -11,6 +11,7 @@ using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using DreamGuard.BE.DAL.ModelExtensions;
+using Microsoft.Extensions.Logging;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -39,7 +40,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IPaymentRepository paymentRepository,
             ICustomerRepository customerRepository,
             ISystemConfigRepository systemConfigRepository,
-            ITradeInOrderRepository tradeInOrderRepository)
+            ITradeInOrderRepository tradeInOrderRepository
+            )
         {
             _taskRepository = taskRepository;
             _orderRepository = orderRepository;
@@ -234,7 +236,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("At least one evidence image is required to start delivery.", 400);
             }
 
-            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
 
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
@@ -246,7 +248,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Associated TradeInOrder not found for this task.", 404);
             }
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            var tradeInOrder = task.TradeInOrder;
             if (tradeInOrder == null)
             {
                 return Result.Failure("Associated TradeInOrder not found for this task.", 404);
@@ -384,14 +386,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("At least one evidence image is required.", 400);
             }
 
-            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
             if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
 
             if (task.Status != ShippingTaskStatus.Arrived) return Result.Failure($"Cannot complete from status '{task.Status}'.", 400);
             if (task.TradeInOrderId == null) return Result.Failure("Associated TradeInOrder not found for this task.", 404);
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            var tradeInOrder = task.TradeInOrder;
             if (tradeInOrder == null) return Result.Failure("Trade-in order not found.", 404);
             if (tradeInOrder.Status != TradeInOrderStatus.PROCESSING) return Result.Failure("TradeInOrder is not in processing status.", 400);
 
@@ -427,7 +429,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await transaction.CommitAsync();
                 return Result.Success("Shipping completed successfully.");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 return Result.Failure("Failed to complete shipping.", 500);
@@ -503,7 +505,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("At least one evidence image is required.", 400);
             }
 
-            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
 
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
@@ -511,7 +513,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //task phải có status là Arrived hoặc Delivering mới được phép fail (đánh dấu returning)
             if (task.Status != ShippingTaskStatus.Arrived && task.Status != ShippingTaskStatus.Delivering)
             {
-                return Result.Failure($"Cannot return from status '{task.Status}'.", 400);
+                return Result.Failure($"Cannot return from status '{task.Status}'. must be arrived or delivering to do this", 400);
             }
 
             if (task.TradeInOrderId == null)
@@ -519,7 +521,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Associated order not found for this task.", 404);
             }
 
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            var tradeInOrder = task.TradeInOrder;
             if (tradeInOrder == null) return Result.Failure("tradeInOrder not found.", 404);
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
@@ -568,7 +570,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("At least one evidence image is required.", 400);
             }
 
-            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
 
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
@@ -584,7 +586,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Associated order not found for this task.", 404);
             }
 
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            var tradeInOrder = task.TradeInOrder;
             if (tradeInOrder == null) return Result.Failure("tradeInOrder not found.", 404);
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
@@ -794,7 +796,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
             }
 
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            var tradeInOrder = task.TradeInOrder;
             if (tradeInOrder == null) return Result.Failure("trade in order not found.", 404);
 
             bool isDamaged = request.ProductVariantId != Guid.Empty;
@@ -814,7 +816,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 // Update Order Status
                 tradeInOrder.Status = isDamaged ? TradeInOrderStatus.RefundedAndDamaged : TradeInOrderStatus.RefundedAndRestocked;
-                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
 
                 // Task status
                 task.Status = isDamaged ? ShippingTaskStatus.RefundedAndDamaged : ShippingTaskStatus.RefundedAndRestocked;
@@ -825,7 +826,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         ? $"Manager Note: {request.DamageNote}"
                         : $"{task.StaffNote} | Manager Note: {request.DamageNote}";
                 }
-                await _taskRepository.UpdateAsync(task);
+ 
 
                 // --- REFUND VNPay ---
                 // Check if deposit was paid
@@ -862,12 +863,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 if (healthyQty > 0)
                 {
-                    var hr = await _inventoryService.RestoreVariantStockAsync(request.ProductVariantId, healthyQty);
+                    var hr = await _inventoryService.RestoreVariantStockAsync(tradeInOrder.ProductVariantId, healthyQty);
                     if (!hr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(hr.Error!, hr.StatusCode); }
                 }
                 if (damagedQty > 0)
                 {
-                    var dr = await _inventoryService.RestoreDefectVariantStockAsync(request.ProductVariantId, damagedQty);
+                    var dr = await _inventoryService.RestoreDefectVariantStockAsync(tradeInOrder.ProductVariantId, damagedQty);
                     if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
                 }
 
@@ -887,15 +888,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         _evidenceRepository.AddEntity(evidence);
                     }
                 }
-                var result = await _unitOfWork.SaveChangeAsync();
-                if (result == 0)
-                {
-                    return Result.Failure("Failed to save changes to the database.", 500);
-                }
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 return Result.Success("Return processed successfully.");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 return Result.Failure("Failed to process returned order.", 500);
@@ -1031,7 +1028,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
             }
 
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(task.TradeInOrderId!.Value);
+            var tradeInOrder = task.TradeInOrder;
             if (tradeInOrder == null) return Result.Failure("TradeInOrder not found.", 404);
 
             bool isDamaged = request.ProductVariantId != Guid.Empty;
@@ -1051,7 +1048,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 // Update Order Status
                 tradeInOrder.Status = TradeInOrderStatus.Shipping_Replacement;
-                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
 
                 // Task status (Closed)
                 task.Status = ShippingTaskStatus.ExchangeRequested;
@@ -1062,7 +1058,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         ? $"Manager Note (Exchange): {request.ExchangeNote}"
                         : $"{task.StaffNote} | Manager Note (Exchange): {request.ExchangeNote}";
                 }
-                _taskRepository.UpdateEntity(task);
+               
                 int damagedQty = isDamaged ? 1 : 0;
                 // Add Defect Stock & Deduct New Stock for Replacement
                 if (damagedQty > 0)

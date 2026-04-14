@@ -36,6 +36,27 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .AsTracking()
                 .FirstOrDefaultAsync(t => t.ShippingTaskId == taskId);
         }
+        public async Task<ShippingTask?> GetTaskWithDetailsForUpdateNoTrackingAsync(Guid taskId)
+        {
+            return await _context.ShippingTasks
+                .Include(t => t.Staff)
+                .Include(t => t.Order)
+                .Include(t => t.ShippingEvidences)
+                .Include(t => t.TradeInOrder)
+                // TradeInOrder + các navigation bên trong
+                .Include(t => t.TradeInOrder)
+                    .ThenInclude(ti => ti.Payments)
+                .Include(t => t.TradeInOrder)
+                    .ThenInclude(ti => ti.ProductVariant)
+                        .ThenInclude(pv => pv.Inventory)
+                .Include(t => t.TradeInOrder)
+                    .ThenInclude(ti => ti.ProductVariant)
+                        .ThenInclude(pv => pv.Product)
+                .Include(t => t.TradeInOrder)
+                    .ThenInclude(ti => ti.OrderItem)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.ShippingTaskId == taskId);
+        }
 
         public async Task<ShippingTask?> GetTaskByOrderIdAsync(Guid orderId)
         {
