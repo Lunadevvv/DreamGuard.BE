@@ -161,7 +161,7 @@ namespace DreamGuard.BE.API.Controllers
 
         // [Admin] Update payment status (e.g. confirm COD payment)
         [HttpPut("admin/{paymentId}/status")]
-        [Authorize(Roles = "Admin, Manager, Seller")]
+        [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> UpdatePaymentStatus(Guid paymentId, [FromQuery] PaymentStatus status)
         {
             var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, status);

@@ -78,7 +78,7 @@ namespace DreamGuard.BE.API.Controllers
         /// Admin hides or shows a feedback by updating its status.
         /// </summary>
         [HttpPut("{feedbackId}/status")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> UpdateFeedbackStatusAsync(
             Guid feedbackId, [FromQuery] string status)
         {

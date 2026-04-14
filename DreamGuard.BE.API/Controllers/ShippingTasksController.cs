@@ -67,7 +67,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.DeliveryStaff)]
+        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.DeliveryStaff + "," + Role.Seller)]
         public async Task<IActionResult> GetTasks([FromQuery] int pageNumber = 1, [FromQuery] string? status = null, [FromQuery] Guid? orderId = null, [FromQuery] Guid? tradeInOrderId = null)
         {
             if (User.IsInRole(Role.Admin) || User.IsInRole(Role.Manager))

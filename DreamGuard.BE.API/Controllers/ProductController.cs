@@ -88,7 +88,7 @@ namespace DreamGuard.BE.API.Controllers
 
         //Get All With Paging (Admin)
         [HttpGet("admin")]
-        [Authorize(Roles = "Admin, Manager")]
+        [Authorize(Roles = "Admin, Manager, Seller")]
         public async Task<IActionResult> GetAllProductsForAdminAsync([FromQuery]int pageNumber, string? name)
         {
             var result = await _productService.GetAllProductsForAdminAsync(pageNumber, name);
