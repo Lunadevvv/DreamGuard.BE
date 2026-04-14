@@ -1,5 +1,6 @@
 ﻿using CloudinaryDotNet;
 using DreamGuard.BE.API.Hubs;
+using DreamGuard.BE.API.Implements;
 using DreamGuard.BE.BLL;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
@@ -256,7 +257,9 @@ namespace DreamGuard.BE.API
             builder.Services.AddHangfire(config =>
             config.UsePostgreSqlStorage(options => options.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DreamGuardConnection"))));
             builder.Services.AddHangfireServer();
-
+            //thêm DI cho hubservice và hangfire service
+            builder.Services.AddScoped<IHubService, HubService>();
+            builder.Services.AddScoped<IHangFireService, HangFireService>();
 
             builder.AddBLLServices();
             builder.AddDALServices();
@@ -326,6 +329,8 @@ namespace DreamGuard.BE.API
             app.MapControllers();
             // Map endpoint cho Hub
             app.MapHub<ChatHub>("/chathub");
+            app.MapHub<SystemHub>("/systemhub");
+            app.MapHub<NotiAndLogHub>("/notiandloghub");
 
             app.Run();
         }

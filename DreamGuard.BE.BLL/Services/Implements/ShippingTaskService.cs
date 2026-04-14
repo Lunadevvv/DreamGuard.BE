@@ -28,6 +28,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ICustomerRepository _customerRepository;
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly ITradeInOrderRepository _tradeInOrderRepository;
+        private readonly IHangFireService _hangFireService;
 
         public ShippingTaskService(
             IShippingTaskRepository taskRepository,
@@ -40,7 +41,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IPaymentRepository paymentRepository,
             ICustomerRepository customerRepository,
             ISystemConfigRepository systemConfigRepository,
-            ITradeInOrderRepository tradeInOrderRepository
+            ITradeInOrderRepository tradeInOrderRepository,
+            IHangFireService hangFireService
             )
         {
             _taskRepository = taskRepository;
@@ -54,6 +56,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _customerRepository = customerRepository;
             _systemConfigRepository = systemConfigRepository;
             _tradeInOrderRepository = tradeInOrderRepository;
+            _hangFireService = hangFireService;
         }
 
         public async Task<Result<ShippingTaskResponse>> CreateShippingTaskAsync(ShippingTaskCreateRequest request)
@@ -128,6 +131,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Re-fetch to map properly with navigation properties
                 task.Staff = staff;
                 task.TradeInOrder = tradeInOrder;
+                var notification = new Notification
+                {
+                    UserId = task.StaffId,
+                    ActionType = "New Shipping Task Assigned",
+                    Message = task.TradeInOrderId == null ? $"You have been assigned a new shipping task for order {task.OrderId}." : $"You have been assigned a new shipping task for trade-in order {task.TradeInOrderId}.",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 return Result<ShippingTaskResponse>.Success(MapToResponse(task));
             }
             else
@@ -157,7 +167,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             task.StaffId = request.NewStaffId;
             await _taskRepository.UpdateAsync(task);
-
+            var notification = new Notification
+            {
+                UserId = request.NewStaffId,
+                ActionType = "New Shipping Task Assigned",
+                Message = $"You have been re assigned a new shipping task"
+            };
+            _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success("Staff reassigned successfully.");
         }
 
@@ -281,6 +297,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result.Failure("Failed to save changes to the database.", 500);
                 }
                 await transaction.CommitAsync();
+                var notification = new Notification
+                {
+                    UserId = tradeInOrder.CustomerId,
+                    ActionType = "tradeinorder is in delivering",
+                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is on delivering",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 return Result.Success("Task is now in Delivering status.");
             }
             catch (Exception)
@@ -302,7 +325,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             task.Status = ShippingTaskStatus.Arrived;
             await _taskRepository.UpdateAsync(task);
-
+            var notification = new Notification
+            {
+                UserId = task.TradeInOrder!.CustomerId,
+                ActionType = "shipper has arrived",
+                Message = $"shipper has arrived for your trade in order: {task.TradeInOrderId}",
+            };
+            _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success("Task is now Arrived.");
         }
 
@@ -427,6 +456,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result.Failure("Failed to save changes to the database.", 500);
                 }
                 await transaction.CommitAsync();
+                var notification = new Notification
+                {
+                    UserId = tradeInOrder.CustomerId,
+                    ActionType = "complete shipping task for trade in",
+                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is completed",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 return Result.Success("Shipping completed successfully.");
             }
             catch (Exception ex)
@@ -555,6 +591,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result.Failure("Failed to save changes to the database.", 500);
                 }
                 await transaction.CommitAsync();
+                var notification = new Notification
+                {
+                    UserId = tradeInOrder.CustomerId,
+                    ActionType = "fail shipping task for trade in",
+                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is returning for some reason. We will contact soon",
+                };
+
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 return Result.Success("Shipping marked as returning successfully. Pending manager review.");
             }
             catch (Exception)
@@ -620,6 +664,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result.Failure("Failed to save changes to the database.", 500);
                 }
                 await transaction.CommitAsync();
+                var notification = new Notification
+                {
+                    UserId = tradeInOrder.CustomerId,
+                    ActionType = "forced cancelled shipping task for trade in",
+                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is forced cancelled",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 return Result.Success("Shipping marked as forced_cancelled successfully");
             }
             catch (Exception)
@@ -786,7 +837,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Failed to process returned order.", 500);
             }
         }
-        public async Task<Result> ProcessReturnedTradeInOrderAsync(Guid taskId, ProcessReturnedTradeInRequest request)
+        public async Task<Result> ProcessReturnedTradeInOrderAsync(Guid taskId, ProcessReturnedTradeInRequest request, Guid managerId, string role)
         {
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
@@ -890,6 +941,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
                 await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
+                //audit và log
+                var notification = new Notification
+                {
+                    UserId = tradeInOrder.CustomerId,
+                    ActionType = "ProcessReturnTradeInOrder",
+                    Message = $"your trade in order:{tradeInOrder.TradeInOrderId} will be refunded",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                var auditLog = new AuditLog
+                {
+                    UserId = managerId,
+                    UserRole = role,
+                    ActionType = "ProcessReturnedTradeInOrder",
+                    Message = isDamaged ? $"restore defect variant by 1 {tradeInOrder.ProductVariantId}" : $"restore variant stock by 1 {tradeInOrder.ProductVariantId}",
+                };
+                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
                 return Result.Success("Return processed successfully.");
             }
             catch (Exception ex)
@@ -1018,7 +1085,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public async Task<Result> ProcessExchangeTradeInOrderAsync(Guid taskId, ProcessExchangeTradeInRequest request)
+        public async Task<Result> ProcessExchangeTradeInOrderAsync(Guid taskId, ProcessExchangeTradeInRequest request, Guid managerId, string role)
         {
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
@@ -1071,7 +1138,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     var ds = await _inventoryService.DeductVariantStockAsync(tradeInOrder.ProductVariantId, damagedQty);
                     if (!ds.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(ds.Error!, ds.StatusCode); }
                 }
-                
+
+
 
                 // Save Evidences (if damaged)
                 if (isDamaged && request.EvidenceUrls != null && request.EvidenceUrls.Any())
@@ -1107,6 +1175,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result.Failure("Failed to save changes to the database.", 500);
                 }
                 await transaction.CommitAsync();
+                if (isDamaged)
+                {
+                    var auditLog = new AuditLog
+                    {
+                        UserId = managerId,
+                        UserRole = role,
+                        ActionType = "ProcessExchangeTradeInOrder",
+                        Message = $"restore defect variant by 1 {tradeInOrder.ProductVariantId} and take 1 from stock for exchange"
+                    };
+                    _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                }
+                var notification = new Notification
+                {
+                    UserId = tradeInOrder.CustomerId,
+                    ActionType = "ProcessExchangeTradeInOrderAsync",
+                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} will be exchanged",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+
                 return Result.Success("Exchange processed successfully. Replacement task created.");
             }
             catch (Exception)

@@ -1,5 +1,6 @@
 ﻿using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.DbContext;
+using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using System;
@@ -14,6 +15,15 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     {
         public AuditLogRepository(DreamGuardContext context) : base(context)
         {
+        }
+
+        public async Task<PaginatedList<AuditLog>> GetAuditLogsAsync(Guid? userId, DateTime? createdAt, int pageNumber, int pageSize)
+        {
+            var query = _context.AuditLogs
+                .Where(a => (!userId.HasValue || a.UserId == userId) &&
+                            (!createdAt.HasValue || a.CreatedAt.Date >= createdAt.Value.Date))
+                .OrderByDescending(a => a.CreatedAt);
+            return await PaginatedList<AuditLog>.CreateAsync(query, pageNumber, pageSize);
         }
     }
 }
