@@ -23,6 +23,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(t => t.Staff)
                 .Include(t => t.Order)
                 .Include(t => t.ShippingEvidences)
+                .Include(t => t.TradeInOrder)
                 .FirstOrDefaultAsync(t => t.ShippingTaskId == taskId);
         }
 
@@ -71,6 +72,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             var query = _context.ShippingTasks
                 .Include(t => t.Order)
+                .Include(t => t.TradeInOrder)
                 .Where(t => t.StaffId == staffId)
                 .OrderByDescending(t => t.CreatedAt)
                 .AsQueryable();
@@ -78,11 +80,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await PaginatedList<ShippingTask>.CreateAsync(query, pageNumber, 10);
         }
 
-        public async Task<PaginatedList<ShippingTask>> GetAllTasksForAdminAsync(int pageNumber, string? status, Guid? orderId)
+        public async Task<PaginatedList<ShippingTask>> GetAllTasksForAdminAsync(int pageNumber, string? status, Guid? orderId, Guid? tradeInOrderId)
         {
             var query = _context.ShippingTasks
                 .Include(t => t.Staff)
                 .Include(t => t.Order)
+                .Include(t => t.TradeInOrder)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(status))
@@ -92,6 +95,10 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             if(orderId.HasValue)
             {
                 query = query.Where(t => t.OrderId == orderId.Value);
+            }
+            if(tradeInOrderId.HasValue)
+            {
+                query = query.Where(t => t.TradeInOrderId == tradeInOrderId.Value);
             }
 
             query = query.OrderByDescending(t => t.ShippingDate ?? t.CompletionDate ?? DateTime.UtcNow);

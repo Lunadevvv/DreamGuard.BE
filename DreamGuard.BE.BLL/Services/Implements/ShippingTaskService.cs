@@ -1117,9 +1117,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<ShippingTaskResponse>.Success(MapToResponse(task));
         }
 
-        public async Task<Result<PaginatedList<ShippingTaskResponse>>> GetAllTasksForAdminAsync(int pageNumber, string? status = null, Guid? orderId = null)
+        public async Task<Result<PaginatedList<ShippingTaskResponse>>> GetAllTasksForAdminAsync(int pageNumber, string? status = null, Guid? orderId = null, Guid? tradeInOrderId = null)
         {
-            var data = await _taskRepository.GetAllTasksForAdminAsync(pageNumber, status, orderId);
+            var data = await _taskRepository.GetAllTasksForAdminAsync(pageNumber, status, orderId, tradeInOrderId);
 
             var responses = data.Items.Select(MapToResponse).ToList();
 
