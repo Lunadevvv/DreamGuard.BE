@@ -10,6 +10,7 @@ using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,7 +36,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IConversationRepository _conversationRepository;
         private readonly IShippingTaskRepository _shippingTaskRepository;
         private readonly ISystemConfigRepository _systemConfigRepository;
-        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository, IInventoryRepository inventoryRepository, IShippingTaskRepository shippingTaskRepository, ISystemConfigRepository systemConfigRepository)
+        private readonly IHangFireService _hangFireService;
+        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository, IInventoryRepository inventoryRepository, IShippingTaskRepository shippingTaskRepository, ISystemConfigRepository systemConfigRepository, IHangFireService hangFireService)
         {
             _productVariantRepository = productVariantRepository;
             _tradeInOrderRepository = tradeInOrderRepository;
@@ -52,6 +54,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _inventoryRepository = inventoryRepository;
             _shippingTaskRepository = shippingTaskRepository;
             _systemConfigRepository = systemConfigRepository;
+            _hangFireService = hangFireService;
         }
         private string GenerateOrderCode()
         {
@@ -200,10 +203,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     PaymentUrl = paymentUrl,
                     ExpiredAt = payment.ExpiredAt
                 };
-
+                var auditLog = new AuditLog
+                {
+                    UserId = customerId,
+                    ActionType = "CreateTradeInOrder",
+                    Message = $"customer: {customerId} create TradeInOrder: {tradeInOrder.TradeInOrderId} with productVariant: {request.ProductVariantId}, reduce stock by 1",
+                    UserRole = DAL.Constants.Role.User
+                };
+                _hangFireService.Enqueue<AuditLogService>(job => job.LogAsync(auditLog));
                 return Result<CreateTradeInOrderResponse>.Success(response);
             }
-            catch
+            catch(Exception ex)
             {
                 await transaction.RollbackAsync();
                 throw;
@@ -304,6 +314,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     PaymentUrl = paymentUrl,
                     ExpiredAt = payment.ExpiredAt
                 };
+                var auditLog = new AuditLog
+                {
+                    UserId = customerId,
+                    ActionType = "ReOrderTradeInOrder",
+                    Message = $"customer: {customerId} reorder TradeInOrder: {tradeInOrder.TradeInOrderId} reduce associated productVariant: {tradeInOrder.ProductVariant.Id} stock by 1",
+                    UserRole = DAL.Constants.Role.User
+                };
+                _hangFireService.Enqueue<AuditLogService>(job => job.LogAsync(auditLog));
                 return Result<CreateTradeInOrderResponse>.Success(response);
             }
             catch
@@ -482,6 +500,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 // Update inventory và tradeInUsedAmount
                 //tradeInOrder có status là pending và payment failed thì ko cộng inventory và trừ TradeInUsedAmount vì đơn failed đã trừ tồn và trừ TradeInUsedAmount rồi
+                var isStockIncreased = true;
                 if (!(firstStatus == TradeInOrderStatus.Pending && isLastPaymentFailed))
                 {
                     var inventory = tradeInOrder.ProductVariant!.Inventory;
@@ -494,6 +513,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     var inventoryResult = await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariantId);
                     if (inventoryResult == 0)
                     {
+                        isStockIncreased = false;
                         return Result.Failure("Failed to update inventory", 500);
                     }
                 }
@@ -508,6 +528,24 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
                 
                 await transaction.CommitAsync();
+                if(isStockIncreased == true)
+                {
+                    var log = new AuditLog
+                    {
+                        ActionType = "Cancel TradeInOrder",
+                        Message = $"TradeInOrder {tradeInOrder.TradeInOrderId} cancelled. Inventory for ProductVariant {tradeInOrder.ProductVariantId} increased.",
+                        UserId = tradeInOrder.CustomerId,
+                        UserRole = DAL.Constants.Role.User
+                    };
+                    _hangFireService.Enqueue<AuditLogService>(job => job.LogAsync(log));
+                }
+                var notification = new Notification
+                {
+                    UserId = tradeInOrder.CustomerId,
+                    ActionType = "Trade-in Order Cancel",
+                    Message = $"Your trade-in order {tradeInOrderId} has been cancelled",
+                };
+                _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
                 return Result.Success("Trade-in order cancelled successfully");
             }
             catch
@@ -555,6 +593,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Failed to confirm trade-in order", 500);
             }
+            var notification = new Notification
+            {
+                UserId = tradeInOrder.CustomerId,
+                ActionType = "Trade-in Order Confirmed",
+                Message = $"Your trade-in order {tradeInOrderId} has been confirmed with trade-in price:{tradeInPrice}.",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success("Trade-in order confirmed successfully");
         }
 
@@ -595,6 +640,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Failed to update trade-in order status", 500);
             }
+            var notification = new Notification
+            {
+                UserId = tradeInOrder.CustomerId,
+                ActionType = "Trade-in Order Processing",
+                Message = $"Your trade-in order {tradeInOrderId} has been Processing by delivery staff",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success("Trade-in order status updated to PROCESSING successfully");
         }
 
@@ -615,6 +667,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Failed to update trade-in order status", 500);
             }
+            var notification = new Notification
+            {
+                UserId = tradeInOrder.CustomerId,
+                ActionType = "Trade-in Order Delivered",
+                Message = $"Your trade-in order {tradeInOrderId} has been delivered",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success("Trade-in order status updated to DELIVERED successfully");
         }
 
@@ -662,6 +721,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Failed to update trade-in order status", 500);
             }
+            var notification = new Notification
+            {
+                UserId = tradeInOrder.CustomerId,
+                ActionType = "Trade-in Order Delivered",
+                Message = $"Your trade-in order {tradeInOrderId} has been completed",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success("Trade-in order status updated to COMPLETED successfully");
         }
 
@@ -689,6 +755,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Failed to create conversation", 500);
             }
+            var notification = new Notification
+            {
+                UserId = tradeInOrder.CustomerId,
+                ActionType = "Trade-in Order Delivered",
+                Message = $"Please join conversation to negotiating trade in price with our seller about your trade-in order {tradeInOrderId}",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success("Conversation created successfully");
         }
 

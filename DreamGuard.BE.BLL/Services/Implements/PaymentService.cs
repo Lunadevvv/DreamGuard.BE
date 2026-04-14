@@ -1,6 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -12,6 +10,9 @@ using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Options;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Options;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace DreamGuard.BE.BLL.Services.Implements
 {
@@ -27,6 +28,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IOrderService _orderService;
         private readonly ICustomerRepository _customerRepository;
         private readonly ITradeInOrderRepository _tradeInOrderRepository;
+        private readonly IHangFireService _hangFireService;
         public PaymentService(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
@@ -37,7 +39,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ICustomerRepository customerRepository,
             ITradeInOrderRepository tradeInOrderRepository,
             IOrderItemRepository orderItemRepository,
-            IInventoryRepository inventoryRepository)
+            IInventoryRepository inventoryRepository,
+            IHangFireService hangFireService)
         {
             _paymentRepository = paymentRepository;
             _orderRepository = orderRepository;
@@ -49,6 +52,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _tradeInOrderRepository = tradeInOrderRepository;
             _orderItemRepository = orderItemRepository;
             _inventoryRepository = inventoryRepository;
+            _hangFireService = hangFireService;
         }
 
         public async Task<Result<CreatePaymentResponse>> CreatePaymentAsync(Guid orderId, PaymentMethod method, string ipAddress)
@@ -159,6 +163,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             order.UpdatedAt = DateTime.UtcNow;
                             await _orderRepository.UpdateAsync(order);
                         }
+                        AuditLog audit = new AuditLog
+                        {
+                            UserId = order.CustomerId,
+                            ActionType = $"Confirmed by VnPayGateWay",
+                            Message = $"Order:{order.Id} confirmed via VnPay callback. order status is now Confirmed",
+                        };
+                        Notification notification = new Notification
+                        {
+                            UserId = order.CustomerId,
+                            ActionType = "Confirmed By VnPayGateWay",
+                            Message = $"Your order {order.Id} has been confirmed after successful payment.",
+                        };
+                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+                        _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+
                     }
                     //update trade-in order status to WAITING_FOR_STAFF when payment succeeds
                     if (payment.TradeInOrderId.HasValue)
@@ -169,11 +188,30 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             tradeInOrder.Status = TradeInOrderStatus.WAITING_FOR_STAFF;
                             await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
                         }
+                        AuditLog audit = new AuditLog
+                        {
+                            UserId = tradeInOrder.CustomerId,
+                            ActionType = $"Confirmed by VnPayGateWay",
+                            Message = $"TradeInOrder:{tradeInOrder.TradeInOrderId} confirmed via VnPay callback. TradeInOrder status is now WATING_FOR_STAFF"
+                        };
+                        Notification notification = new Notification
+                        {
+                            UserId = tradeInOrder.CustomerId,
+                            ActionType = "Confirmed By VnPayGateWay",
+                            Message = $"Your TradeInOrder {tradeInOrder.TradeInOrderId} has been confirmed after successful payment. we will contact you soon",
+                        };
+                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+                        _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+
                     }
+                    
                 }
                 else
                 {
+                    //ĐANG DÙNG CHUNG CHO TRADE IN ORDER VÀ CẢ ORDER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     payment.Status = PaymentStatus.Failed;
+
+                    //tradeinorder payment failed
                     if (payment.TradeInOrderId.HasValue)
                     {
                         var tradeInOrder = await _tradeInOrderRepository.GetOrderDetailById(payment.TradeInOrderId.Value);
@@ -189,6 +227,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             {
                                 return Result<VnPaymentResponse>.Failure("Failed to restock inventory for trade-in item.", 500);
                             }
+                            AuditLog audit = new AuditLog
+                            {
+                                UserId = tradeInOrder.CustomerId,
+                                ActionType = $"Confirmed by VnPayGateWay",
+                                Message = $"TradeInOrder:{tradeInOrder.TradeInOrderId} failed for payment. ProductVariantId:{tradeInOrder.ProductVariant.Id} stock increased"
+                            };
+                            Notification notification = new Notification
+                            {
+                                UserId = tradeInOrder.CustomerId,
+                                ActionType = "Failed By VnPayGateWay",
+                                Message = $"Your TradeInOrder {tradeInOrder.TradeInOrderId} is pending after failed payment. please try again",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+                            _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+
                         }
                     }
                 }

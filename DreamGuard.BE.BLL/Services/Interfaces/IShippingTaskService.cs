@@ -5,6 +5,7 @@ using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
+using DreamGuard.BE.DAL.Models;
 
 namespace DreamGuard.BE.BLL.Services.Interfaces
 {
@@ -26,7 +27,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> FailShippingForTradeInAsync(Guid taskId, Guid staffId, FailShippingRequest request); //returned-for-TradeIn
         Task<Result> CompleteShippingForTradeInOrderAsync(Guid taskId, Guid staffId, CompleteShippingRequest request); // delivered-for-tradeIn
         Task<Result> UpdateTaskToDeliveringForTradeInAsync(Guid taskId, Guid staffId, StartShippingRequest request); //delivering-for-tradeIn
-        Task<Result> ProcessReturnedTradeInOrderAsync(Guid taskId, ProcessReturnedTradeInRequest request); //process-returned-for-tradeIn
-        Task<Result> ProcessExchangeTradeInOrderAsync(Guid taskId, ProcessExchangeTradeInRequest request); //process-exchange-for-tradeIn
+        Task<Result> ProcessReturnedTradeInOrderAsync(Guid taskId, ProcessReturnedTradeInRequest request, Guid managerId, string role); //process-returned-for-tradeIn
+        Task<Result> ProcessExchangeTradeInOrderAsync(Guid taskId, ProcessExchangeTradeInRequest request, Guid managerId, string role); //process-exchange-for-tradeIn
     }
 }

@@ -1,12 +1,15 @@
-﻿using DreamGuard.BE.BLL.Requests;
+﻿using DreamGuard.BE.API.Hubs;
+using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Models;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 
 namespace DreamGuard.BE.API.Controllers
@@ -17,10 +20,12 @@ namespace DreamGuard.BE.API.Controllers
     {
         private readonly ITradeInOrderService _service;
         private readonly IPaymentService _paymentService;
-        public TradeInOrdersController(ITradeInOrderService service, IPaymentService paymentService)
+        private readonly IBackgroundJobClient _backgroundJobClient;
+        public TradeInOrdersController(ITradeInOrderService service, IPaymentService paymentService, IBackgroundJobClient backgroundJobClient)
         {
             _service = service;
             _paymentService = paymentService;
+            _backgroundJobClient = backgroundJobClient;
         }
 
         [HttpPost]
@@ -42,7 +47,9 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            BackgroundJob.Schedule<PaymentService>(job => job.ExpireTradeinPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+            //hangfire background job to expirepayment
+            _backgroundJobClient.Schedule<PaymentService>(job => job.ExpireTradeinPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+
             return Ok(result.Data);
         }
 
@@ -64,7 +71,8 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
-            BackgroundJob.Schedule<PaymentService>(job => job.ExpireTradeinPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+            _backgroundJobClient.Schedule<PaymentService>(job => job.ExpireTradeinPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+
             return Ok(result.Data);
         }
 
@@ -181,6 +189,10 @@ namespace DreamGuard.BE.API.Controllers
         [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
         public async Task<IActionResult> Confirm(Guid tradeInOrderId, decimal tradeInPrice)
         {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             var result = await _service.ConfirmAsync(tradeInOrderId, tradeInPrice);
             if (!result.Succeeded)
             {
@@ -190,6 +202,14 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
+            var auditLog = new AuditLog
+            {
+                UserId = staffId,
+                ActionType = "ConfirmTradeInOrder",
+                Message = $"seller confirm TradeInOrder: {tradeInOrderId} with tradeInPrice: {tradeInPrice}",
+                UserRole = Role.Seller
+            };
+            _backgroundJobClient.Enqueue<AuditLogService>(job => job.LogAsync(auditLog));
             return Ok(result.Message);
         }
 
@@ -276,6 +296,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
+
         [HttpPost("{tradeInOrderId}/CreateConversation")]
         [Authorize(Roles = $"{Role.Seller}")]
         public async Task<IActionResult> CreateConversation(Guid tradeInOrderId)

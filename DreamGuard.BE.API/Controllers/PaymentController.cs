@@ -1,12 +1,15 @@
+using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.BLL.Services.Implements;
+using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Models;
+using Hangfire;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using DreamGuard.BE.BLL.Responses;
-using DreamGuard.BE.BLL.Services.Interfaces;
-using DreamGuard.BE.DAL.Constants;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 
 namespace DreamGuard.BE.API.Controllers
 {
@@ -16,10 +19,12 @@ namespace DreamGuard.BE.API.Controllers
     public class PaymentController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
+        private readonly IBackgroundJobClient _backgroundJobClient;
 
-        public PaymentController(IPaymentService paymentService)
+        public PaymentController(IPaymentService paymentService, IBackgroundJobClient backgroundJobClient)
         {
             _paymentService = paymentService;
+            _backgroundJobClient = backgroundJobClient;
         }
 
         // Get payments for the current user
@@ -101,6 +106,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
+
             return Redirect(result.Data!.RedirectUrl);
         }
 
@@ -118,6 +124,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
+
             return Redirect(result.Data!.RedirectUrl);
         }
 
