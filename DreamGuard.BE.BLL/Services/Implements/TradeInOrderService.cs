@@ -565,7 +565,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("TradeInOrder not found", 404);
             }
-            if(tradeInOrder.Status != TradeInOrderStatus.CONFIRMED)
+            //chỉ có những order ở trạng thái CONFIRMED và shipping_replacement mới được chuyển sang PROCESSING
+            if (tradeInOrder.Status != TradeInOrderStatus.CONFIRMED && tradeInOrder.Status != TradeInOrderStatus.Shipping_Replacement)
             {
                 return Result.Failure("Only orders in CONFIRMED status can be moved to PROCESSING", 400);
             }
