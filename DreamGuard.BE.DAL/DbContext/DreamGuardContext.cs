@@ -63,6 +63,8 @@ namespace DreamGuard.BE.DAL.DbContext
         public DbSet<TradeInImage> TradeInImages { get; set; }
         public DbSet<Conversation> Conversations { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
