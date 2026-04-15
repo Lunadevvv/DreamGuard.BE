@@ -17,5 +17,6 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<ServiceOrder?> GetByIdWithDetail(Guid serviceOrderId);
         Task<ServiceOrder?> GetByIdWithRating(Guid serviceOrderId);
         Task<ServiceOrder?> GetByIdWithServiceTask(Guid serviceOrderId);
+        Task<List<ServiceOrder>> GetServiceOrderDashBoardAsync(DateTime fromDate, DateTime toDate);
     }
 }

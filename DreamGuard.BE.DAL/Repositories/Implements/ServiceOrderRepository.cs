@@ -114,5 +114,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 throw new Exception($"Error retrieving ServiceOrder with payment");
             }
         }
+
+        public async Task<List<ServiceOrder>> GetServiceOrderDashBoardAsync(DateTime fromDate, DateTime toDate)
+        {
+            return await _context.ServiceOrders.Include(ti => ti.Payments)
+                                .Where(ti => ti.CreatedAt >= fromDate && ti.CreatedAt < toDate)
+                                .ToListAsync();
+        }
     }
 }

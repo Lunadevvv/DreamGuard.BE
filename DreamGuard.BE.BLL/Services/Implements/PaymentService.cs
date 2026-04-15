@@ -29,6 +29,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ICustomerRepository _customerRepository;
         private readonly ITradeInOrderRepository _tradeInOrderRepository;
         private readonly IHangFireService _hangFireService;
+        private readonly IServiceOrderRepository _serviceOrderRepository;
         public PaymentService(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
@@ -40,7 +41,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ITradeInOrderRepository tradeInOrderRepository,
             IOrderItemRepository orderItemRepository,
             IInventoryRepository inventoryRepository,
-            IHangFireService hangFireService)
+            IHangFireService hangFireService,
+            IServiceOrderRepository serviceOrderRepository)
         {
             _paymentRepository = paymentRepository;
             _orderRepository = orderRepository;
@@ -53,6 +55,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _orderItemRepository = orderItemRepository;
             _inventoryRepository = inventoryRepository;
             _hangFireService = hangFireService;
+            _serviceOrderRepository = serviceOrderRepository;
         }
 
         public async Task<Result<CreatePaymentResponse>> CreatePaymentAsync(Guid orderId, PaymentMethod method, string ipAddress)
@@ -152,7 +155,24 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 if (vnPayResult.Success)
                 {
                     payment.Status = PaymentStatus.Paid;
-
+                    if (payment.SoId.HasValue)
+                    {
+                        var serviceOrder = await _serviceOrderRepository.GetByIdAsync(payment.SoId.Value);
+                        AuditLog audit = new AuditLog
+                        {
+                            UserId = serviceOrder.CustomerId,
+                            ActionType = $"Confirmed by VnPayGateWay",
+                            Message = $"ServiceOrder:{serviceOrder.SoId} confirmed via VnPay callback."
+                        };
+                        Notification notification = new Notification
+                        {
+                            UserId = serviceOrder.CustomerId,
+                            ActionType = "Confirmed By VnPayGateWay",
+                            Message = $"ServiceOrder: {serviceOrder.SoId} has been paid sucessfully. we will contact you soon",
+                        };
+                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+                        _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+                    }
                     // Update order status to Confirmed when payment succeeds
                     if (payment.POrderId.HasValue)
                     {
@@ -208,7 +228,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
                 else
                 {
-                    //ĐANG DÙNG CHUNG CHO TRADE IN ORDER VÀ CẢ ORDER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    //ĐANG DÙNG CHUNG CHO TRADE IN ORDER VÀ CẢ ORDER  và ServiceOrder !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     payment.Status = PaymentStatus.Failed;
 
                     //tradeinorder payment failed
@@ -217,13 +237,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         var tradeInOrder = await _tradeInOrderRepository.GetOrderDetailById(payment.TradeInOrderId.Value);
                         if (tradeInOrder != null && tradeInOrder.Status == TradeInOrderStatus.Pending)
                         {
-                            var tradeInResult = await _orderItemRepository.DecreaseTradeInUsedAmountAsync(tradeInOrder.OrderItem.Id); 
-                            if(!tradeInResult)
+                            var tradeInResult = await _orderItemRepository.DecreaseTradeInUsedAmountAsync(tradeInOrder.OrderItem.Id);
+                            if (!tradeInResult)
                             {
                                 return Result<VnPaymentResponse>.Failure("Failed to increase tradeinUsedAmount trade-in item.", 500);
                             }
                             var inventoryResult = await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariant.Id); // Restock the reserved item
-                            if(inventoryResult == 0)
+                            if (inventoryResult == 0)
                             {
                                 return Result<VnPaymentResponse>.Failure("Failed to restock inventory for trade-in item.", 500);
                             }
@@ -241,8 +261,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             };
                             _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
                             _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
-
                         }
+                    }
+                    //service order payment failed
+                    if (payment.SoId.HasValue)
+                    {
+                        var serviceOrder = await _serviceOrderRepository.GetByIdAsync(payment.SoId.Value);
+                        Notification notification = new Notification
+                        {
+                            UserId = serviceOrder.CustomerId,
+                            ActionType = "Failed By VnPayGateWay",
+                            Message = $"ServiceOrder: {serviceOrder.SoId} payment has failed. Please go to your order history to complete the payment again.",
+                        };
+                        _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
                     }
                 }
 
@@ -260,6 +291,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 return Result<VnPaymentResponse>.Success(vnPayResult);
             }
+
             catch (Exception)
             {
                 await transaction.RollbackAsync();
@@ -459,7 +491,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     payment.Status = PaymentStatus.Failed;
                     payment.UpdatedAt = DateTime.UtcNow;
                     _paymentRepository.UpdateEntity(payment);
-                    // Also update trade-in order status to Cancelled
+                    //also restock inventory and back tradeinUsedAmount when trade-in payment expires 
                     if (payment.TradeInOrderId.HasValue)
                     {
                         var tradeInOrder = payment.TradeInOrder;
@@ -471,6 +503,29 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             await _inventoryRepository.IncreaseInventoryStock(tradeInOrder.ProductVariant.Id);
                         }
                     }
+                }
+                var result = await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
+                return Result.Success($"Update sucessfully");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        public async Task<Result> ExpireServiceOrderPayment(Guid paymentId)
+        {
+            //có lỗi xảy ra => rollback và hangfire retry 
+            var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var payment = await _paymentRepository.GetPaymentByIdAsync(paymentId);
+                if (payment != null && payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(payment);
                 }
                 var result = await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();

@@ -7,6 +7,7 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -107,6 +108,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var response = new OrderServiceResponse
             {
                 ServiceOrderId = serviceOrder.SoId,
+                PaymentId = payment.Id,
                 Price = serviceOrder.TotalPrice,
                 PaymentUrl = paymentUrl,
                 ExpiredAt = payment.ExpiredAt
@@ -233,6 +235,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     OrderCode = serviceOrder.OrderCode,
                     PaymentMethod = serviceOrderRequest.PaymentMethod,
                     Status = serviceOrderRequest.PaymentMethod == PaymentMethod.VnPay ? PaymentStatus.Pending : PaymentStatus.COD,
+                    PaymentType = PaymentType.Purchase,
                     Description = $"Payment for service order {serviceOrder.OrderCode}",
                     ExpiredAt = DateTime.UtcNow.AddMinutes(5)
                 };
@@ -254,7 +257,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         Description = payment.Description,
                         Amount = (int)serviceOrder.TotalPrice,
                         IpAddress = ipAddress,
-                        CreatedDate = payment.CreatedAt
+                        CreatedDate = payment.CreatedAt,
+                        ExpiredAt = payment.ExpiredAt.AddHours(7) // Convert to local time for VnPay
                     };
                     paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
                 }
@@ -262,6 +266,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var response = new OrderServiceResponse
                 {
                     ServiceOrderId = serviceOrder.SoId,
+                    PaymentId = payment.Id,
                     Price = serviceOrder.TotalPrice,
                     PaymentUrl = paymentUrl,
                     ExpiredAt = payment.ExpiredAt
@@ -395,7 +400,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             {
+                var paymentRefund = new Payment
+                {
+                    SoId = serviceOrder.SoId,
+                    Amount = lastPayment.Amount,
+                    OrderCode = lastPayment.OrderCode,
+                    PaymentType = PaymentType.Refund,
+                    PaymentMethod = PaymentMethod.VnPay,
+                    Status = PaymentStatus.Refunded,
+                    Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+                };
                 serviceOrder.Status = OrderServiceStatus.Refund;
+                VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                {
+                    OrderId = serviceOrder.SoId.ToString(),
+                    Amount = lastPayment.Amount,
+                    PaymentDate = lastPayment.CreatedAt,
+                };
+                //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+                _paymentRepository.AddEntity(paymentRefund);
             }
             else
             {
@@ -447,7 +470,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             {
+                var paymentRefund = new Payment
+                {
+                    SoId = serviceOrder.SoId,
+                    Amount = lastPayment.Amount,
+                    OrderCode = lastPayment.OrderCode,
+                    PaymentType = PaymentType.Refund,
+                    PaymentMethod = PaymentMethod.VnPay,
+                    Status = PaymentStatus.Refunded,
+                    Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+                };
                 serviceOrder.Status = OrderServiceStatus.Refund;
+                VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                {
+                    OrderId = serviceOrder.SoId.ToString(),
+                    Amount = lastPayment.Amount,
+                    PaymentDate = lastPayment.CreatedAt,
+                };
+                //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+                _paymentRepository.AddEntity(paymentRefund);
             }
             else
             {
@@ -478,7 +519,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             {
+                var paymentRefund = new Payment
+                {
+                    SoId = serviceOrder.SoId,
+                    Amount = lastPayment.Amount,
+                    OrderCode = lastPayment.OrderCode,
+                    PaymentType = PaymentType.Refund,
+                    PaymentMethod = PaymentMethod.VnPay,
+                    Status = PaymentStatus.Refunded,
+                    Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+                };
                 serviceOrder.Status = OrderServiceStatus.Refund;
+                VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                {
+                    OrderId = serviceOrder.SoId.ToString(),
+                    Amount = lastPayment.Amount,
+                    PaymentDate = lastPayment.CreatedAt,
+                };
+                //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+                _paymentRepository.AddEntity(paymentRefund);
             }
             else
             {
@@ -537,6 +596,59 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             var result = await _unitOfWork.SaveChangeAsync();
             return Result.Success($"{result}");
+        }
+        public async Task<Result<ServiceOrderDashBoardResponse>> GetServiceOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate)
+        {
+            var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var to = toDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
+            var data = await _serviceOrderRepo.GetServiceOrderDashBoardAsync(from, to);
+            if (data == null || !data.Any())
+            {
+                return Result<ServiceOrderDashBoardResponse>.Success(new ServiceOrderDashBoardResponse());
+            }
+            decimal totalAmount = 0;
+            decimal totalCODAmount = 0;
+            decimal totalRefundAmount = 0;
+            decimal totalVnPayAmount = 0;
+            foreach (var item in data)
+            {
+                if (item.Payments == null || !item.Payments.Any())
+                {
+                    continue;
+                }
+                foreach (var p in item.Payments)
+                {
+                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.CODPaid)
+                    {
+                        totalAmount += p.Amount;
+                        totalCODAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.Paid)
+                    {
+                        totalAmount += p.Amount;
+                        totalVnPayAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded)
+                    {
+                        totalRefundAmount += p.Amount;
+                    }
+                };
+            }
+            var response = new ServiceOrderDashBoardResponse
+            {
+                TotalServiceOrders = data.Count(),
+                TotalCancelledOrders = data.Count(so => so.Status == OrderServiceStatus.Cancelled || so.Status == OrderServiceStatus.ForcedCancelled),
+                TotalRefundOrders = data.Count(so => so.Status == OrderServiceStatus.Refund),
+                TotalRejectedOrders = data.Count(so => so.Status == OrderServiceStatus.Rejected),
+                TotalCompletedOrders = data.Count(so => so.Status == OrderServiceStatus.Completed),
+                TotalAmount = totalAmount,
+                TotalRefundAmount = totalRefundAmount,
+                TotalVnPayAmount = totalVnPayAmount,
+                TotalCODAmount = totalCODAmount,
+                FromDate = fromDate,
+                ToDate = toDate,
+            };
+            return Result<ServiceOrderDashBoardResponse>.Success(response);
         }
     }
 }

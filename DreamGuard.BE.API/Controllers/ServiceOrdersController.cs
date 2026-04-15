@@ -5,6 +5,7 @@ using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,10 +21,28 @@ namespace DreamGuard.BE.API.Controllers
     {
         private readonly IServiceOrderService _serviceOrderService;
         private readonly IMapper _mapper;
-        public ServiceOrdersController(IServiceOrderService serviceOrderService, IMapper mapper)
+        private readonly IBackgroundJobClient _backgroundJobClient;
+        public ServiceOrdersController(IServiceOrderService serviceOrderService, IMapper mapper, IBackgroundJobClient backgroundJobClient)
         {
             _serviceOrderService = serviceOrderService;
             _mapper = mapper;
+            _backgroundJobClient = backgroundJobClient;
+        }
+
+        [HttpGet("get-service-order-dash-board")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetServiceOrderDashBoard([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate)
+        {
+            var result = await _serviceOrderService.GetServiceOrderDashBoardAsync(fromDate, toDate);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
         }
 
         [HttpPost("OrderService")]
@@ -44,6 +63,12 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
+            if(result.Data.PaymentUrl != null)
+            {
+                _backgroundJobClient.Schedule<PaymentService>(job => job.ExpireServiceOrderPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+            }
+
+
             return Ok(result.Data);
         }
         [HttpPost("OrderService/{serviceOrderId}/assets")]
@@ -79,6 +104,10 @@ namespace DreamGuard.BE.API.Controllers
                     ErrorCode = result.StatusCode,
                     Message = new List<string> { result.Error }
                 });
+            }
+            if (result.Data.PaymentUrl != null)
+            {
+                _backgroundJobClient.Schedule<PaymentService>(job => job.ExpireServiceOrderPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
             }
             return Ok(result.Data);
         }
