@@ -12,6 +12,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface ITradeInOrderRepository : IGenericRepository<TradeInOrder>
     {
+        Task<List<TradeInOrder>> GetTradeInOrderDashBoardAsync(DateTime fromDate, DateTime toDate);
         Task<TradeInOrder?> GetTradeInByIdAsync(Guid tradeInOrderId);
         Task<PaginatedList<TradeInOrder>> GetMyOrdersAsync(Guid customerId, int pageNumber, int pageSize);
         Task<PaginatedList<TradeInOrder>> GetWaitingOrdersAsync(int pageNumber, int pageSize);

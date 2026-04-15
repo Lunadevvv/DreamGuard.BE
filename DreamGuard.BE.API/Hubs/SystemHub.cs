@@ -13,7 +13,7 @@ namespace DreamGuard.BE.API.Hubs
         {
         }
 
-        public async Task JoinConversation(Guid conversationId)
+        public async Task ConnectAsync()
         {
             if (!Guid.TryParse(Context.UserIdentifier, out Guid userId))
             {
