@@ -14,6 +14,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IServiceOrderService
     {
+        Task<Result<ServiceOrderDashBoardResponse>> GetServiceOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate);
         Task<Result<OrderServiceResponse>> OrderServiceAsync(ServiceOrderCreateRequest serviceOrderRequest, Guid customerId, string ipAddress);
         Task<Result> UploadServiceAsset(Guid serviceOrderId, ServiceAssetCreateRequest assetCreateRequest);
         Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(int pageNumber, int pageSize);

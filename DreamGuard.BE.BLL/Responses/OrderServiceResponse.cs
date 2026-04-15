@@ -9,6 +9,7 @@ namespace DreamGuard.BE.BLL.Responses
     public class OrderServiceResponse
     {
         public Guid ServiceOrderId { get; set; }
+        public Guid PaymentId { get; set; }
         public string PaymentUrl { get; set; } = null!;
         public decimal Price { get; set; }
         public DateTime ExpiredAt { get; set; }
