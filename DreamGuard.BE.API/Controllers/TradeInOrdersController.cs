@@ -184,6 +184,21 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        [HttpGet("get-trade-in-dash-board")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetTradeInDashBoard([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate)
+        {
+            var result = await _service.GetTradeInDashBoardAsync(fromDate, toDate);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
 
         [HttpPost("{tradeInOrderId}/confirm")]
         [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
@@ -326,5 +341,6 @@ namespace DreamGuard.BE.API.Controllers
             }
             return ipAddress ?? "127.0.0.1";
         }
+        
     }
 }

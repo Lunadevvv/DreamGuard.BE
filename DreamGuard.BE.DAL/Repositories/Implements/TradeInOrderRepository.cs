@@ -80,5 +80,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Where(ti => ti.Status == TradeInOrderStatus.WAITING_FOR_STAFF).OrderByDescending(o => o.CreatedAt);
             return await PaginatedList<TradeInOrder>.CreateAsync(query, pageNumber, pageSize);
         }
+
+        public async Task<List<TradeInOrder>> GetTradeInOrderDashBoardAsync(DateTime fromDate, DateTime toDate)
+        {
+            return await _context.TradeInOrders.Include(ti => ti.Payments)
+                .Where(ti => ti.CreatedAt >= fromDate && ti.CreatedAt < toDate)
+                .ToListAsync();
+        }
     }
 }

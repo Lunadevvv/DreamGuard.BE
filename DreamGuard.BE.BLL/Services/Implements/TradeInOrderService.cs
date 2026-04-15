@@ -765,5 +765,64 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success("Conversation created successfully");
         }
 
+        public async Task<Result<TradeInOrderDashBoardResponse>> GetTradeInDashBoardAsync(DateOnly fromDate, DateOnly toDate)
+        {
+            var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var to = toDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
+            var data = await _tradeInOrderRepository.GetTradeInOrderDashBoardAsync(from, to);
+            if (data == null || !data.Any())
+            {
+                return Result<TradeInOrderDashBoardResponse>.Success(new TradeInOrderDashBoardResponse());
+            }
+            decimal totalAmount = 0;
+            decimal totalDepositAmount = 0;
+            decimal totalCODAmount = 0;
+            decimal totalRefundAmount = 0;
+            decimal totalVnPayAmount = 0;
+            decimal totalPurchaseAmount = 0;
+            foreach (var item in data)
+            {
+                if (item.Payments == null || !item.Payments.Any())
+                {
+                    continue;
+                }
+                item.Payments.ForEach(p =>
+                {
+                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.CODPaid)
+                    {
+                        totalAmount += p.Amount;
+                        totalPurchaseAmount += p.Amount;
+                        totalCODAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
+                    {
+                        totalAmount += p.Amount;
+                        totalVnPayAmount += p.Amount;
+                        totalDepositAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded)
+                    {
+
+                        totalRefundAmount += p.Amount;
+                    }
+                });
+            }
+            var response = new TradeInOrderDashBoardResponse
+            {
+                TotalTradeInOrders = data.Count,
+                TotalCompletedTradeInOrders = data.Where(ti => ti.Status == TradeInOrderStatus.COMPLETED).Count(),
+                TotalCancelledTradeInOrders = data.Where(t1 => t1.Status == TradeInOrderStatus.CANCELLED || t1.Status == TradeInOrderStatus.FORCED_CANCELLED || t1.Status == TradeInOrderStatus.ADMINCANCELLED).Count(),
+                TotalRefundedTradeInOrders = data.Where(ti => ti.Status == TradeInOrderStatus.REFUNDED || ti.Status == TradeInOrderStatus.RefundedAndDamaged || ti.Status == TradeInOrderStatus.RefundedAndRestocked).Count(),
+                TotalAmount = totalAmount,
+                TotalDepositAmount = totalDepositAmount,
+                TotalCODAmount = totalCODAmount,
+                TotalRefundAmount = totalRefundAmount,
+                TotalVnPayAmount = totalVnPayAmount,
+                TotalPurchaseAmount = totalPurchaseAmount,
+                FromDate = fromDate,
+                ToDate = toDate,
+            };
+            return Result<TradeInOrderDashBoardResponse>.Success(response);
+        }
     }
 }
