@@ -12,7 +12,8 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IConversationService
     {
-        Task<Result<PaginatedList<ChatMessage>>> GetMessageHistoryAsync(Guid conversationId, int pageNumber, int pageSize);
-        Task<Result<PaginatedList<ConversationResponse>>> GetConversationAsync(Guid staffId, int pageNumber, int pageSize);
+        Task<Result> MarkAsReadAsync(Guid conversationId, Guid currentUserId);
+        Task<Result<PaginatedList<ChatMessage>>> GetMessageHistoryAsync(Guid conversationId, Guid currentUserId, int pageNumber, int pageSize);
+        Task<Result<PaginatedList<ConversationResponse>>> GetConversationAsync(Guid userId, int pageNumber, int pageSize);
     }
 }

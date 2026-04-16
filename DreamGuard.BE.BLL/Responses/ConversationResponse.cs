@@ -15,6 +15,7 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid CustomerId { get; set; }
         public Guid StaffId { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool HasUnread { get; set; }
         public TradeInOrderSummaryResponse TradeInOrder { get; set; }
         private class Mapping : Profile
         {

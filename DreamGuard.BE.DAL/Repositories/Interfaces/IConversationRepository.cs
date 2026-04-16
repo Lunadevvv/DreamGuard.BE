@@ -11,9 +11,11 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IConversationRepository : IGenericRepository<Conversation>
     {
+        Task MarkAsReadAsync(Guid conversationId, Guid currentUserId);
         Task<int> UpdateNegotiatingAsync(Guid tradeInOrderId, Guid staffId);
-        Task<PaginatedList<ChatMessage>> GetMessageHistoryAsync(Guid conversationId, int pageNumber, int pageSize);
-        Task<PaginatedList<Conversation>> GetMyConversationAsync(Guid staffId, int pageNumber, int pageSize);
+        Task<List<Guid>> GetAllUnreadConversationIds(List<Guid> conversationIds, Guid userId);
+        Task<PaginatedList<ChatMessage>> GetMessageHistoryAsync(Guid conversationId, Guid currentUserId, int pageNumber, int pageSize);
+        Task<PaginatedList<Conversation>> GetMyConversationAsync(Guid userId, int pageNumber, int pageSize);
 
     }
 }

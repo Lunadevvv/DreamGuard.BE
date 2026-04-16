@@ -23,7 +23,15 @@ namespace DreamGuard.BE.API.Controllers
         [Authorize(Roles = $"{Role.Seller}, {Role.User}")]
         public async Task<IActionResult> GetMessageHistory(Guid conversationId, int pageNumber = 1, int pageSize = 30)
         {
-            var result = await _service.GetMessageHistoryAsync(conversationId, pageNumber, pageSize);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out Guid currentUserID))
+            {
+                return Unauthorized(new ErrorResponse
+                {
+                    ErrorCode = StatusCodes.Status401Unauthorized,
+                    Message = new List<string> { "Invalid token" }
+                });
+            }
+            var result = await _service.GetMessageHistoryAsync(conversationId, currentUserID, pageNumber, pageSize);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -34,11 +42,11 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
-        [HttpGet()]
+        [HttpPatch("{conversationId}/mark-as-read")]
         [Authorize(Roles = $"{Role.Seller}, {Role.User}")]
-        public async Task<IActionResult> GetMyConversation(int pageNumber = 1, int pageSize = 4)
+        public async Task<IActionResult> MarkAsRead(Guid conversationId)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out Guid staffId))
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out Guid currentUserID))
             {
                 return Unauthorized(new ErrorResponse
                 {
@@ -46,7 +54,32 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { "Invalid token" }
                 });
             }
-            var result = await _service.GetConversationAsync(staffId, pageNumber, pageSize);
+            var result = await _service.MarkAsReadAsync(conversationId, currentUserID);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        [HttpGet()]
+        [Authorize(Roles = $"{Role.Seller}, {Role.User}")]
+        public async Task<IActionResult> GetMyConversation(int pageNumber = 1, int pageSize = 4)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out Guid userId))
+            {
+                return Unauthorized(new ErrorResponse
+                {
+                    ErrorCode = StatusCodes.Status401Unauthorized,
+                    Message = new List<string> { "Invalid token" }
+                });
+            }
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            var result = await _service.GetConversationAsync(userId, pageNumber, pageSize);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

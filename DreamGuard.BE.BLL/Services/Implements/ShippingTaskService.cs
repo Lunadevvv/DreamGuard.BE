@@ -399,6 +399,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Failed to complete shipping.", 500);
             }
         }
+        //ko saved(fixed)
         public async Task<Result> CompleteShippingForTradeInOrderAsync(Guid taskId, Guid staffId, CompleteShippingRequest request)
         {
             if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
@@ -406,7 +407,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("At least one evidence image is required.", 400);
             }
 
-            var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsTrackingAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
             if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
@@ -422,12 +423,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 // Update Order Status
                 tradeInOrder.Status = TradeInOrderStatus.DELIVERED;
-                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
 
                 // Update Task Status
                 task.Status = ShippingTaskStatus.Delivered;
                 task.CompletionDate = DateTime.UtcNow;
-                _taskRepository.UpdateEntity(task);
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)
@@ -525,6 +524,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Failed to mark shipping as returning.", 500);
             }
         }
+        //ko save(fixed)
         public async Task<Result> FailShippingForTradeInAsync(Guid taskId, Guid staffId, FailShippingRequest request)
         {
             if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
@@ -532,7 +532,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("At least one evidence image is required.", 400);
             }
 
-            var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsTrackingAsync(taskId);
 
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
@@ -556,13 +556,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 // Unhappy Case: Order status -> Returning (No refund or restock yet)
                 tradeInOrder.Status = TradeInOrderStatus.RETURNING;
-                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
 
                 // Task status -> Returning
                 task.Status = ShippingTaskStatus.Returning;
                 task.StaffNote = request.Reason;
                 // Don't set CompletionDate yet, the manager finishes it.
-                _taskRepository.UpdateEntity(task);
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)
@@ -598,6 +596,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Failed to mark shipping as returning.", 500);
             }
         }
+        //ko save(fixed)
         public async Task<Result> ForcedCancelShippingForTradeInAsync(Guid taskId, Guid staffId, FailShippingRequest request)
         {
             if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
@@ -605,7 +604,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("At least one evidence image is required.", 400);
             }
 
-            var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsTrackingAsync(taskId);
 
             if (task == null) return Result.Failure("Shipping task not found.", 404);
 
@@ -629,13 +628,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 // Unhappy Case: FORCED_CANCELLED by staff
                 tradeInOrder.Status = TradeInOrderStatus.FORCED_CANCELLED;
-                _tradeInOrderRepository.UpdateEntity(tradeInOrder);
+
 
                 // Task status -> FORCED_CANCELLED
                 task.Status = ShippingTaskStatus.FORCED_CANCELLED;
                 task.StaffNote = request.Reason;
                 task.CompletionDate = DateTime.UtcNow;
-                _taskRepository.UpdateEntity(task);
+  
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)
@@ -828,6 +827,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Failed to process returned order.", 500);
             }
         }
+  
         public async Task<Result> ProcessReturnedTradeInOrderAsync(Guid taskId, ProcessReturnedTradeInRequest request, Guid managerId, string role)
         {
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);

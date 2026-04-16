@@ -205,8 +205,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Service order must be confirmed before processing service task.", 400);
             }
             serviceTask.ServiceOrder.Status = OrderServiceStatus.Processing;
-            _repo.UpdateEntity(serviceTask);
-            _soRepo.UpdateEntity(serviceOrder);
+            //_repo.UpdateEntity(serviceTask);
+            //_soRepo.UpdateEntity(serviceOrder);
+            _repo.UpdateEntityGraph(serviceTask);
             var result = await _unitOfWork.SaveChangeAsync();
             var notification = new Notification
             {
@@ -283,16 +284,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
-        public async Task<Result> UpdateCompletedStatusAsync(Guid serviceTaskId, Guid staffId)
+        //sửa lại cái complete này dành cho admin và manager
+        public async Task<Result> UpdateCompletedStatusAsync(Guid serviceTaskId)
         {
             var serviceTask = await _repo.GetByIdWithSoAsync(serviceTaskId);
             if (serviceTask == null)
             {
                 return Result.Failure("Service task not found.", 404);
-            }
-            if (serviceTask.StaffId != staffId)
-            {
-                return Result.Failure("You are not assigned to this service task.", 403);
             }
             if (serviceTask.Status != ServiceTaskStatus.CheckedOut)
             {
@@ -310,9 +308,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.Status = OrderServiceStatus.Completed;
             serviceTask.Status = ServiceTaskStatus.Completed;
-            _repo.UpdateEntity(serviceTask);
-            _soRepo.UpdateEntity(serviceOrder);
-            _paymentRepo.UpdateEntity(payment);
+            //_repo.UpdateEntity(serviceTask);
+            //_soRepo.UpdateEntity(serviceOrder); // ko update
+            //_paymentRepo.UpdateEntity(payment); // ko udpate
+            _repo.UpdateEntityGraph(serviceTask);
             var result = await _unitOfWork.SaveChangeAsync();
             var notification = new Notification
             {

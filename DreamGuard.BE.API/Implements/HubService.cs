@@ -9,9 +9,11 @@ namespace DreamGuard.BE.API.Implements
     public class HubService : IHubService
     {
         private readonly IHubContext<NotiAndLogHub> _hubContext;
-        public HubService(IHubContext<NotiAndLogHub> hubContext)
+        private readonly IHubContext<ChatHub> _chatHubContext;
+        public HubService(IHubContext<NotiAndLogHub> hubContext, IHubContext<ChatHub> chatHubContext)
         {
             _hubContext = hubContext;
+            _chatHubContext = chatHubContext;
         }
         public async Task SendAuditLogToAdmins(AuditLog audit)
         {
@@ -26,5 +28,7 @@ namespace DreamGuard.BE.API.Implements
         {
             await _hubContext.Clients.Group("Managers").SendAsync("ReceiveNotification", notification);
         }
+
     }
 }
+    

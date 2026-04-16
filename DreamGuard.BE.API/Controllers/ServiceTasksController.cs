@@ -102,14 +102,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
         [HttpPatch("{serviceTaskId}/updateCompletedStatus")]
-        [Authorize(Roles = Role.CleaningStaff)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> UpdateCompletedStatusAsync(Guid serviceTaskId)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
-            {
-                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
-            }
-            var result = await _service.UpdateCompletedStatusAsync(serviceTaskId, staffId);
+            var result = await _service.UpdateCompletedStatusAsync(serviceTaskId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

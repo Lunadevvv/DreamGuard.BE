@@ -42,6 +42,20 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .AsNoTracking()
                 .Where(o => o.TradeInOrderId == tradeInOrderId).FirstOrDefaultAsync();
         }
+        public async Task<TradeInOrder?> GetTradeInByIdWithTrackingAsync(Guid tradeInOrderId)
+        {
+            return await _context.TradeInOrders
+                .Include(ti => ti.Customer)
+                .Include(ti => ti.Payments)
+                .Include(ti => ti.ProductVariant)
+                .Include(ti => ti.ProductVariant)
+                    .ThenInclude(pv => pv.Product)
+                .Include(ti => ti.OrderItem)
+                .Include(ti => ti.ShippingTasks)
+                .AsTracking()
+                .Where(o => o.TradeInOrderId == tradeInOrderId).FirstOrDefaultAsync();
+        }
+
 
         public async Task<PaginatedList<TradeInOrder>> GetMyOrdersAsync(Guid customerId, int pageNumber, int pageSize)
         {
