@@ -15,7 +15,6 @@ namespace DreamGuard.BE.BLL.Requests
         public DateOnly DateOfBirth { get; set; }
         [Required(ErrorMessage = "Gender cannot be empty")]
         public string Gender { get; set; } = string.Empty;
-        public string? AvatarUrl { get; set; }
 
         private class Mapping : Profile
         {
