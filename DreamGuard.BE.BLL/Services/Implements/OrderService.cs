@@ -1,4 +1,4 @@
-using CloudinaryDotNet.Actions;
+﻿using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -756,6 +756,32 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ToDate = toDate,
             };
             return Result<OrderDashBoardResponse>.Success(response);
+        }
+
+        public async Task<Result<List<TotalAmountLineChartResponse>>> GetTotalAmountLineChartAsync(DateOnly fromDate , DateOnly toDate)
+        {
+            var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var to = toDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
+            var data = await _paymentRepository.GetTotalAmountLineChartDataAsync(from, to);
+            
+            var groupedData = data
+                .GroupBy(d => d.CreatedAt.Date)
+                .ToDictionary(
+                    g => DateOnly.FromDateTime(g.Key),
+                    g => g.Sum(p => p.Amount)
+                );
+            // đảm bảo data có full date từ fromDate đến toDate, nếu ko có thì thêm vào với total amount = 0
+            var result = new List<TotalAmountLineChartResponse>();
+            for (var date = fromDate; date <= toDate; date = date.AddDays(1))
+            {
+                result.Add(new TotalAmountLineChartResponse
+                {
+                    Date = date,
+                    TotalAmount = groupedData.TryGetValue(date, out var amount) ? amount : 0
+                });
+            }
+
+            return Result<List<TotalAmountLineChartResponse>>.Success(result);
         }
     }
 }
