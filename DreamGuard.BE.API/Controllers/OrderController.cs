@@ -25,6 +25,22 @@ namespace DreamGuard.BE.API.Controllers
             _orderService = orderService;
         }
 
+        [HttpGet("get-order-dash-board")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetOrderDashBoard([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate)
+        {
+            var result = await _orderService.GetOrderDashBoardAsync(fromDate, toDate);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpPost("create")]
         [Authorize(Roles = $"{Role.Admin}, {Role.Manager}, {Role.Seller}")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderByAdminRequest request)

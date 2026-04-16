@@ -9,6 +9,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IOrderRepository : IGenericRepository<Order>
     {
+        Task<List<Order>> GetOrderDashBoardAsync(DateTime fromDate, DateTime toDate);
         Task<Order?> GetOrderByIdAsync(Guid orderId);
         Task<Order?> GetOrderWithItemsAsync(Guid orderId);
         Task<Order?> GetOrderWithItemsForUpdateAsync(Guid orderId);

@@ -27,13 +27,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IMapper _mapper;
         private readonly IRatingRepository _ratingRepository;
         private readonly IServiceOrderRepository _serviceOrderRepository;
-        public RatingService(IRatingRepository ratingRepository, IServiceOrderRepository serviceOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IStaffRepository staffRepository)
+        private readonly IHangFireService _hangFireService;
+        public RatingService(IRatingRepository ratingRepository, IServiceOrderRepository serviceOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IStaffRepository staffRepository, IHangFireService hangFireService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _ratingRepository = ratingRepository;
             _serviceOrderRepository = serviceOrderRepository;
             _staffRepository = staffRepository;
+            _hangFireService = hangFireService;
         }
         
         public async Task<Result> CreateRatingAsync(Guid serviceOrderId, Guid customerId, RatingCreateRequest request)
@@ -75,6 +77,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Nothing created", 400);
             }
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ServiceTask Rating",
+                Message = $"You have rated the quality of staff for this serviceOrder:{serviceOrderId}. Thank you",
+            };
+            var staffNotification = new Notification
+            {
+                UserId = staff.StaffId,
+                ActionType = "ServiceTask Rating",
+                Message = $"You have received a new rating for this serviceOrder:{serviceOrderId}. Check it out!",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(staffNotification));
             return Result.Success($"{rating.RatingId}");
         }
 

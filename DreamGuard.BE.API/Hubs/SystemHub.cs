@@ -13,7 +13,7 @@ namespace DreamGuard.BE.API.Hubs
         {
         }
 
-        public async Task ConnectAsync()
+        public async Task ConnectAdminAsync()
         {
             if (!Guid.TryParse(Context.UserIdentifier, out Guid userId))
             {
@@ -22,8 +22,20 @@ namespace DreamGuard.BE.API.Hubs
             if (Context.User.IsInRole($"{Role.Admin}"))
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
-            }else throw new HubException("Only Admin can join this group");
+            }
+            else throw new HubException("Only Admin can join this group");
         }
-
+        public async Task ConnectManagerAsync()
+        {
+            if (!Guid.TryParse(Context.UserIdentifier, out Guid userId))
+            {
+                throw new HubException("Invalid User token or user not found");
+            }
+            if (Context.User.IsInRole($"{Role.Manager}"))
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, "Managers");
+            }
+            else throw new HubException("Only Manager can join this group");
+        }
     }
 }

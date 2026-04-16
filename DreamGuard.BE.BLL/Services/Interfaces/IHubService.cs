@@ -11,5 +11,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
     {
         Task SendAuditLogToAdmins(AuditLog audit);
         Task SendNotificationToStaff(Notification notification);
+        Task SendNotificationToManager(Notification notification);
     }
 }

@@ -22,5 +22,9 @@ namespace DreamGuard.BE.API.Implements
         {
             await _hubContext.Clients.User(notification.UserId.ToString()).SendAsync("ReceiveNotification", notification);
         }
+        public async Task SendNotificationToManager(Notification notification)
+        {
+            await _hubContext.Clients.Group("Managers").SendAsync("ReceiveNotification", notification);
+        }
     }
 }

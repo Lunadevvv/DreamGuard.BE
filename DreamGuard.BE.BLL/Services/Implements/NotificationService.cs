@@ -32,6 +32,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
            await _notificationRepository.CreateAsync(notification);
            await _hubService.SendNotificationToStaff(notification);
         }
+        public async Task SendNotificationToManagerAsync(Notification notification)
+        {
+            await _notificationRepository.CreateAsync(notification);
+            await _hubService.SendNotificationToManager(notification);
+        }
 
 
         public async Task<Result<PaginatedList<Notification>>> GetMyNotificationAsync(Guid userId, int pageNumber, int pageSize)

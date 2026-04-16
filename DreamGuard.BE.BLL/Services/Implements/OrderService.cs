@@ -9,6 +9,7 @@ using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Options;
+using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Options;
 using System;
@@ -704,5 +705,57 @@ namespace DreamGuard.BE.BLL.Services.Implements
             };
         }
 
+        public async Task<Result<OrderDashBoardResponse>> GetOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate)
+        {
+            var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var to = toDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
+            var data = await _orderRepository.GetOrderDashBoardAsync(from, to);
+            if (data == null || !data.Any())
+            {
+                return Result<OrderDashBoardResponse>.Success(new OrderDashBoardResponse());
+            }
+            decimal totalAmount = 0;
+            decimal totalCODAmount = 0;
+            decimal totalRefundAmount = 0;
+            decimal totalVnPayAmount = 0;
+            foreach (var item in data)
+            {
+                if (item.Payments == null || !item.Payments.Any())
+                {
+                    continue;
+                }
+                item.Payments.ForEach(p =>
+                {
+                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.CODPaid)
+                    {
+                        totalAmount += p.Amount;
+                        totalCODAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.Paid)
+                    {
+                        totalAmount += p.Amount;
+                        totalVnPayAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Paid)
+                    {
+                        totalRefundAmount += p.Amount;
+                    }
+                });
+            }
+            var response = new OrderDashBoardResponse
+            {
+                TotalOrders = data.Count,
+                TotalCompletedOrders = data.Where(ti => ti.Status == OrderStatus.Completed).Count(),
+                TotalCancelledOrders = data.Where(t1 => t1.Status == OrderStatus.Cancelled).Count(),
+                TotalRefundedOrders = data.Where(ti => ti.Status == OrderStatus.RefundedAndDamaged || ti.Status == OrderStatus.RefundedAndRestocked).Count(),
+                TotalAmount = totalAmount,
+                TotalCODAmount = totalCODAmount,
+                TotalRefundAmount = totalRefundAmount,
+                TotalVnPayAmount = totalVnPayAmount,
+                FromDate = fromDate,
+                ToDate = toDate,
+            };
+            return Result<OrderDashBoardResponse>.Success(response);
+        }
     }
 }

@@ -11,9 +11,9 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface INotificationService
     {
+        Task SendNotificationToManagerAsync(Notification notification);
         Task SendNotificationAsync(Notification notification);
         Task<Result<PaginatedList<Notification>>> GetMyNotificationAsync(Guid userId, int pageNumber, int pageSize);
         Task<Result> MarkAsReadAsync(Guid userId);
-
     }
 }
