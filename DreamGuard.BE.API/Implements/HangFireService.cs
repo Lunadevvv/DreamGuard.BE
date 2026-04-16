@@ -13,7 +13,14 @@ namespace DreamGuard.BE.API.Implements
         }
         public void Enqueue<T>(Expression<Func<T, Task>> methodCall)
         {
-            _backgroundJobClient.Enqueue<T>(methodCall);
+            try
+            {
+                _backgroundJobClient.Enqueue<T>(methodCall);
+            }
+            catch (Exception ex)
+            {
+
+            }
         }
     }
 }

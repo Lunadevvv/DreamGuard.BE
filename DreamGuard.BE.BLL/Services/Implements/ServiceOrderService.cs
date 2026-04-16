@@ -35,7 +35,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ICloudinaryService _cloudinaryService;
         private readonly IUserVoucherRepository _userVoucherRepository;
         private readonly IServiceAssetRepository _serviceAssetRepository;
-        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository, IUnitOfWork unitOfWork, IServiceTaskRepository serviceTaskRepository, ICloudinaryService cloudinaryService, IServiceAssetRepository serviceAssetRepository, IUserVoucherRepository userVoucherRepository)
+        private readonly IHangFireService _hangFireService;
+        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository, IUnitOfWork unitOfWork, IServiceTaskRepository serviceTaskRepository, ICloudinaryService cloudinaryService, IServiceAssetRepository serviceAssetRepository, IUserVoucherRepository userVoucherRepository, IHangFireService hangFireService)
         {
             _servicePackageMappingRepository = servicePackageMappingRepository;
             _customerRepository = customerRepository;
@@ -49,6 +50,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _cloudinaryService = cloudinaryService;
             _serviceAssetRepository = serviceAssetRepository;
             _userVoucherRepository = userVoucherRepository;
+            _hangFireService = hangFireService;
         }
         public async Task<Result<OrderServiceResponse>> ReOrderServiceAsync(Guid SoId, Guid customerId, string ipAddress)
         {
@@ -80,11 +82,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result<OrderServiceResponse>.Failure("Customer not found", 404);
             }
-            var newOrderCode = GenerateOrderCode();
+            var oldOrderCode = serviceOrder.OrderCode;
             Payment payment = new Payment
             {
                 Amount = serviceOrder.TotalPrice,
-                OrderCode = newOrderCode,
+                OrderCode = oldOrderCode,
                 PaymentMethod = lastPayment.PaymentMethod,
                 Status = PaymentStatus.Pending,
                 Description = $"Payment for service order {serviceOrder.OrderCode}",
@@ -98,7 +100,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var vnPayRequest = new VnPaymentRequest
             {
                 PaymentId = payment.Id.ToString(),
-                OrderCode = newOrderCode,
+                OrderCode = oldOrderCode,
                 Description = payment.Description,
                 Amount = (int)serviceOrder.TotalPrice,
                 IpAddress = ipAddress,
@@ -113,6 +115,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PaymentUrl = paymentUrl,
                 ExpiredAt = payment.ExpiredAt
             };
+
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ReOrder service",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} payment is being retried",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+
             return Result<OrderServiceResponse>.Success(response);
         }
         public async Task<Result<OrderServiceResponse>> OrderServiceAsync(ServiceOrderCreateRequest serviceOrderRequest, Guid customerId, string ipAddress)
@@ -272,6 +283,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ExpiredAt = payment.ExpiredAt
                 };
 
+                var notification = new Notification
+                {
+                    UserId = serviceOrder.CustomerId,
+                    ActionType = "Order service",
+                    Message = $"Your ServiceOrder {serviceOrder.SoId} has been created",
+                };
+                
+                _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+
+
                 return Result<OrderServiceResponse>.Success(response);
             }
             catch
@@ -398,8 +419,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only pending order can be rejected", 400);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            var isRefunded = false;
             if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             {
+                isRefunded = true;
                 var paymentRefund = new Payment
                 {
                     SoId = serviceOrder.SoId,
@@ -426,6 +449,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "RejectPendingServiceOrder",
+                Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been rejected and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been rejected" ,
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+
             return Result.Success($"{result}");
         }
 
@@ -448,6 +480,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             serviceOrder.Status = OrderServiceStatus.Confirmed;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "RejectPendingServiceOrder",
+                Message = $"Your ServiceOrder: {serviceOrder.SoId} has been Confirmed",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
 
@@ -468,8 +507,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only pending order can be cancelled", 400);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            bool isRefunded = false;
             if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             {
+                isRefunded = true;
                 var paymentRefund = new Payment
                 {
                     SoId = serviceOrder.SoId,
@@ -496,6 +537,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "CancelPendingServiceOrder",
+                Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
 
@@ -517,8 +565,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 _serviceTaskRepository.UpdateEntity(serviceTask);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            bool isRefunded = false;
             if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             {
+                isRefunded = true;
                 var paymentRefund = new Payment
                 {
                     SoId = serviceOrder.SoId,
@@ -545,7 +595,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             _serviceOrderRepo.UpdateEntity(serviceOrder);
-            var result = await _unitOfWork.SaveChangeAsync();           
+            var result = await _unitOfWork.SaveChangeAsync();
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ManagerCancelConfirmedServiceOrder",
+                Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
         public async Task<Result> ManagerCancelProcessingServiceOrderAsync(Guid serviceOrderId)
@@ -562,6 +619,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             serviceOrder.Status = OrderServiceStatus.ForcedCancelled;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ManagerCancelProcessingServiceOrder",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason"
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
 

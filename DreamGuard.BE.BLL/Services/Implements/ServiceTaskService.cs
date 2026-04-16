@@ -19,9 +19,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IServiceOrderRepository _soRepo;
         private readonly IStaffRepository _staffRepo;
         private readonly IUnitOfWork _unitOfWork;
-        IPaymentRepository _paymentRepo;
+        private readonly IPaymentRepository _paymentRepo;
+        private readonly IHangFireService _hangFireService;
 
-        public ServiceTaskService(IServiceTaskRepository repo, IMapper mapper, IServiceOrderRepository soRepo, IStaffRepository staffRepo, IUnitOfWork unitOfWork, IPaymentRepository paymentRepo)
+        public ServiceTaskService(IServiceTaskRepository repo, IMapper mapper, IServiceOrderRepository soRepo, IStaffRepository staffRepo, IUnitOfWork unitOfWork, IPaymentRepository paymentRepo, IHangFireService hangFireService)
         {
             _repo = repo;
             _mapper = mapper;
@@ -29,6 +30,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _staffRepo = staffRepo;
             _unitOfWork = unitOfWork;
             _paymentRepo = paymentRepo;
+            _hangFireService = hangFireService;
         }
 
         public async Task<Result> CreateAsync(ServiceTaskCreateRequest serviceTaskCreateRequest)
@@ -65,6 +67,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Nothing created", 400);
             }
+            var notification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask Create",
+                Message = $"You have been assigned ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
 
             return Result.Success($"{serviceTask.ServiceTaskId}");
         }
@@ -165,6 +174,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             serviceTask.Status = ServiceTaskStatus.CheckedIn;
             serviceTask.CheckIn = DateTime.UtcNow;
             var result = await _repo.UpdateAsync(serviceTask);
+            var notification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask CheckedIn",
+                Message = $"You have CheckedIn ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
         public async Task<Result> UpdateProcessingStatusAsync(Guid serviceTaskId, Guid staffId)
@@ -192,6 +208,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _repo.UpdateEntity(serviceTask);
             _soRepo.UpdateEntity(serviceOrder);
             var result = await _unitOfWork.SaveChangeAsync();
+            var notification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask Processing",
+                Message = $"You have processed ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
         public async Task<Result> UpdateForcedCancelledStatusAsync(Guid serviceTaskId, Guid staffId, string staffNote)
@@ -217,6 +240,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             serviceTask.Status = ServiceTaskStatus.ForcedCancelled;
             serviceTask.StaffNote = staffNote;
             var result = await _repo.UpdateAsync(serviceTask);
+            var notification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask ForcedCancelled",
+                Message = $"You have force-cancelled ServiceTask: {serviceTask.ServiceTaskId}. Please inform manager for this case",
+            };
+            var managerNotification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask ForcedCancelled",
+                Message = $"ServiceTask: {serviceTask.ServiceTaskId} has been force-cancelled by staff:{staffId}. Please check and handle this case.",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(managerNotification));
             return Result.Success($"{result}");
         }
         public async Task<Result> UpdateCheckedOutStatusAsync(Guid serviceTaskId, Guid staffId)
@@ -237,6 +274,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             serviceTask.Status = ServiceTaskStatus.CheckedOut;
             serviceTask.CheckOut = DateTime.UtcNow;
             var result = await _repo.UpdateAsync(serviceTask);
+            var notification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask CheckedOut",
+                Message = $"You have CheckedOut ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
         public async Task<Result> UpdateCompletedStatusAsync(Guid serviceTaskId, Guid staffId)
@@ -270,6 +314,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _soRepo.UpdateEntity(serviceOrder);
             _paymentRepo.UpdateEntity(payment);
             var result = await _unitOfWork.SaveChangeAsync();
+            var notification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask Completed",
+                Message = $"You have Completed ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            var customerNotification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ServiceTask Completed",
+                Message = $"Your service order: {serviceOrder.SoId} has been completed. Please check and rate staff quality for this serivce. Thank you",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(customerNotification));
             return Result.Success($"{result}");
         }
 

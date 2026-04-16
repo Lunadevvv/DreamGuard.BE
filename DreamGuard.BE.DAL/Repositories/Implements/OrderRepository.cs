@@ -15,6 +15,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     public class OrderRepository : GenericRepository<Order>, IOrderRepository
     {
         public OrderRepository(DreamGuardContext context) : base(context) { }
+        public async Task<List<Order>> GetOrderDashBoardAsync(DateTime fromDate, DateTime toDate)
+        {
+            return await _context.Orders.Include(ti => ti.Payments)
+                .Where(ti => ti.CreatedAt >= fromDate && ti.CreatedAt < toDate)
+                .ToListAsync();
+        }
 
         public async Task<Order?> GetOrderByIdAsync(Guid orderId)
         {
