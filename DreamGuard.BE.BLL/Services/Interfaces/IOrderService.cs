@@ -10,6 +10,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IOrderService
     {
+        Task<Result<List<TotalAmountLineChartResponse>>> GetTotalAmountLineChartAsync(DateOnly fromDate, DateOnly toDate);
         Task<Result<OrderDashBoardResponse>> GetOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate);
         Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress);
         Task<Result<OrderResponse>> CreateOrderByAdminAsync(CreateOrderByAdminRequest request, string ipAddress);

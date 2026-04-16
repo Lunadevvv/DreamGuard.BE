@@ -14,7 +14,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     public class PaymentRepository : GenericRepository<Payment>, IPaymentRepository
     {
         public PaymentRepository(DreamGuardContext context) : base(context) { }
-
+        public async Task<List<Payment>> GetTotalAmountLineChartDataAsync(DateTime fromDate, DateTime toDate)
+        {
+            return await _context.Payments
+                .Where(ti => (ti.CreatedAt >= fromDate && ti.CreatedAt < toDate) && (ti.Status == PaymentStatus.CODPaid || ti.Status == PaymentStatus.Paid) && ti.PaymentType != PaymentType.Refund)
+                .ToListAsync();
+        }
         public async Task<Payment?> GetPaymentByIdAsync(Guid paymentId)
         {
             return await _context.Payments

@@ -9,6 +9,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
     public interface IPaymentRepository : IGenericRepository<Payment>
     {
+        Task<List<Payment>> GetTotalAmountLineChartDataAsync(DateTime fromDate, DateTime toDate);
         Task<Payment?> GetPaymentByIdAsync(Guid paymentId);
         Task<Payment?> GetPaymentByOrderIdAsync(Guid orderId);
         Task<Payment?> GetPaymentByOrderIdForUpdateAsync(Guid orderId);

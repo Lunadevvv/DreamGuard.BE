@@ -40,6 +40,29 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        [HttpGet("get-total-amount-line-chart")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetTotalAmountLineChart([FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate)
+        {
+            if (fromDate == null)
+            {
+                fromDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+            }
+            if (toDate == null)
+            {
+                toDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            }
+            var result = await _orderService.GetTotalAmountLineChartAsync(fromDate.Value, toDate.Value);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
 
         [HttpPost("create")]
         [Authorize(Roles = $"{Role.Admin}, {Role.Manager}, {Role.Seller}")]
