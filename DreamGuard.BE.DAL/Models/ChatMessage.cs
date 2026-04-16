@@ -15,6 +15,7 @@ namespace DreamGuard.BE.DAL.Models
         public string Message { get; set; }
         public string SenderType { get; set; } // "Customer" or "Staff"
         public DateTime CreatedAt { get; set; }
+        public bool IsRead { get; set; } = false;
         [JsonIgnore]
         public Conversation Conversation { get; set; }
     }

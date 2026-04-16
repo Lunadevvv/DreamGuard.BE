@@ -26,19 +26,35 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _mapper = mapper;
         }
 
-        public async Task<Result<PaginatedList<ChatMessage>>> GetMessageHistoryAsync(Guid conversationId, int pageNumber, int pageSize)
+        public async Task<Result<PaginatedList<ChatMessage>>> GetMessageHistoryAsync(Guid conversationId, Guid currentUserId, int pageNumber, int pageSize)
         {
-            var messages = await _conversationRepository.GetMessageHistoryAsync(conversationId, pageNumber, pageSize);
+            var messages = await _conversationRepository.GetMessageHistoryAsync(conversationId,currentUserId, pageNumber, pageSize);
             messages.Items = messages.Items.Reverse().ToList();
             var paginatedResponse = new PaginatedList<ChatMessage>(messages.Items, messages.TotalCount, pageNumber, pageSize);
             return Result<PaginatedList<ChatMessage>>.Success(paginatedResponse);
         }
-        public async Task<Result<PaginatedList<ConversationResponse>>> GetConversationAsync(Guid staffId, int pageNumber, int pageSize)
+        public async Task<Result<PaginatedList<ConversationResponse>>> GetConversationAsync(Guid userId, int pageNumber, int pageSize)
         {
-            var conversations = await _conversationRepository.GetMyConversationAsync(staffId, pageNumber, pageSize);
-            var conversationResponse = _mapper.Map<List<ConversationResponse>>(conversations.Items);
+            var conversations = await _conversationRepository.GetMyConversationAsync(userId, pageNumber, pageSize);
+            var conversationIds = conversations.Items.Select(c => c.ConversationId).ToList();
+            var unreadConversationIds = await _conversationRepository.GetAllUnreadConversationIds(conversationIds, userId);
+
+            var conversationResponse = conversations.Items.Select(c =>
+            {
+                var response = _mapper.Map<ConversationResponse>(c);
+                response.HasUnread = unreadConversationIds.Contains(c.ConversationId);
+                return response;
+            }).ToList();
+            //var conversationResponse = _mapper.Map<List<ConversationResponse>>(conversations.Items);
             var paginatedResponse = new PaginatedList<ConversationResponse>(conversationResponse, conversations.TotalCount, pageNumber, pageSize);
             return Result<PaginatedList<ConversationResponse>>.Success(paginatedResponse);
+        }
+
+        public async Task<Result> MarkAsReadAsync(Guid conversationId, Guid currentUserId)
+        {
+            await _conversationRepository.MarkAsReadAsync(conversationId, currentUserId);
+
+            return Result.Success("Messages marked as read.");
         }
     }
 }

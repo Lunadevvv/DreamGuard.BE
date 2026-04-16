@@ -23,6 +23,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await _context.SystemConfigs.FirstOrDefaultAsync(x => x.ConfigKey == key);
         }
 
+
         public async Task<PaginatedList<SystemConfig>> GetAllConfigsAsync(int pageNumber, int pageSize)
         {
             var query = _context.SystemConfigs.AsNoTracking().OrderBy(x => x.ConfigKey);

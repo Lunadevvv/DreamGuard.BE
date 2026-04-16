@@ -21,6 +21,7 @@ namespace DreamGuard.BE.DAL.Basic
         void AddEntity(T entity);
         void RemoveEntity(T entity);
         void UpdateEntity(T entity);
+        void UpdateEntityGraph(T entity);
         void RemoveRange(IEnumerable<T> entities);
 
     }
