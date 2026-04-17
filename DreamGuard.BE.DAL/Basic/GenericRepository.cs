@@ -90,15 +90,10 @@ namespace DreamGuard.BE.DAL.Basic
             var entry = _context.Entry(entity);
             if (entry.State == EntityState.Detached)
             {
-                _context.Set<T>().Attach(entity);
                 entry.State = EntityState.Modified;
             }
         }
-        public void UpdateEntityGraph(T entity)
-        {
-            //update entity graph, bao gồm cả các entity liên quan
-            _context.Set<T>().Update(entity);
-        }
+
         public void RemoveEntity(T entity)
         {
             _context.Set<T>().Remove(entity);

@@ -520,8 +520,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Nếu đã confirm thì hủy task giao hàng nếu có
                 if (firstStatus == TradeInOrderStatus.CONFIRMED)
                 {
+                    tradeInOrder.ShippingTasks.ToList().ForEach(st =>
+                    {
+                        st.Status = ShippingTaskStatus.Cancelled;
+                        _shippingTaskRepository.UpdateEntity(st);
+                    });
+                    await _unitOfWork.SaveChangeAsync();
                     //ko save(fixed)
-                    int rs = await _shippingTaskRepository.UpdateTaskStatusAsync(tradeInOrderId, ShippingTaskStatus.Cancelled);
                 }
                 
                 await transaction.CommitAsync();
@@ -612,7 +617,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Only orders in CONFIRMED status can be moved to PROCESSING", 400);
             }
-            var shippingTask = await _shippingTaskRepository.GetTaskByTradeInOrderIdAndStatusAsync(tradeInOrder.TradeInOrderId, ShippingTaskStatus.Pending);
+            var shippingTask = tradeInOrder.ShippingTasks.FirstOrDefault(st => st.Status == ShippingTaskStatus.Pending);
             if (shippingTask == null)
             {
                 return Result.Failure("No pending shipping task found for this order", 404);
@@ -677,7 +682,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> CompletedAsync(Guid tradeInOrderId)
         {
-            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdWithTrackingAsync(tradeInOrderId);
+            var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
             if (tradeInOrder == null)
             {
                 return Result.Failure("TradeInOrder not found", 404);
@@ -687,6 +692,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only orders in DELIVERED status can be moved to COMPLETED", 400);
             }
             tradeInOrder.Status = TradeInOrderStatus.COMPLETED;
+            _tradeInOrderRepository.UpdateEntity(tradeInOrder);
             var lastFinalPayment = tradeInOrder.Payments.Where(p => p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.COD).OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastFinalPayment == null)
             {
@@ -695,21 +701,27 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //ko save(fixed)
             lastFinalPayment.Status = PaymentStatus.CODPaid;
             lastFinalPayment.UpdatedAt = DateTime.UtcNow;
+            _paymentRepository.UpdateEntity(lastFinalPayment); _paymentRepository.UpdateEntity(lastFinalPayment);
+
             //award coins for customer
-            var customer = tradeInOrder.Customer;
-            if (customer != null)
+            if (tradeInOrder.Status == TradeInOrderStatus.COMPLETED)
             {
-                var config = await _systemConfigRepository.GetByKeyAsync("OrderCoinPercent");
-                decimal percent = 1.0m; // default 1%
-                if (config != null && decimal.TryParse(config.ConfigValue, out decimal parsed))
+                var customer = await _customerRepository.GetByIdAsync(tradeInOrder.CustomerId);
+                if (customer != null)
                 {
-                    percent = parsed;
+                    var config = await _systemConfigRepository.GetByKeyAsync("OrderCoinPercent");
+                    decimal percent = 1.0m; // default 1%
+                    if (config != null && decimal.TryParse(config.ConfigValue, out decimal parsed))
+                    {
+                        percent = parsed;
+                    }
+                    int coinsEarned = (int)(tradeInOrder.AmountToPay * percent / 100);
+                    customer.MemberCoin += coinsEarned;
+                    _customerRepository.UpdateEntity(customer);
                 }
-                int coinsEarned = (int)(tradeInOrder.AmountToPay * percent / 100);
-                customer.MemberCoin += coinsEarned;
             }
-            
-            var result = await _unitOfWork.SaveChangeAsync();
+
+                var result = await _unitOfWork.SaveChangeAsync();
             if (result == 0)
             {
                 return Result.Failure("Failed to update trade-in order status", 500);
