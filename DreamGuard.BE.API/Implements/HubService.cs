@@ -18,6 +18,7 @@ namespace DreamGuard.BE.API.Implements
         public async Task SendAuditLogToAdmins(AuditLog audit)
         {
             await _hubContext.Clients.Group("Admins").SendAsync("ReceiveAuditLog", audit);
+            await _hubContext.Clients.Group("Managers").SendAsync("ReceiveAuditLog", audit);
         }
 
         public async Task SendNotificationToStaff(Notification notification)
