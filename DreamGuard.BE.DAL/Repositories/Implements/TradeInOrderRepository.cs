@@ -47,13 +47,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
 
         public async Task<PaginatedList<TradeInOrder>> GetMyOrdersAsync(Guid customerId, int pageNumber, int pageSize)
         {
-            var query = _context.TradeInOrders
+            var query = _context.TradeInOrders.Include(ti => ti.OrderItem)
                 .Where(o => o.CustomerId == customerId).OrderByDescending(o => o.CreatedAt);
             return await PaginatedList<TradeInOrder>.CreateAsync(query, pageNumber, pageSize);
         }
         public async Task<PaginatedList<TradeInOrder>> AdminSearchOrderAsync(Guid? customerId, Guid? productVariantId, TradeInOrderStatus? status, bool? isGood, decimal? tradeInPrice, decimal? amountToPay, decimal? depositAmount, string? phoneNumber, int pageNumber, int pageSize)
         {
-            var query = _context.TradeInOrders
+            var query = _context.TradeInOrders.Include(ti => ti.OrderItem)
                 .Where(o => (customerId == null || o.CustomerId == customerId)
                 && (productVariantId == null || o.ProductVariantId == productVariantId)
                 && (status == null || o.Status == status)
@@ -78,7 +78,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
 
         public async Task<PaginatedList<TradeInOrder>> GetWaitingOrdersAsync(int pageNumber, int pageSize)
         {
-            var query = _context.TradeInOrders
+            var query = _context.TradeInOrders.Include(ti => ti.OrderItem)
                 .Where(ti => ti.Status == TradeInOrderStatus.WAITING_FOR_STAFF).OrderByDescending(o => o.CreatedAt);
             return await PaginatedList<TradeInOrder>.CreateAsync(query, pageNumber, pageSize);
         }

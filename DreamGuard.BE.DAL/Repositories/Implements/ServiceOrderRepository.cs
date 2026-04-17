@@ -23,7 +23,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             try
             {
-                var query = _context.ServiceOrders.Include(so => so.Payments).Include(so => so.ServiceTask)
+                var query = _context.ServiceOrders.Include(so => so.Payments).Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
                         .Include(so => so.Rating)
@@ -45,7 +45,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             {
                 var query = _context.ServiceOrders
                     .Include(so => so.Payments)
-                    .Include(so => so.ServiceTask)
+                    .Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
                     .Include(so => so.Rating);
@@ -70,7 +70,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                             .ThenInclude(soi => soi.ServicePackageMapping)
                                  .ThenInclude(spm => spm.ProductType)
                      .Include(so => so.ServiceAssets)
-                     .Include(so => so.ServiceTask)
+                     .Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
                      .Include(so => so.Rating)
@@ -88,7 +88,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             {
                 return await _context.ServiceOrders
                      .Include(so => so.Rating)
-                     .Include(so => so.ServiceTask)
+                     .Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
 
                      .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
@@ -104,7 +104,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             try
             {
                 return await _context.ServiceOrders
-                     .Include(so => so.ServiceTask)
+                     .Include(so => so.ServiceTasks)
                      .Include(so => so.Payments)
                      .Include(so => so.Rating)
                      .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);

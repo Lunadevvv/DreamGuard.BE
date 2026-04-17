@@ -28,6 +28,7 @@ namespace DreamGuard.BE.API.Implements
         public async Task SendNotificationToManager(Notification notification)
         {
             await _hubContext.Clients.Group("Managers").SendAsync("ReceiveNotification", notification);
+            await _hubContext.Clients.Group("Admins").SendAsync("ReceiveNotification", notification);
         }
 
     }

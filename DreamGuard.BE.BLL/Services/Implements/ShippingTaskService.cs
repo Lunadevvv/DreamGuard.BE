@@ -100,6 +100,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Re-fetch to map properly with navigation properties
                 task.Staff = staff;
                 task.Order = order;
+                var notification = new Notification
+                {
+                    UserId = request.StaffId,
+                    ActionType = "CreateShippingTask",
+                    Message = $"you have been assigned a shipping task: {task.ShippingTaskId}",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
 
                 return Result<ShippingTaskResponse>.Success(MapToResponse(task));
             }
@@ -227,6 +234,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
 
                 await transaction.CommitAsync();
+                var notification = new Notification
+                {
+                    UserId = task.StaffId,
+                    ActionType = "TaskToDelivering",
+                    Message = $"your task {task.ShippingTaskId} hass been updated to delivering",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                var notificationToCustomer = new Notification
+                {
+                    UserId = order.CustomerId,
+                    ActionType = "TaskToDelivering",
+                    Message = $"your order: {order.Id} is on delivering",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notificationToCustomer));
                 return Result.Success("Task is now in Delivering status.");
             }
             catch (Exception)
@@ -316,13 +338,28 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             task.Status = ShippingTaskStatus.Arrived;
             await _taskRepository.UpdateAsync(task);
-            var notification = new Notification
+            //
+            if (task.TradeInOrderId != null)
             {
-                UserId = task.TradeInOrder!.CustomerId,
-                ActionType = "shipper has arrived",
-                Message = $"shipper has arrived for your trade in order: {task.TradeInOrderId}",
-            };
-            _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                var notification = new Notification
+                {
+                    UserId = task.TradeInOrder!.CustomerId,
+                    ActionType = "shipper has arrived",
+                    Message = $"shipper has arrived for your trade in order: {task.TradeInOrderId}",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+            }
+            else
+            {
+                var notification = new Notification
+                {
+                    UserId = task.Order!.CustomerId,
+                    ActionType = "shipper has arrived",
+                    Message = $"shipper has arrived for your order: {task.OrderId}",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+            }
+
             return Result.Success("Task is now Arrived.");
         }
 
@@ -391,6 +428,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
 
                 await transaction.CommitAsync();
+                var notification = new Notification
+                {
+                    UserId = order.CustomerId,
+                    ActionType = "complete shipping",
+                    Message = $"shipping is now {order.Status} for your order: {order.Id}",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 return Result.Success("Shipping completed successfully.");
             }
             catch (Exception)
@@ -450,7 +494,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     UserId = tradeInOrder.CustomerId,
                     ActionType = "complete shipping task for trade in",
-                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is completed",
+                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} shipping is completed",
                 };
                 _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 return Result.Success("Shipping completed successfully.");
@@ -516,6 +560,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
 
                 await transaction.CommitAsync();
+                var notification = new Notification
+                {
+                    UserId = order.CustomerId,
+                    ActionType = "fail shipping",
+                    Message = $"shipping is now {order.Status} for your order: {order.Id}. We will contact you soon",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                var notificationToManager = new Notification
+                {
+                    UserId = task.StaffId,
+                    ActionType = "fail shipping",
+                    Message = $"fail shipping for task: {task.ShippingTaskId}. Task is now in {task.Status}, please review",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationToManagerAsync(notification));
                 return Result.Success("Shipping marked as returning successfully. Pending manager review.");
             }
             catch (Exception)
@@ -587,8 +645,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ActionType = "fail shipping task for trade in",
                     Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is returning for some reason. We will contact soon",
                 };
-
                 _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+
+                var notificationToManager = new Notification
+                {
+                    UserId = task.StaffId,
+                    ActionType = "fail shipping task for trade in",
+                    Message = $"fail shipping trade-in for task: {task.ShippingTaskId}. Task is now in {task.Status}, please review",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationToManagerAsync(notification));
                 return Result.Success("Shipping marked as returning successfully. Pending manager review.");
             }
             catch (Exception)
@@ -636,6 +701,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 task.StaffNote = request.Reason;
                 task.CompletionDate = DateTime.UtcNow;
                 _taskRepository.UpdateEntity(task);
+                //trả tồn kho quantity + 1
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)
@@ -654,14 +720,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     return Result.Failure("Failed to save changes to the database.", 500);
                 }
+
                 await transaction.CommitAsync();
                 var notification = new Notification
                 {
                     UserId = tradeInOrder.CustomerId,
                     ActionType = "forced cancelled shipping task for trade in",
-                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is forced cancelled",
+                    Message = $"your trade in order: {tradeInOrder.TradeInOrderId} is forced cancelled for some reason",
                 };
                 _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+
                 return Result.Success("Shipping marked as forced_cancelled successfully");
             }
             catch (Exception)
@@ -671,7 +739,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public async Task<Result> ProcessReturnedOrderAsync(Guid taskId, ProcessReturnedRequest request)
+        public async Task<Result> ProcessReturnedOrderAsync(Guid taskId, ProcessReturnedRequest request, Guid managerId)
         {
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
@@ -779,12 +847,45 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (healthyQty > 0)
                         {
                             var hr = await _inventoryService.RestoreVariantStockAsync(item.ProductVariantId.Value, healthyQty);
-                            if (!hr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(hr.Error!, hr.StatusCode); }
+                            if (!hr.Succeeded) {
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessReturnedOrder failed",
+                                    Message = $"ProcessReturnedorder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                await transaction.RollbackAsync(); return Result.Failure(hr.Error!, hr.StatusCode); 
+                            }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessReturnedOrder",
+                                Message = $"Restored {healthyQty} stock for ProductVariant {item.ProductVariantId.Value} in processreturnedOrder",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
                         }
                         if (damagedQty > 0)
                         {
                             var dr = await _inventoryService.RestoreDefectVariantStockAsync(item.ProductVariantId.Value, damagedQty);
-                            if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+                            if (!dr.Succeeded) { 
+                                await transaction.RollbackAsync();
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessReturnedOrder failed",
+                                    Message = $"ProcessReturnedorder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                return Result.Failure(dr.Error!, dr.StatusCode);
+                            }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessReturnedOrder",
+                                Message = $"Restored {damagedQty} defect stock for ProductVariant {item.ProductVariantId.Value} in processreturnedOrder",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
                         }
                     }
                     else if (item.ComboId.HasValue)
@@ -792,12 +893,45 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (healthyQty > 0)
                         {
                             var hr = await _inventoryService.RestoreComboStockAsync(item.ComboId.Value, healthyQty);
-                            if (!hr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(hr.Error!, hr.StatusCode); }
+                            if (!hr.Succeeded) { 
+                                await transaction.RollbackAsync();
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessReturnedOrder failed",
+                                    Message = $"ProcessReturnedorder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                return Result.Failure(hr.Error!, hr.StatusCode); 
+                            }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessReturnedOrder",
+                                Message = $"Restored {damagedQty} combo for combo {item.ComboId.Value} in processreturnedOrder",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
                         }
                         if (damagedQty > 0)
                         {
                             var dr = await _inventoryService.RestoreDefectComboStockAsync(item.ComboId.Value, damagedQty);
-                            if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+                            if (!dr.Succeeded) { 
+                                await transaction.RollbackAsync();
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessReturnedOrder failed",
+                                    Message = $"ProcessReturnedorder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                return Result.Failure(dr.Error!, dr.StatusCode); }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessReturnedOrder",
+                                Message = $"Restored {damagedQty} defect combo for combo {item.ComboId.Value} in processreturnedOrder",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
                         }
                     }
                 }
@@ -834,7 +968,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
             if (task.TradeInOrderId == null) return Result.Failure("Associated tradeInOrder not found for this task.", 404);
-            if (task.Status != ShippingTaskStatus.Returning)
+            if (task.Status != ShippingTaskStatus.Returning && task.Status != ShippingTaskStatus.FORCED_CANCELLED)
             {
                 return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
             }
@@ -934,13 +1068,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 //audit và log
-                var notification = new Notification
+                if (lastPaymentPaid != null)
                 {
-                    UserId = tradeInOrder.CustomerId,
-                    ActionType = "ProcessReturnTradeInOrder",
-                    Message = $"your trade in order:{tradeInOrder.TradeInOrderId} will be refunded",
-                };
-                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                    var notification = new Notification
+                    {
+                        UserId = tradeInOrder.CustomerId,
+                        ActionType = "ProcessReturnTradeInOrder",
+                        Message = $"your trade in order:{tradeInOrder.TradeInOrderId} is refunded",
+                    };
+                    _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                }
                 var auditLog = new AuditLog
                 {
                     UserId = managerId,
@@ -958,7 +1095,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public async Task<Result> ProcessExchangeOrderAsync(Guid taskId, ProcessExchangeRequest request)
+        public async Task<Result> ProcessExchangeOrderAsync(Guid taskId, ProcessExchangeRequest request, Guid managerId)
         {
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
@@ -1021,19 +1158,85 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         {
                             // Put broken into defect
                             var dr = await _inventoryService.RestoreDefectVariantStockAsync(item.ProductVariantId.Value, damagedQty);
-                            if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+                            if (!dr.Succeeded) { 
+                                await transaction.RollbackAsync();
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessExchange failed",
+                                    Message = $"ProcessExchangedOrder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                return Result.Failure(dr.Error!, dr.StatusCode); 
                             
+                            }
+                            var audit = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessExchange",
+                                Message = $"Restorc defect variant: {item.ProductVariantId.Value} by {damagedQty}",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(audit));
+
                             // Take new one from normal stock
                             var ds = await _inventoryService.DeductVariantStockAsync(item.ProductVariantId.Value, damagedQty);
-                            if (!ds.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(ds.Error!, ds.StatusCode); }
+                            if (!ds.Succeeded) { 
+                                await transaction.RollbackAsync();
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessExchange failed",
+                                    Message = $"ProcessExchangedOrder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                return Result.Failure(ds.Error!, ds.StatusCode); }
+                            var newAudit = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessExchange",
+                                Message = $"deduct variant: {item.ProductVariantId.Value} by {damagedQty}",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(audit));
                         }
                         else if (item.ComboId.HasValue)
                         {
                             var dr = await _inventoryService.RestoreDefectComboStockAsync(item.ComboId.Value, damagedQty);
-                            if (!dr.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(dr.Error!, dr.StatusCode); }
+                            if (!dr.Succeeded) { 
+                                await transaction.RollbackAsync();
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessExchange failed",
+                                    Message = $"ProcessExchangedOrder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                return Result.Failure(dr.Error!, dr.StatusCode); 
+                            }
+                            var audit = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessExchange",
+                                Message = $"Restored defect combo: {item.ComboId.Value} by {damagedQty}",
+                            };
 
                             var ds = await _inventoryService.DeductComboStockAsync(item.ComboId.Value, damagedQty);
-                            if (!ds.Succeeded) { await transaction.RollbackAsync(); return Result.Failure(ds.Error!, ds.StatusCode); }
+                            if (!ds.Succeeded) { 
+                                await transaction.RollbackAsync();
+                                var auditUnChanged = new AuditLog
+                                {
+                                    UserId = managerId,
+                                    ActionType = "ProcessExchange failed",
+                                    Message = $"ProcessExchangedOrder failed, Stock remain unchanged",
+                                };
+                                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditUnChanged));
+                                return Result.Failure(ds.Error!, ds.StatusCode); 
+                            }
+                            var newAudit = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ProcessExchange",
+                                Message = $"deduct combo: {item.ComboId.Value} by {damagedQty}",
+                            };
                         }
                     }
                 }

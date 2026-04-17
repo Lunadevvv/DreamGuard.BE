@@ -21,6 +21,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 {
     public class OrderService : IOrderService
     {
+        private readonly IHangFireService _hangFireService;
         private readonly IOrderRepository _orderRepository;
         private readonly ICartRepository _cartRepository;
         private readonly IProductVariantRepository _variantRepository;
@@ -50,7 +51,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IUnitOfWork unitOfWork,
             ICustomerRepository customerRepository,
             ISystemConfigRepository systemConfigRepository,
-            IOptions<VnPayOptions> vnPayOptions)
+            IOptions<VnPayOptions> vnPayOptions,
+            IHangFireService hangFireService
+            )
         {
             _orderRepository = orderRepository;
             _cartRepository = cartRepository;
@@ -66,6 +69,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _customerRepository = customerRepository;
             _systemConfigRepository = systemConfigRepository;
             _vnPayOptions = vnPayOptions.Value;
+            _hangFireService = hangFireService;
         }
 
         public Task<Result<OrderResponse>> CreateOrderByAdminAsync(CreateOrderByAdminRequest request, string ipAddress)
@@ -120,7 +124,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     .ToDictionary(i => i.ProductVariantId);
                 var combosDict = (await _comboRepository.GetCombosWithProductsByIdsAsync(comboIds))
                     .ToDictionary(c => c.Id);
-
+                // audit log for stock unchanged
+                var auditUnChanged = new AuditLog
+                {
+                    UserId = userId,
+                    ActionType = "CreateOrderFailed",
+                    Message = $"user: {userId} create order failed. Stock remain unchanged",
+                };
+     
                 // Validate and prepare each cart item
                 foreach (var cartItem in cart.CartItems)
                 {
@@ -148,8 +159,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (!deductResult.Succeeded)
                         {
                             await transaction.RollbackAsync();
+                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
                             return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
                         }
+                        // audit log for stock deduction
+                        var audit = new AuditLog
+                        {
+                            UserId = userId,
+                            ActionType = "CreateOrder",
+                            Message = $"user: {userId} Deducted {cartItem.Quantity} from stock of variant '{cartItem.ProductVariantId.Value}' for order creation.",
+                        };
+                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
 
                         // Update RAM inventory state for next consecutive identical items
                         if (inventory != null)
@@ -204,8 +224,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (!deductResult.Succeeded)
                         {
                             await transaction.RollbackAsync();
+                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
                             return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
                         }
+                        // audit log for combo deduction
+                        var audit = new AuditLog
+                        {
+                            UserId = userId,
+                            ActionType = "CreateOrder",
+                            Message = $"user: {userId} Deducted combo:{cartItem.ComboId.Value} with quantity: {cartItem.Quantity} for order creation.",
+                        };
+                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+
 
                         var itemPrice = combo.SalePrice;
                         orderItems.Add(new OrderItem
@@ -397,6 +427,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             catch (Exception)
             {
                 await transaction.RollbackAsync();
+                // audit log for stock unchanged
+                var audit = new AuditLog
+                {
+                    UserId = userId,
+                    ActionType = "CreateOrderFailed",
+                    Message = $"user: {userId} create order failed. Stock remain unchanged",
+                };
+                _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
                 return Result<OrderResponse>.Failure("Failed to create order.", 500);
             }
         }
@@ -538,7 +576,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             order.Status = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
             await _orderRepository.UpdateAsync(order);
-
+            // notification
+            Notification notification = new Notification
+            {
+                UserId = order.CustomerId,
+                ActionType = "Update order status",
+                Message = $"Order:{order.Id} has been updated to {newStatus}",
+            };
+            _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
             return Result.Success($"Order status updated to '{newStatus}'.");
         }
 
@@ -580,21 +625,40 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     {
                         var result = await _inventoryService.RestoreVariantStockAsync(
                             item.ProductVariantId.Value, item.Quantity);
+                        var audit = new AuditLog
+                        {
+                            UserId = order.CustomerId,
+                            ActionType = "CancelOrder",
+                            Message = $"user: {order.CustomerId} cancel order and restore product: {item.ProductVariantId.Value} with quantity {item.Quantity}",
+                        };
+
+
                         if (!result.Succeeded)
                         {
                             await transaction.RollbackAsync();
+                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
                             return Result.Failure(result.Error!, result.StatusCode);
                         }
+                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
                     }
                     else if (item.ComboId.HasValue)
                     {
                         var result = await _inventoryService.RestoreComboStockAsync(
                             item.ComboId.Value, item.Quantity);
+                        var audit = new AuditLog
+                        {
+                            UserId = order.CustomerId,
+                            ActionType = "CancelOrder",
+                            Message = $"user: {order.CustomerId} cancel order and restore combo: {item.ComboId.Value} with quantity {item.Quantity}",
+                        };
                         if (!result.Succeeded)
                         {
                             await transaction.RollbackAsync();
+                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
                             return Result.Failure(result.Error!, result.StatusCode);
                         }
+                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+
                     }
                 }
 
@@ -622,13 +686,28 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 order.Status = OrderStatus.Cancelled;
                 order.UpdatedAt = DateTime.UtcNow;
                 await _orderRepository.UpdateAsync(order);
-
+                // notification
+                Notification notification = new Notification
+                {
+                    UserId = order.CustomerId,
+                    ActionType = "cancel order",
+                    Message = $"Order:{order.Id} has been cancelled",
+                };
+                _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
                 await transaction.CommitAsync();
                 return Result.Success("Order cancelled successfully.");
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
+                // audit log for fail stock deduction
+                var audit = new AuditLog
+                {
+                    UserId = order.CustomerId,
+                    ActionType = "CreateOrder",
+                    Message = $"user: {order.CustomerId} failed cancel order. stock remain unchanged",
+                };
+                _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
                 return Result.Failure("Failed to cancel order.", 500);
             }
         }

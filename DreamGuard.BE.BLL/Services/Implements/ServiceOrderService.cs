@@ -36,7 +36,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IUserVoucherRepository _userVoucherRepository;
         private readonly IServiceAssetRepository _serviceAssetRepository;
         private readonly IHangFireService _hangFireService;
-        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository, IUnitOfWork unitOfWork, IServiceTaskRepository serviceTaskRepository, ICloudinaryService cloudinaryService, IServiceAssetRepository serviceAssetRepository, IUserVoucherRepository userVoucherRepository, IHangFireService hangFireService)
+        private readonly IStaffRepository _staffRepository;
+        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository, IUnitOfWork unitOfWork, IServiceTaskRepository serviceTaskRepository, ICloudinaryService cloudinaryService, IServiceAssetRepository serviceAssetRepository, IUserVoucherRepository userVoucherRepository, IHangFireService hangFireService, IStaffRepository staffRepository)
         {
             _servicePackageMappingRepository = servicePackageMappingRepository;
             _customerRepository = customerRepository;
@@ -51,6 +52,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _serviceAssetRepository = serviceAssetRepository;
             _userVoucherRepository = userVoucherRepository;
             _hangFireService = hangFireService;
+            _staffRepository = staffRepository;
         }
         public async Task<Result<OrderServiceResponse>> ReOrderServiceAsync(Guid SoId, Guid customerId, string ipAddress)
         {
@@ -375,8 +377,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ImageUrl = serviceOrder.ServiceAssets.Select(sa => sa.Url).ToList(),
                 Rating = serviceOrder.Rating == null ? null : _mapper.Map<RatingResponse>(serviceOrder.Rating)
             };
-            var staff = serviceOrder.ServiceTask?.Staff;
-            if(staff != null)
+            var staff = serviceOrder.ServiceTasks.OrderByDescending(st => st.CreatedAt).FirstOrDefault()?.Staff;
+            if (staff != null)
             {
                 serviceOrderResponse.Staff = _mapper.Map<StaffResponse>(staff);
             }
@@ -470,7 +472,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             if (serviceOrder.Status != OrderServiceStatus.Pending)
             {
-                return Result.Failure("Only pending order can be confirmed", 400);
+                return Result.Failure("Only pending order and rescheduled can be confirmed", 400);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastPayment!.Status != PaymentStatus.Paid && lastPayment.PaymentMethod != PaymentMethod.COD)
@@ -558,10 +560,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Only confirmed order can be cancelled by manager", 400);
             }
-            if (serviceOrder.ServiceTask != null)
+            if (serviceOrder.ServiceTasks != null)
             {
-                var serviceTask = serviceOrder.ServiceTask;
-                serviceTask.Status = ServiceTaskStatus.Cancelled;
+                var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedIn);
+                if(serviceTask == null)
+                {
+                    return Result.Failure("service task not found or there are no pending or checkedin serviceTask", 400);
+                }
+                    serviceTask.Status = ServiceTaskStatus.Cancelled;
                 _serviceTaskRepository.UpdateEntity(serviceTask);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
@@ -618,12 +624,25 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.Status = OrderServiceStatus.ForcedCancelled;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
+            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Processing);
+            if (serviceTask != null)
+            {
+                serviceTask.Status = ServiceTaskStatus.ForcedCancelled;
+                _serviceTaskRepository.UpdateEntity(serviceTask);
+                var notificationToStaff = new Notification
+                {
+                    UserId = serviceTask.StaffId,
+                    ActionType = "ManagerCancelProcessingServiceOrder",
+                    Message = $"Your ServiceOrder {serviceOrder.SoId} has been ForcedCancelled by admin for some reason"
+                };
+                _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notificationToStaff));
+            }
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
             var notification = new Notification
             {
                 UserId = serviceOrder.CustomerId,
                 ActionType = "ManagerCancelProcessingServiceOrder",
-                Message = $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason"
+                Message = $"Your ServiceOrder {serviceOrder.SoId} has been ForcedCancelled for some reason"
             };
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
@@ -713,6 +732,73 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ToDate = toDate,
             };
             return Result<ServiceOrderDashBoardResponse>.Success(response);
+        }
+
+        public async Task<Result> RescheduleServiceOrder(Guid serviceOrderId, DateTime newAppointmentDate, Guid newStaffId)
+        {
+            var serviceOrder = await _serviceOrderRepository.GetByIdWithServiceTask(serviceOrderId);
+            if (serviceOrder == null)
+            {
+                return Result.Failure("Service order not found", 404);
+            }
+            if (newAppointmentDate <= serviceOrder.AppointmentDate)
+            {
+                return Result.Failure("Can't reschedule past appointment or newAppointmentDate is invalid", 400);
+            }
+            if (serviceOrder.Status != OrderServiceStatus.Processing)
+            {
+                return Result.Failure("Only processing order can be rescheduled", 400);
+            }
+            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Processing);
+            if (serviceTask == null)
+            {
+                return Result.Failure("service task not found or there are no processing serviceTask", 400);
+            }
+            var newStaff = await _staffRepository.GetByIdAsync(newStaffId);
+            if (newStaff == null)
+            {
+                return Result.Failure("New staff not found", 404);
+            }
+            serviceOrder.AppointmentDate = newAppointmentDate;
+            serviceOrder.UpdatedAt = DateTime.UtcNow;
+            serviceOrder.Status = OrderServiceStatus.Confirmed;
+            _serviceOrderRepository.UpdateEntity(serviceOrder);
+            serviceTask.Status = ServiceTaskStatus.Rescheduled;
+            _serviceTaskRepository.UpdateEntity(serviceTask);
+            var newServiceTask = new ServiceTask
+            {
+                SoId = serviceOrder.SoId,
+                StaffId = newStaffId,
+            };
+            _serviceTaskRepository.AddEntity(newServiceTask);
+            var result = await _unitOfWork.SaveChangeAsync();
+            if(result == 0)
+            {
+                return Result.Failure("Failed to reschedule service order", 500);
+            }
+            var notification = new Notification
+            {
+                UserId = newStaffId,
+                ActionType = "ServiceTask Create",
+                Message = $"You have been assigned ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+            var oldStaffNotification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask Rescheduled",
+                Message = $"Your ServiceTask: {serviceTask.ServiceTaskId} has been rescheduled and assigned to another staff",
+            };
+            var customerNotification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ServiceOrder Rescheduled",
+                Message = $"Your ServiceOrder: {serviceOrder.SoId} has been rescheduled to {newAppointmentDate.ToString("f")} and assigned to another staff",
+            };
+             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(oldStaffNotification));
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            return Result.Success($"new serviceTask created: {serviceTask.ServiceTaskId}");
+
         }
     }
 }

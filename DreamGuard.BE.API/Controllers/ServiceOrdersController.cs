@@ -44,6 +44,21 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        [HttpGet("reschedule-service-order")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> RescheduleServiceOrder([FromBody] RescheduleServiceOrderRequest request)
+        {
+            var result = await _serviceOrderService.RescheduleServiceOrder(request.ServiceOrderId, request.NewAppointmentDate, request.newStaffId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
 
         [HttpPost("OrderService")]
         [Authorize]

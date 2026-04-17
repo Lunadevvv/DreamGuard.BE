@@ -26,8 +26,8 @@ namespace DreamGuard.BE.DAL.Configurations
                    .HasForeignKey(t => t.StaffId);
             // 1-1 ServiceTask - ServiceOrder
             builder.HasOne(t => t.ServiceOrder)
-                   .WithOne(o => o.ServiceTask)
-                   .HasForeignKey<ServiceTask>(t => t.SoId);
+                   .WithMany(o => o.ServiceTasks)
+                   .HasForeignKey(t => t.SoId);
         }
     }
 }

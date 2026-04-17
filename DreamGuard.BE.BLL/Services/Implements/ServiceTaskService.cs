@@ -40,7 +40,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service order not found.", 404);
             }
-            if(serviceOrder.ServiceTask != null)
+            if(serviceOrder.ServiceTasks != null)
             {
                 return Result.Failure("Service task already exists for this service order.", 400);
             }

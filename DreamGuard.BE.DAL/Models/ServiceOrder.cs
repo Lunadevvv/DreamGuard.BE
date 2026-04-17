@@ -32,7 +32,7 @@ namespace DreamGuard.BE.DAL.Models
 
         public DateTime? UpdatedAt { get; set; } = null;
         public Customer Customer { get; set; } = null!;
-        public ServiceTask? ServiceTask { get; set; } = null;
+        public ICollection<ServiceTask> ServiceTasks { get; set; } = new List<ServiceTask>();
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
         public ICollection<ServiceOrderItem> ServiceOrderItems { get; set; } = new List<ServiceOrderItem>();
         public ICollection<ServiceAsset> ServiceAssets { get; set; } = new List<ServiceAsset>();

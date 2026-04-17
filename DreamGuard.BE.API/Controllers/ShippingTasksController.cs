@@ -277,12 +277,16 @@ namespace DreamGuard.BE.API.Controllers
         [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.Seller)]
         public async Task<IActionResult> ProcessReturnedOrder(Guid id, [FromBody] ProcessReturnedRequest request)
         {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var result = await _shippingTaskService.ProcessReturnedOrderAsync(id, request);
+            var result = await _shippingTaskService.ProcessReturnedOrderAsync(id, request, managerId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, result.Error);
@@ -319,8 +323,12 @@ namespace DreamGuard.BE.API.Controllers
             {
                 return BadRequest(ModelState);
             }
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
 
-            var result = await _shippingTaskService.ProcessExchangeOrderAsync(id, request);
+            var result = await _shippingTaskService.ProcessExchangeOrderAsync(id, request, managerId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, result.Error);
