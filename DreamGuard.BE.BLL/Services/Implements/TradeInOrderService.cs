@@ -403,6 +403,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task<Result<PaginatedList<TradeInOrderSummaryResponse>>> GetMyOrdersAsync(Guid customerId, int pageNumber, int pageSize)
         {
             var tradeInOrders = await _tradeInOrderRepository.GetMyOrdersAsync(customerId, pageNumber, pageSize);
+            
             var response = _mapper.Map<List<TradeInOrderSummaryResponse>>(tradeInOrders.Items);
             var paginatedResponse = new PaginatedList<TradeInOrderSummaryResponse>(response, tradeInOrders.TotalCount, pageNumber, pageSize);
             return Result<PaginatedList<TradeInOrderSummaryResponse>>.Success(paginatedResponse);

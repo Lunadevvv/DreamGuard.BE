@@ -59,15 +59,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Cannot rate a service order that is not completed", 400);
             }
-
+            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Completed);
+            if (serviceTask == null)
+            {
+                return Result.Failure("serviceTask is not completed", 400);
+            }
             Rating rating = new Rating
             {
                 ServiceOrderId = serviceOrderId,
                 Score = request.Score,
                 Comment = request.Comment,
-                StaffId = serviceOrder.ServiceTask!.StaffId,
+                StaffId = serviceTask.StaffId,
             };
-            var staff = serviceOrder.ServiceTask!.Staff;
+            var staff = serviceTask.Staff;
             staff.TotalRating += 1;
             staff.AverageRating = ((staff.AverageRating * (staff.TotalRating - 1)) + request.Score) / staff.TotalRating;
             _staffRepository.UpdateEntity(staff);

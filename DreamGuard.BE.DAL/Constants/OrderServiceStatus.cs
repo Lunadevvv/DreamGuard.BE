@@ -16,5 +16,6 @@ namespace DreamGuard.BE.DAL.Constants
         public const string Completed = nameof(Completed);
         public const string Refund = nameof(Refund);
         public const string ForcedCancelled = nameof(ForcedCancelled);
+        public const string Rescheduled = nameof(Rescheduled);
     }
 }

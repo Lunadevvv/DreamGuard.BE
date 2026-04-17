@@ -40,7 +40,7 @@ namespace DreamGuard.BE.BLL.Responses
             public Mapping()
             {
                 CreateMap<ServiceOrder, ServiceOrderResponse>()
-                     .ForMember(dest => dest.Staff, opt => opt.MapFrom(src => src.ServiceTask == null ? null : src.ServiceTask.Staff))
+                     .ForMember(dest => dest.Staff, opt => opt.MapFrom(src => src.ServiceTasks == null ? null : src.ServiceTasks.OrderByDescending(st => st.CreatedAt).FirstOrDefault().Staff))
                      .ForMember(dest => dest.Rating, opt => opt.MapFrom(src => src.Rating));
             }
         }

@@ -48,6 +48,7 @@ namespace DreamGuard.BE.BLL.Responses
     public class TradeInOrderSummaryResponse
     {
         public Guid TradeInOrderId { get; set; }
+        public Guid OrderId { get; set; }
         public string OrderCode { get; set; }   
         public Guid CustomerId { get; set; }
         public Guid ProductVariantId { get; set; }
@@ -66,7 +67,8 @@ namespace DreamGuard.BE.BLL.Responses
         {
             public Mapping()
             {
-                CreateMap<TradeInOrder, TradeInOrderSummaryResponse>();
+                CreateMap<TradeInOrder, TradeInOrderSummaryResponse>()
+               .ForMember(dest => dest.OrderId, opt => opt.MapFrom(src => src.OrderItem != null ? src.OrderItem.OrderId : Guid.Empty));
             }
 
         }
