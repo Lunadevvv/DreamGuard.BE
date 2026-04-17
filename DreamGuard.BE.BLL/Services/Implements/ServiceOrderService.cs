@@ -562,10 +562,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             if (serviceOrder.ServiceTasks != null)
             {
-                var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedIn);
+                var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Pending);
                 if(serviceTask == null)
                 {
-                    return Result.Failure("service task not found or there are no pending or checkedin serviceTask", 400);
+                    return Result.Failure("service task not found or there are no pending serviceTasks", 400);
                 }
                     serviceTask.Status = ServiceTaskStatus.Cancelled;
                 _serviceTaskRepository.UpdateEntity(serviceTask);
@@ -624,18 +624,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.Status = OrderServiceStatus.ForcedCancelled;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
-            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Processing);
-            if (serviceTask != null)
+            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.ForcedCancelled);
+            if (serviceTask == null)
             {
-                serviceTask.Status = ServiceTaskStatus.ForcedCancelled;
-                _serviceTaskRepository.UpdateEntity(serviceTask);
-                var notificationToStaff = new Notification
-                {
-                    UserId = serviceTask.StaffId,
-                    ActionType = "ManagerCancelProcessingServiceOrder",
-                    Message = $"Your ServiceOrder {serviceOrder.SoId} has been ForcedCancelled by admin for some reason"
-                };
-                _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notificationToStaff));
+                return Result.Failure("no forcedcancelled service task found for this order", 400);
             }
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
             var notification = new Notification
@@ -761,7 +753,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.AppointmentDate = newAppointmentDate;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
-            serviceOrder.Status = OrderServiceStatus.Confirmed;
+            serviceOrder.Status = OrderServiceStatus.Rescheduled;
             _serviceOrderRepository.UpdateEntity(serviceOrder);
             serviceTask.Status = ServiceTaskStatus.Rescheduled;
             _serviceTaskRepository.UpdateEntity(serviceTask);

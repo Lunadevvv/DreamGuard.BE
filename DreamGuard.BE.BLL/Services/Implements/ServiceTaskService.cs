@@ -194,15 +194,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("You are not assigned to this service task.", 403);
             }
-            if (serviceTask.Status != ServiceTaskStatus.CheckedIn)
+            if (serviceTask.Status != ServiceTaskStatus.CheckedIn && serviceTask.Status != ServiceTaskStatus.Rescheduled)
             {
-                return Result.Failure("Service task is not in checked in status.", 400);
+                return Result.Failure("Service task is not in checked in status or rescheduled.", 400);
             }
             serviceTask.Status = ServiceTaskStatus.Processing;
             var serviceOrder = serviceTask.ServiceOrder;
-            if(serviceOrder.Status != OrderServiceStatus.Confirmed)
+            if(serviceOrder.Status != OrderServiceStatus.Confirmed && serviceTask.Status != ServiceTaskStatus.Rescheduled)
             {
-                return Result.Failure("Service order must be confirmed before processing service task.", 400);
+                return Result.Failure("Service order must be confirmed or rescheduled before processing service task.", 400);
             }
             serviceTask.ServiceOrder.Status = OrderServiceStatus.Processing;
             _repo.UpdateEntity(serviceTask);
