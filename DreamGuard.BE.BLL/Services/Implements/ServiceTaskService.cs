@@ -205,9 +205,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Service order must be confirmed before processing service task.", 400);
             }
             serviceTask.ServiceOrder.Status = OrderServiceStatus.Processing;
-            //_repo.UpdateEntity(serviceTask);
-            //_soRepo.UpdateEntity(serviceOrder);
-            _repo.UpdateEntityGraph(serviceTask);
+            _repo.UpdateEntity(serviceTask);
+            _soRepo.UpdateEntity(serviceOrder);
             var result = await _unitOfWork.SaveChangeAsync();
             var notification = new Notification
             {
@@ -308,10 +307,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.Status = OrderServiceStatus.Completed;
             serviceTask.Status = ServiceTaskStatus.Completed;
-            //_repo.UpdateEntity(serviceTask);
-            //_soRepo.UpdateEntity(serviceOrder); // ko update
-            //_paymentRepo.UpdateEntity(payment); // ko udpate
-            _repo.UpdateEntityGraph(serviceTask);
+            _repo.UpdateEntity(serviceTask);
+            _soRepo.UpdateEntity(serviceOrder); 
+            _paymentRepo.UpdateEntity(payment); 
             var result = await _unitOfWork.SaveChangeAsync();
             var notification = new Notification
             {

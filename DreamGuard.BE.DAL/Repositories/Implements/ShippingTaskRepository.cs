@@ -61,27 +61,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.ShippingTaskId == taskId);
         }
-        public async Task<ShippingTask?> GetTaskWithDetailsForUpdateAsTrackingAsync(Guid taskId)
-        {
-            return await _context.ShippingTasks
-                .Include(t => t.Staff)
-                .Include(t => t.Order)
-                .Include(t => t.ShippingEvidences)
-                .Include(t => t.TradeInOrder)
-                // TradeInOrder + các navigation bên trong
-                .Include(t => t.TradeInOrder)
-                    .ThenInclude(ti => ti.Payments)
-                .Include(t => t.TradeInOrder)
-                    .ThenInclude(ti => ti.ProductVariant)
-                        .ThenInclude(pv => pv.Inventory)
-                .Include(t => t.TradeInOrder)
-                    .ThenInclude(ti => ti.ProductVariant)
-                        .ThenInclude(pv => pv.Product)
-                .Include(t => t.TradeInOrder)
-                    .ThenInclude(ti => ti.OrderItem)
-                .AsTracking()
-                .FirstOrDefaultAsync(t => t.ShippingTaskId == taskId);
-        }
+
 
         public async Task<ShippingTask?> GetTaskByOrderIdAsync(Guid orderId)
         {
@@ -128,19 +108,8 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await PaginatedList<ShippingTask>.CreateAsync(query, pageNumber, 10);
         }
 
-        public async Task<int> UpdateTaskStatusAsync(Guid tradeInOrderId, string newStatus)
-        {
-            return await _context.ShippingTasks
-                .Where(st => st.TradeInOrderId == tradeInOrderId)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(st => st.Status, newStatus)
-                );
-        }
 
-        public Task<ShippingTask?> GetTaskByTradeInOrderIdAndStatusAsync(Guid tradeInOrderId, string status)
-        {
-            return _context.ShippingTasks
-                .FirstOrDefaultAsync(t => t.TradeInOrder.TradeInOrderId == tradeInOrderId && t.Status == status);
-        }
+
+
     }
 }
