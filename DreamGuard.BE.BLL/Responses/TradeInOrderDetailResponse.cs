@@ -15,6 +15,8 @@ namespace DreamGuard.BE.BLL.Responses
         public Guid CustomerId { get; set; }
         public Guid OrderId { get; set; }
         public Guid ProductVariantId { get; set; }
+        public string OldProductVariantUrl { get; set; } = string.Empty;
+        public string NewProductVariantUrl { get; set; } = string.Empty;
         public Guid POrderItemId { get; set; }
         public string OrderCode { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -42,6 +44,7 @@ namespace DreamGuard.BE.BLL.Responses
                     .ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments))
                     .ForMember(dest => dest.Conversation, opt => opt.MapFrom(src => src.Conversation))
                     .ForMember(dest => dest.OrderId, opt => opt.MapFrom(src => src.OrderItem != null ? src.OrderItem.OrderId : Guid.Empty));
+
             }
         }
     }

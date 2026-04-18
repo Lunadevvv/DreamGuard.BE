@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -421,44 +421,45 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only pending order can be rejected", 400);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-            var isRefunded = false;
-            if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
-            {
-                isRefunded = true;
-                var paymentRefund = new Payment
-                {
-                    SoId = serviceOrder.SoId,
-                    Amount = lastPayment.Amount,
-                    OrderCode = lastPayment.OrderCode,
-                    PaymentType = PaymentType.Refund,
-                    PaymentMethod = PaymentMethod.VnPay,
-                    Status = PaymentStatus.Refunded,
-                    Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
-                };
-                serviceOrder.Status = OrderServiceStatus.Refund;
-                VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
-                {
-                    OrderId = serviceOrder.SoId.ToString(),
-                    Amount = lastPayment.Amount,
-                    PaymentDate = lastPayment.CreatedAt,
-                };
-                //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
-                _paymentRepository.AddEntity(paymentRefund);
-            }
-            else
-            {
+            //luồng refund (bỏ)
+            //var isRefunded = false;
+            //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
+            //{
+            //    isRefunded = true;
+            //    var paymentRefund = new Payment
+            //    {
+            //        SoId = serviceOrder.SoId,
+            //        Amount = lastPayment.Amount,
+            //        OrderCode = lastPayment.OrderCode,
+            //        PaymentType = PaymentType.Refund,
+            //        PaymentMethod = PaymentMethod.VnPay,
+            //        Status = PaymentStatus.Refunded,
+            //        Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+            //    };
+            //    serviceOrder.Status = OrderServiceStatus.Refund;
+            //    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+            //    {
+            //        OrderId = serviceOrder.SoId.ToString(),
+            //        Amount = lastPayment.Amount,
+            //        PaymentDate = lastPayment.CreatedAt,
+            //    };
+            //    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+            //    _paymentRepository.AddEntity(paymentRefund);
+            //}
+            //else
+            //{
                 serviceOrder.Status = OrderServiceStatus.Rejected;
-            }
+            //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
             
-            var notification = new Notification
-            {
-                UserId = serviceOrder.CustomerId,
-                ActionType = "RejectPendingServiceOrder",
-                Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been rejected and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been rejected" ,
-            };
-            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            //var notification = new Notification
+            //{
+            //    UserId = serviceOrder.CustomerId,
+            //    ActionType = "RejectPendingServiceOrder",
+            //    Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been rejected and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been rejected" ,
+            //};
+            //_hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
 
             return Result.Success($"{result}");
         }
@@ -508,42 +509,44 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Only pending order can be cancelled", 400);
             }
-            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-            bool isRefunded = false;
-            if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
-            {
-                isRefunded = true;
-                var paymentRefund = new Payment
-                {
-                    SoId = serviceOrder.SoId,
-                    Amount = lastPayment.Amount,
-                    OrderCode = lastPayment.OrderCode,
-                    PaymentType = PaymentType.Refund,
-                    PaymentMethod = PaymentMethod.VnPay,
-                    Status = PaymentStatus.Refunded,
-                    Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
-                };
-                serviceOrder.Status = OrderServiceStatus.Refund;
-                VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
-                {
-                    OrderId = serviceOrder.SoId.ToString(),
-                    Amount = lastPayment.Amount,
-                    PaymentDate = lastPayment.CreatedAt,
-                };
-                //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
-                _paymentRepository.AddEntity(paymentRefund);
-            }
-            else
-            {
+            //luồng rend tiền (bỏ)
+            //var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            //bool isRefunded = false;
+            //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
+            //{
+            //    isRefunded = true;
+            //    var paymentRefund = new Payment
+            //    {
+            //        SoId = serviceOrder.SoId,
+            //        Amount = lastPayment.Amount,
+            //        OrderCode = lastPayment.OrderCode,
+            //        PaymentType = PaymentType.Refund,
+            //        PaymentMethod = PaymentMethod.VnPay,
+            //        Status = PaymentStatus.Refunded,
+            //        Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+            //    };
+            //    serviceOrder.Status = OrderServiceStatus.Refund;
+            //    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+            //    {
+            //        OrderId = serviceOrder.SoId.ToString(),
+            //        Amount = lastPayment.Amount,
+            //        PaymentDate = lastPayment.CreatedAt,
+            //    };
+            //    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+            //    _paymentRepository.AddEntity(paymentRefund);
+            //}
+            //else
+            //{
                 serviceOrder.Status = OrderServiceStatus.Cancelled;
-            }
+            //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
             var notification = new Notification
             {
                 UserId = serviceOrder.CustomerId,
                 ActionType = "CancelPendingServiceOrder",
-                Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled",
+                //Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled",
             };
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
@@ -570,35 +573,36 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     serviceTask.Status = ServiceTaskStatus.Cancelled;
                 _serviceTaskRepository.UpdateEntity(serviceTask);
             }
-            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-            bool isRefunded = false;
-            if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
-            {
-                isRefunded = true;
-                var paymentRefund = new Payment
-                {
-                    SoId = serviceOrder.SoId,
-                    Amount = lastPayment.Amount,
-                    OrderCode = lastPayment.OrderCode,
-                    PaymentType = PaymentType.Refund,
-                    PaymentMethod = PaymentMethod.VnPay,
-                    Status = PaymentStatus.Refunded,
-                    Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
-                };
-                serviceOrder.Status = OrderServiceStatus.Refund;
-                VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
-                {
-                    OrderId = serviceOrder.SoId.ToString(),
-                    Amount = lastPayment.Amount,
-                    PaymentDate = lastPayment.CreatedAt,
-                };
-                //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
-                _paymentRepository.AddEntity(paymentRefund);
-            }
-            else
-            {
+            // luong refund (bỏ)
+            //var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            //bool isRefunded = false;
+            //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
+            //{
+            //    isRefunded = true;
+            //    var paymentRefund = new Payment
+            //    {
+            //        SoId = serviceOrder.SoId,
+            //        Amount = lastPayment.Amount,
+            //        OrderCode = lastPayment.OrderCode,
+            //        PaymentType = PaymentType.Refund,
+            //        PaymentMethod = PaymentMethod.VnPay,
+            //        Status = PaymentStatus.Refunded,
+            //        Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+            //    };
+            //    serviceOrder.Status = OrderServiceStatus.Refund;
+            //    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+            //    {
+            //        OrderId = serviceOrder.SoId.ToString(),
+            //        Amount = lastPayment.Amount,
+            //        PaymentDate = lastPayment.CreatedAt,
+            //    };
+            //    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+            //    _paymentRepository.AddEntity(paymentRefund);
+            //}
+            //else
+            //{
                 serviceOrder.Status = OrderServiceStatus.Cancelled;
-            }
+            //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             _serviceOrderRepo.UpdateEntity(serviceOrder);
             var result = await _unitOfWork.SaveChangeAsync();
@@ -606,7 +610,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 UserId = serviceOrder.CustomerId,
                 ActionType = "ManagerCancelConfirmedServiceOrder",
-                Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason",
+                //Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason",
             };
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");

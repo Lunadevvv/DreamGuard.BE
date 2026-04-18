@@ -22,8 +22,14 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             return await _context.TradeInOrders
                 .Include(ti => ti.OrderItem)
+                    .ThenInclude(oi => oi.ProductVariant)
+                        .ThenInclude(pv => pv.Product)
+                            .ThenInclude(p => p.Assets)
                 .Include(ti => ti.ProductVariant)
                     .ThenInclude(pv => pv.Inventory)
+                .Include(ti => ti.ProductVariant)
+                    .ThenInclude(pv => pv.Product)
+                        .ThenInclude(p => p.Assets)
                 .Include(ti => ti.TradeInImages)
                 .Include(ti => ti.Payments)
                 .Include(ti => ti.Conversation)
