@@ -617,10 +617,30 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Order not found.", 404);
             }
 
-            var payment = await _paymentRepository.GetPaymentByOrderIdAsync(orderId);
-            if (payment == null || payment.Status != PaymentStatus.Paid)
+            if (order.Status == OrderStatus.Delivered || order.Status == OrderStatus.Completed || order.Status == OrderStatus.ExchangeRequested)
             {
-                return Result.Failure("No successful payment found for this order.", 400);
+                return Result.Failure("Cannot create refund for delivered or completed or ExchangeRequested orders.", 400);
+            }
+
+            var payment = await _paymentRepository.GetPaymentByOrderIdAsync(orderId);
+            if (payment == null)
+            {
+                return Result.Failure("No payment found for this order.", 400);
+            }
+
+            var lastPaymentPaid = order.Payments
+                .Where(p => p.Status == PaymentStatus.Paid)
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefault();
+
+            if (lastPaymentPaid == null)
+            {
+                return Result.Failure("No successful payment found for this order to determine refund method.", 400);
+            }
+
+            if (Amount <= 0 || Amount > lastPaymentPaid.Amount)
+            {
+                return Result.Failure("Refund amount must be greater than 0 and less than or equal to the original payment amount.", 400);
             }
 
             var refundPayment = new Payment
@@ -667,6 +687,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
                 .OrderByDescending(p => p.CreatedAt)
                 .FirstOrDefault();
+
+            if (lastPaymentPaid == null)
+            {
+                return Result.Failure("No successful deposit payment found for this trade-in order to determine refund method.", 400);
+            }
+
+            if (Amount <= 0 || Amount > lastPaymentPaid.Amount)
+            {
+                return Result.Failure("Refund amount must be greater than 0 and less than or equal to the original deposit payment amount.", 400);
+            }
+
             if (lastPaymentPaid != null)
             {
                 var paymentRefund = new Payment

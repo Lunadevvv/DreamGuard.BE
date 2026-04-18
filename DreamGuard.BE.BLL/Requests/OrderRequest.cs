@@ -18,6 +18,18 @@ namespace DreamGuard.BE.BLL.Requests
         public PaymentMethod PaymentMethod { get; set; }
     }
 
+    public class OrderLineItemRequest
+    {
+        public Guid? ProductVariantId { get; set; }
+        public Guid? ComboId { get; set; }
+
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
+        public int Quantity { get; set; }
+
+        public List<ProductCustomizeDetailRequest> ProductCustomizeDetailRequest { get; set; } = new();
+    }
+
     public class CreateOrderByAdminRequest
     {
         [Required(ErrorMessage = "CustomerId is required.")]
@@ -31,7 +43,10 @@ namespace DreamGuard.BE.BLL.Requests
         [MaxLength(500)]
         public string? Note { get; set; }
 
-        [Required(ErrorMessage = "PaymentMethod is required.")]
-        public PaymentMethod PaymentMethod { get; set; }
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.COD;
+
+        [Required(ErrorMessage = "Items are required.")]
+        [MinLength(1, ErrorMessage = "At least one item is required.")]
+        public List<OrderLineItemRequest> Items { get; set; } = new();
     }
 }
