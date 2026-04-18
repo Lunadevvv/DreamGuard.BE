@@ -170,7 +170,7 @@ namespace DreamGuard.BE.API.Controllers
         // [Admin] Update payment status (e.g. confirm COD payment)
         [HttpPut("admin/{paymentId}/status")]
         [Authorize(Roles = "Admin, Manager")]
-        public async Task<IActionResult> UpdatePaymentStatus(Guid paymentId, [FromQuery] PaymentStatus status)
+        public async Task<IActionResult> UpdatePaymentStatus(Guid paymentId, [FromQuery] PaymentStatus status, [FromQuery]string? evidenceUrl = null)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
             {
@@ -179,7 +179,7 @@ namespace DreamGuard.BE.API.Controllers
             
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
-            var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, status, managerId, userRole);
+            var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, status, managerId, userRole, evidenceUrl);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

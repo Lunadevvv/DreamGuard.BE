@@ -20,6 +20,7 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime ExpiredAt { get; set; }
         public PaymentType PaymentType { get; set; } = PaymentType.Purchase;
         public TradeInOrder? TradeInOrder { get; set; }
+        public string? EvidenceUrl { get; set; }
 
         [JsonIgnore]
         public Order? POrder { get; set; }

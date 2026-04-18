@@ -20,6 +20,7 @@ namespace DreamGuard.BE.BLL.Responses
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime ExpiredAt { get; set; }
+        public string? EvidenceUrl { get; set; }
     }
 
     public class PaymentSummaryResponse

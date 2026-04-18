@@ -402,7 +402,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaymentResponse>.Success(MapToResponse(payment));
         }
 
-        public async Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus, Guid managerId, string userRole)
+        public async Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus, Guid managerId, string userRole, string? evidenceUrl = null)
         {
             var payment = await _paymentRepository.GetByIdAsync(paymentId);
             if (payment == null)
@@ -438,6 +438,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // if marking as CODPaid, also update order with Delivered status to Completed
                 if (newStatus == PaymentStatus.CODPaid && payment.POrderId.HasValue)
                 {
+                    if (evidenceUrl != null)
+                    {
+                        payment.EvidenceUrl = evidenceUrl;
+                        await _paymentRepository.UpdateAsync(payment);
+                    }else
+                    {
+                        return Result.Failure("Evidence URL is required when confirming COD payment.", 400);
+                    }
+                    
                     var order = await _orderRepository.GetByIdAsync(payment.POrderId.Value);
                     if (order != null && order.Status == OrderStatus.Delivered)
                     {
@@ -480,6 +489,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 (PaymentStatus.Pending, PaymentStatus.Paid) => true,
                 (PaymentStatus.Pending, PaymentStatus.Failed) => true,
+                (PaymentStatus.Pending, PaymentStatus.CODPaid) => true,
                 _ => false
             };
         }
@@ -498,7 +508,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Description = payment.Description,
                 PaymentMethod = payment.PaymentMethod,
                 CreatedAt = payment.CreatedAt,
-                UpdatedAt = payment.UpdatedAt
+                UpdatedAt = payment.UpdatedAt,
+                EvidenceUrl = payment.EvidenceUrl
             };
         }
         public async Task<Result> ExpireTradeinPayment(Guid paymentId)
