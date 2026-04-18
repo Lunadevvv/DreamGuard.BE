@@ -17,6 +17,9 @@ namespace DreamGuard.BE.BLL.Responses
         public int? AgeGroup { get; set; }
         public int? WarrantyPolicyDay { get; set; }
         public int? ReturnPolicyDay { get; set; }
+        public bool IsTradeInEligible { get; set; } = false;
+        public decimal MinTradeInPrice { get; set; } = 0.0m;
+        public decimal DepositAmount { get; set; } = 0.0m;
         public ProductStatus Status { get; set; }
         public FullyCustomizedProductType FullyCustomizedProductType { get; set; }
         public double AverageRating { get; set; }

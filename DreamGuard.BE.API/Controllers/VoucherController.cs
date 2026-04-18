@@ -65,6 +65,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("{voucherId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetByIdAsync(Guid voucherId)
         {
             var result = await _voucherService.GetByIdAsync(voucherId);

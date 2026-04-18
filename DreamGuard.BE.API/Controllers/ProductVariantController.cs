@@ -41,7 +41,7 @@ namespace DreamGuard.BE.API.Controllers
 
         //Get all variants of a product for admin (No filter)
         [HttpGet("admin/product/{productId}")]
-        [Authorize(Roles = "Admin, Manager")]
+        [Authorize(Roles = "Admin, Manager, Seller")]
         public async Task<IActionResult> GetVariantsByProductIdForAdminAsync(Guid productId)
         {
             var result = await _productVariantService.GetVariantsByProductIdForAdminAsync(productId);

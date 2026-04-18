@@ -62,7 +62,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.DeliveryStaff)]
+        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.DeliveryStaff + "," + Role.Seller)]
         public async Task<IActionResult> GetTaskById(Guid id)
         {
             var result = await _shippingTaskService.GetTaskByIdAsync(id);
@@ -74,10 +74,10 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.DeliveryStaff)]
+        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.DeliveryStaff + "," + Role.Seller)]
         public async Task<IActionResult> GetTasks([FromQuery] int pageNumber = 1, [FromQuery] string? status = null, [FromQuery] Guid? orderId = null, [FromQuery] Guid? tradeInOrderId = null)
         {
-            if (User.IsInRole(Role.Admin) || User.IsInRole(Role.Manager))
+            if (User.IsInRole(Role.Admin) || User.IsInRole(Role.Manager) || User.IsInRole(Role.Seller))
             {
                 var result = await _shippingTaskService.GetAllTasksForAdminAsync(pageNumber, status, orderId, tradeInOrderId);
                 return StatusCode(result.StatusCode, result.Data);

@@ -3,6 +3,7 @@ using System;
 using DreamGuard.BE.DAL.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    partial class DreamGuardContextModelSnapshot : ModelSnapshot
+    [Migration("20260414061041_AddLogAndNotification")]
+    partial class AddLogAndNotification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -242,9 +245,6 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -1351,9 +1351,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime?>("CheckOut")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Guid>("SoId")
                         .HasColumnType("uuid");
 
@@ -1370,7 +1367,8 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.HasKey("ServiceTaskId");
 
-                    b.HasIndex("SoId");
+                    b.HasIndex("SoId")
+                        .IsUnique();
 
                     b.HasIndex("StaffId");
 
@@ -2364,8 +2362,8 @@ namespace DreamGuard.BE.DAL.Migrations
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceTask", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.ServiceOrder", "ServiceOrder")
-                        .WithMany("ServiceTasks")
-                        .HasForeignKey("SoId")
+                        .WithOne("ServiceTask")
+                        .HasForeignKey("DreamGuard.BE.DAL.Models.ServiceTask", "SoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2674,7 +2672,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Navigation("ServiceOrderItems");
 
-                    b.Navigation("ServiceTasks");
+                    b.Navigation("ServiceTask");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServicePackage", b =>

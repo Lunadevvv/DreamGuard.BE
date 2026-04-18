@@ -3,6 +3,7 @@ using System;
 using DreamGuard.BE.DAL.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DreamGuard.BE.DAL.Migrations
 {
     [DbContext(typeof(DreamGuardContext))]
-    partial class DreamGuardContextModelSnapshot : ModelSnapshot
+    [Migration("20260413085023_AddShippingForTradein")]
+    partial class AddShippingForTradein
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,37 +67,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasIndex("CustomerId");
 
                     b.ToTable("Addresses", (string)null);
-                });
-
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.AuditLog", b =>
-                {
-                    b.Property<Guid>("AuditLogId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ActionType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("UserRole")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("AuditLogId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.BabyProfile", b =>
@@ -242,9 +214,6 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -493,36 +462,6 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsUnique();
 
                     b.ToTable("Inventories", (string)null);
-                });
-
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Notification", b =>
-                {
-                    b.Property<Guid>("NotificationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ActionType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("NotificationId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Order", b =>
@@ -1351,9 +1290,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime?>("CheckOut")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Guid>("SoId")
                         .HasColumnType("uuid");
 
@@ -1370,7 +1306,8 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.HasKey("ServiceTaskId");
 
-                    b.HasIndex("SoId");
+                    b.HasIndex("SoId")
+                        .IsUnique();
 
                     b.HasIndex("StaffId");
 
@@ -1947,17 +1884,6 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.AuditLog", b =>
-                {
-                    b.HasOne("DreamGuard.BE.DAL.Models.User", "User")
-                        .WithMany("AuditLogs")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.BabyProfile", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.Customer", "Customer")
@@ -2127,17 +2053,6 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("ProductVariant");
-                });
-
-            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Notification", b =>
-                {
-                    b.HasOne("DreamGuard.BE.DAL.Models.User", "User")
-                        .WithMany("Notifications")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Order", b =>
@@ -2364,8 +2279,8 @@ namespace DreamGuard.BE.DAL.Migrations
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceTask", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.ServiceOrder", "ServiceOrder")
-                        .WithMany("ServiceTasks")
-                        .HasForeignKey("SoId")
+                        .WithOne("ServiceTask")
+                        .HasForeignKey("DreamGuard.BE.DAL.Models.ServiceTask", "SoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2674,7 +2589,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Navigation("ServiceOrderItems");
 
-                    b.Navigation("ServiceTasks");
+                    b.Navigation("ServiceTask");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServicePackage", b =>
@@ -2721,11 +2636,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.User", b =>
                 {
-                    b.Navigation("AuditLogs");
-
                     b.Navigation("Customer");
-
-                    b.Navigation("Notifications");
 
                     b.Navigation("Staff");
                 });

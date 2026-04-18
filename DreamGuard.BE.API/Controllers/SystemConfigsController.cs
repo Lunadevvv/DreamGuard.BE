@@ -11,7 +11,7 @@ namespace DreamGuard.BE.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = Role.Admin)]
+    // [Authorize]
     public class SystemConfigsController : ControllerBase
     {
         private readonly ISystemConfigService _configService;
@@ -52,6 +52,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = Role.Admin)]
         public async Task<IActionResult> CreateConfig([FromBody] SystemConfigCreateRequest request)
         {
             var result = await _configService.CreateConfigAsync(request);
@@ -67,6 +68,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPut("{key}")]
+        [Authorize(Roles = Role.Admin)]
         public async Task<IActionResult> UpdateConfig(string key, [FromBody] SystemConfigUpdateRequest request)
         {
             var result = await _configService.UpdateConfigAsync(key, request);
@@ -82,6 +84,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpDelete("{key}")]
+        [Authorize(Roles = Role.Admin)]
         public async Task<IActionResult> DeleteConfig(string key)
         {
             var result = await _configService.DeleteConfigAsync(key);

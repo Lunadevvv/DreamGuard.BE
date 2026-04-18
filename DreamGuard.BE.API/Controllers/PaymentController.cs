@@ -1,3 +1,4 @@
+using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
@@ -168,10 +169,39 @@ namespace DreamGuard.BE.API.Controllers
 
         // [Admin] Update payment status (e.g. confirm COD payment)
         [HttpPut("admin/{paymentId}/status")]
-        [Authorize(Roles = "Admin, Manager, Seller")]
+        [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> UpdatePaymentStatus(Guid paymentId, [FromQuery] PaymentStatus status)
         {
-            var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, status);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, status, managerId, userRole);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        // [Admin] Create refund payment
+        [HttpPost("admin/refund")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> CreateRefundPayment([FromBody] RefundPaymentRequest request)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _paymentService.CreateRefundPaymentAsync(request, managerId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
