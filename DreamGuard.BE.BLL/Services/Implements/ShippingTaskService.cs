@@ -800,18 +800,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _taskRepository.UpdateAsync(task);
 
                 // --- REFUND VNPay ---
-                var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
-                if (payment != null && payment.PaymentMethod == PaymentMethod.VnPay && payment.Status == PaymentStatus.Paid && payment.PaymentType == PaymentType.Purchase)
-                {
-                    var refundReq = new VnPaymentRefundRequest
-                    {
-                        OrderId = payment.Id.ToString(), // Or TxnRef
-                        Amount = payment.Amount,
-                        PaymentDate = payment.CreatedAt,
-                        CreateBy = "Manager",
-                        IpAddress = "127.0.0.1",
-                        TransactionNo = "0"
-                    };
+                // var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
+                // if (payment != null && payment.PaymentMethod == PaymentMethod.VnPay && payment.Status == PaymentStatus.Paid && payment.PaymentType == PaymentType.Purchase)
+                // {
+                //     var refundReq = new VnPaymentRefundRequest
+                //     {
+                //         OrderId = payment.Id.ToString(), // Or TxnRef
+                //         Amount = payment.Amount,
+                //         PaymentDate = payment.CreatedAt,
+                //         CreateBy = "Manager",
+                //         IpAddress = "127.0.0.1",
+                //         TransactionNo = "0"
+                //     };
 
                     // var refundRes = await _vnPayService.RefundPaymentAsync(refundReq);
                     // if (!refundRes.Success)
@@ -820,22 +820,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     //     return Result.Failure($"VnPay Refund failed: {refundRes.Message} (Code: {refundRes.ResponseCode})", 400);
                     // }
 
-                    var refundPayment = new Payment
-                    {
-                        Id = Guid.NewGuid(),
-                        OrderCode = order.OrderCode,
-                        POrderId = order.Id,
-                        Status = PaymentStatus.Paid,
-                        PaymentType = PaymentType.Refund,
-                        Amount = payment.Amount,
-                        Description = $"Refund for Order {order.OrderCode}.",
-                        PaymentMethod = PaymentMethod.VnPay,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
-                    };
-                    await _paymentRepository.CreateAsync(refundPayment);
-                }
+                    // var refundPayment = new Payment
+                    // {
+                    //     Id = Guid.NewGuid(),
+                    //     OrderCode = order.OrderCode,
+                    //     POrderId = order.Id,
+                    //     Status = PaymentStatus.Paid,
+                    //     PaymentType = PaymentType.Refund,
+                    //     Amount = payment.Amount,
+                    //     Description = $"Refund for Order {order.OrderCode}.",
+                    //     PaymentMethod = PaymentMethod.VnPay,
+                    //     CreatedAt = DateTime.UtcNow,
+                    //     UpdatedAt = DateTime.UtcNow,
+                    //     ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                    // };
+                    // await _paymentRepository.CreateAsync(refundPayment);
+                // }
 
                 // Rollback Stock (Split between Normal and Defect)
                 foreach (var item in order.OrderItems)
@@ -1016,32 +1016,32 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 // --- REFUND VNPay ---
                 // Check if deposit was paid
-                var lastPaymentPaid = tradeInOrder.Payments
-                    .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
-                    .OrderByDescending(p => p.CreatedAt)
-                    .FirstOrDefault();
-                if (lastPaymentPaid != null)
-                {
-                    var paymentRefund = new Payment
-                    {
-                        TradeInOrderId = tradeInOrder.TradeInOrderId,
-                        Amount = lastPaymentPaid.Amount,
-                        OrderCode = tradeInOrder.OrderCode,
-                        PaymentType = PaymentType.Refund,
-                        PaymentMethod = lastPaymentPaid.PaymentMethod,
-                        Status = PaymentStatus.Refunded,
-                        Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
-                    };
-                    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
-                    {
-                        OrderId = lastPaymentPaid.Id.ToString(),
-                        Amount = lastPaymentPaid.Amount,
-                        PaymentDate = lastPaymentPaid.CreatedAt,
-                    };
+                // var lastPaymentPaid = tradeInOrder.Payments
+                //     .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
+                //     .OrderByDescending(p => p.CreatedAt)
+                //     .FirstOrDefault();
+                // if (lastPaymentPaid != null)
+                // {
+                //     var paymentRefund = new Payment
+                //     {
+                //         TradeInOrderId = tradeInOrder.TradeInOrderId,
+                //         Amount = lastPaymentPaid.Amount,
+                //         OrderCode = tradeInOrder.OrderCode,
+                //         PaymentType = PaymentType.Refund,
+                //         PaymentMethod = lastPaymentPaid.PaymentMethod,
+                //         Status = PaymentStatus.Refunded,
+                //         Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
+                //     };
+                //     VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                //     {
+                //         OrderId = lastPaymentPaid.Id.ToString(),
+                //         Amount = lastPaymentPaid.Amount,
+                //         PaymentDate = lastPaymentPaid.CreatedAt,
+                //     };
                     //fire and forget this because refund can't not use for now
                     //var refundResult = _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
-                    _paymentRepository.AddEntity(paymentRefund);
-                }
+                //     _paymentRepository.AddEntity(paymentRefund);
+                // }
 
                 // Rollback Stock (Split between Normal and Defect)
                 int damagedQty = isDamaged ? 1 : 0;
@@ -1077,16 +1077,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 //audit và log
-                if (lastPaymentPaid != null)
-                {
-                    var notification = new Notification
-                    {
-                        UserId = tradeInOrder.CustomerId,
-                        ActionType = "ProcessReturnTradeInOrder",
-                        Message = $"your trade in order:{tradeInOrder.TradeInOrderId} is refunded",
-                    };
-                    _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
-                }
+                // if (lastPaymentPaid != null)
+                // {
+                //     var notification = new Notification
+                //     {
+                //         UserId = tradeInOrder.CustomerId,
+                //         ActionType = "ProcessReturnTradeInOrder",
+                //         Message = $"your trade in order:{tradeInOrder.TradeInOrderId} is refunded",
+                //     };
+                //     _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+                // }
                 var auditLog = new AuditLog
                 {
                     UserId = managerId,

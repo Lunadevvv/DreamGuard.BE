@@ -402,7 +402,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaymentResponse>.Success(MapToResponse(payment));
         }
 
-        public async Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus)
+        public async Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus, Guid managerId, string userRole)
         {
             var payment = await _paymentRepository.GetByIdAsync(paymentId);
             if (payment == null)
@@ -435,6 +435,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 }
 
+                // if marking as CODPaid, also update order with Delivered status to Completed
+                if (newStatus == PaymentStatus.CODPaid && payment.POrderId.HasValue)
+                {
+                    var order = await _orderRepository.GetByIdAsync(payment.POrderId.Value);
+                    if (order != null && order.Status == OrderStatus.Delivered)
+                    {
+                        order.Status = OrderStatus.Completed;
+                        order.UpdatedAt = DateTime.UtcNow;
+                        await _orderRepository.UpdateAsync(order);
+                    }
+                }
+
                 await transaction.CommitAsync();
 
                 // Auto-cancel order when payment is marked as Failed
@@ -442,6 +454,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     await _orderService.UpdateOrderStatusAsync(payment.POrderId.Value, OrderStatus.Cancelled);
                 }
+
+                // Log audit
+                var auditLog = new AuditLog
+                {
+                    UserId = managerId,
+                    UserRole = userRole,
+                    ActionType = "UpdatePaymentStatus",
+                    Message = $"Updated payment status to '{newStatus}' for PaymentId: {paymentId}"
+                };
+                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
 
                 return Result.Success($"Payment status updated to '{newStatus}'.");
             }
@@ -571,5 +593,107 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
+        public Task<Result> CreateRefundPaymentAsync(RefundPaymentRequest request, Guid managerId)
+        {
+            if (request.OrderId != null)
+            {
+                return CreateRefundForProductOrderAsync(request.OrderId.Value, request.Amount, request.Reason, managerId);
+            }
+            else if (request.TradeInOrderId != null)
+            {
+                return CreateRefundForTradeInOrderAsync(request.TradeInOrderId.Value, request.Amount, request.Reason, managerId);
+            }
+            else
+            {
+                return Task.FromResult(Result.Failure("Must provide either orderId or tradeInOrderId.", 400));
+            }
+        }
+
+        public async Task<Result> CreateRefundForProductOrderAsync(Guid orderId, decimal Amount, string Reason, Guid managerId)
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+            {
+                return Result.Failure("Order not found.", 404);
+            }
+
+            var payment = await _paymentRepository.GetPaymentByOrderIdAsync(orderId);
+            if (payment == null || payment.Status != PaymentStatus.Paid)
+            {
+                return Result.Failure("No successful payment found for this order.", 400);
+            }
+
+            var refundPayment = new Payment
+            {
+                Id = Guid.NewGuid(),
+                OrderCode = order.OrderCode,
+                POrderId = order.Id,
+                Status = PaymentStatus.Paid,
+                PaymentType = PaymentType.Refund,
+                Amount = Amount,
+                Description = $"Refund for Order {order.OrderCode}.",
+                PaymentMethod = PaymentMethod.VnPay,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+            };
+
+            var result = await _paymentRepository.CreateAsync(refundPayment);
+            if (result > 0)
+            {
+                var auditLog = new AuditLog
+                {
+                    UserId = managerId,
+                    UserRole = DAL.Constants.Role.Manager,
+                    ActionType = "CreateRefundPayment",
+                    Message = $"Created refund payment for ProductOrderId: {refundPayment.Id}, OrderCode: {refundPayment.OrderCode}, RefundPaymentId: {refundPayment.Id}, Amount: {Amount}, Reason: {Reason}"
+                };
+            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+            }
+
+            return Result.Success("Refund payment created successfully.");
+        }
+
+        public async Task<Result> CreateRefundForTradeInOrderAsync(Guid tradeInOrderId, decimal Amount, string Reason, Guid managerId)
+        {
+            var tradeInOrder = await _tradeInOrderRepository.GetByIdAsync(tradeInOrderId);
+            if (tradeInOrder == null)
+            {
+                return Result.Failure("Trade-in order not found.", 404);
+            }
+
+            // Check if deposit was paid
+            var lastPaymentPaid = tradeInOrder.Payments
+                .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefault();
+            if (lastPaymentPaid != null)
+            {
+                var paymentRefund = new Payment
+                {
+                    TradeInOrderId = tradeInOrder.TradeInOrderId,
+                    Amount = Amount,
+                    OrderCode = tradeInOrder.OrderCode,
+                    PaymentType = PaymentType.Refund,
+                    PaymentMethod = lastPaymentPaid.PaymentMethod,
+                    Status = PaymentStatus.Refunded,
+                    Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
+                };
+                var result = await _paymentRepository.CreateAsync(paymentRefund);
+                if (result > 0)
+                {
+                    var auditLog = new AuditLog
+                    {
+                        UserId = managerId,
+                        UserRole = DAL.Constants.Role.Manager,
+                        ActionType = "CreateRefundPayment",
+                        Message = $"Created refund payment for TradeInOrderId: {tradeInOrder.TradeInOrderId}, RefundPaymentId: {paymentRefund.Id}, Amount: {Amount}, Reason: {Reason}"
+                    };
+                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                }
+            }
+
+            return Result.Success("Refund payment created successfully.");
+        }
     }
 }
