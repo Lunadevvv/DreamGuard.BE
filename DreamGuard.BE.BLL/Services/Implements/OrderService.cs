@@ -817,6 +817,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 Id = oi.Id,
                 ProductVariantId = oi.ProductVariantId,
+                ProductVariantImageUrl = oi.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? "",
                 ComboId = oi.ComboId,
                 ItemName = oi.ItemName,
                 Quantity = oi.Quantity,
@@ -830,6 +831,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     CustomizeContent = d.CustomizeContent,
                     AddOnPrice = d.AddOnPrice
                 }).ToList() ?? new List<ProductCustomizeDetail>()
+                
             }).ToList();
             return Result<List<OrderItemResponse>>.Success(orderItemResponseList);
         }

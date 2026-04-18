@@ -395,6 +395,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<TradeInOrderDetailResponse>.Failure("TradeInOrder not found", 404);
             }
             var response = _mapper.Map<TradeInOrderDetailResponse>(tradeInOrder);
+            response.NewProductVariantUrl = tradeInOrder.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? string.Empty;
+            response.OldProductVariantUrl = tradeInOrder.OrderItem.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? string.Empty;
             //với mỗi payment type lấy ra cái mới nhất
             response.Payments = response.Payments.GroupBy(p => p.PaymentType).Select(g => g.OrderByDescending(p => p.CreatedAt).First()).ToList();
             return Result<TradeInOrderDetailResponse>.Success(response);
