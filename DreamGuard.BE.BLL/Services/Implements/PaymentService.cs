@@ -419,13 +419,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                payment.Status = newStatus;
-                payment.UpdatedAt = DateTime.UtcNow;
-                await _paymentRepository.UpdateAsync(payment);
-
                 // If marking as Paid (e.g. COD confirmed), also update order to Confirmed
                 if (newStatus == PaymentStatus.Paid && payment.POrderId.HasValue)
                 {
+                    payment.Status = newStatus;
+                    payment.UpdatedAt = DateTime.UtcNow;
                     var order = await _orderRepository.GetByIdAsync(payment.POrderId.Value);
                     if (order != null && order.Status == OrderStatus.Pending)
                     {
@@ -435,18 +433,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 }
 
+                // if payment type is refund, also add evidence url for refund proof
+                if (payment.PaymentType == PaymentType.Refund && newStatus == PaymentStatus.Refunded)
+                {
+                    if (string.IsNullOrEmpty(evidenceUrl))
+                    {
+                        return Result.Failure("Evidence URL is required when marking a refund payment as Refunded.", 400);
+                    }
+                    payment.Status = newStatus;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    payment.EvidenceUrl = evidenceUrl;
+                }
+
                 // if marking as CODPaid, also update order with Delivered status to Completed
                 if (newStatus == PaymentStatus.CODPaid && payment.POrderId.HasValue)
-                {
-                    if (evidenceUrl != null)
-                    {
-                        payment.EvidenceUrl = evidenceUrl;
-                        await _paymentRepository.UpdateAsync(payment);
-                    }else
-                    {
-                        return Result.Failure("Evidence URL is required when confirming COD payment.", 400);
-                    }
-                    
+                {   
+                    payment.Status = newStatus;
+                    payment.UpdatedAt = DateTime.UtcNow;
                     var order = await _orderRepository.GetByIdAsync(payment.POrderId.Value);
                     if (order != null && order.Status == OrderStatus.Delivered)
                     {
@@ -455,6 +458,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         await _orderRepository.UpdateAsync(order);
                     }
                 }
+
+                await _paymentRepository.UpdateAsync(payment);
 
                 await transaction.CommitAsync();
 
@@ -490,6 +495,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 (PaymentStatus.Pending, PaymentStatus.Paid) => true,
                 (PaymentStatus.Pending, PaymentStatus.Failed) => true,
                 (PaymentStatus.Pending, PaymentStatus.CODPaid) => true,
+                (PaymentStatus.Pending, PaymentStatus.Refunded) => true,
                 _ => false
             };
         }
@@ -604,23 +610,78 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public Task<Result> CreateRefundPaymentAsync(RefundPaymentRequest request, Guid managerId)
+        public async Task<Result> CreateRefundPaymentAsync(RefundPaymentRequest request, Guid managerId, string userRole)
         {
             if (request.OrderId != null)
             {
-                return CreateRefundForProductOrderAsync(request.OrderId.Value, request.Amount, request.Reason, managerId);
+                return await CreateRefundForProductOrderAsync(request.OrderId.Value, request.Amount, request.Reason, managerId, userRole);
             }
             else if (request.TradeInOrderId != null)
             {
-                return CreateRefundForTradeInOrderAsync(request.TradeInOrderId.Value, request.Amount, request.Reason, managerId);
+                return await CreateRefundForTradeInOrderAsync(request.TradeInOrderId.Value, request.Amount, request.Reason, managerId, userRole);
+            }
+            else if (request.SoId != null)
+            {
+                return await CreateRefundForServiceOrderAsync(request.SoId.Value, request.Amount, request.Reason, managerId, userRole);
             }
             else
             {
-                return Task.FromResult(Result.Failure("Must provide either orderId or tradeInOrderId.", 400));
+                return Result.Failure("Must provide either orderId or tradeInOrderId.", 400);
             }
         }
 
-        public async Task<Result> CreateRefundForProductOrderAsync(Guid orderId, decimal Amount, string Reason, Guid managerId)
+        private async Task<Result> CreateRefundForServiceOrderAsync(Guid soId, decimal amount, string reason, Guid managerId, string userRole)
+        {
+            var serviceOrder = await _serviceOrderRepository.GetByIdWithServiceTask(soId);
+            if (serviceOrder == null)
+            {
+                return Result.Failure("Service order not found", 404);
+            }
+
+            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if (serviceOrder.Status != OrderServiceStatus.Cancelled && serviceOrder.Status != OrderServiceStatus.ForcedCancelled && serviceOrder.Status != OrderServiceStatus.Rejected)
+            {
+                return Result.Failure("Refund can be created for cancelled or ForcedCancelled or Rejected service orders.", 400);
+            }
+
+            if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
+            {
+                if (amount <= 0 || amount > lastPayment.Amount)
+                {
+                    return Result.Failure("Refund amount must be greater than 0 and less than or equal to the original payment amount.", 400);
+                }
+
+                var paymentRefund = new Payment
+                {
+                    SoId = serviceOrder.SoId,
+                    Amount = lastPayment.Amount,
+                    OrderCode = lastPayment.OrderCode,
+                    PaymentType = PaymentType.Refund,
+                    PaymentMethod = PaymentMethod.VnPay,
+                    Status = PaymentStatus.Refunded,
+                    Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+                };
+                
+                await _paymentRepository.CreateAsync(paymentRefund);
+
+                var auditLog = new AuditLog
+                {
+                    UserId = managerId,
+                    UserRole = userRole,
+                    ActionType = "CreateRefundPayment",
+                    Message = $"Created refund payment for ServiceOrderId: {serviceOrder.SoId}, RefundPaymentId: {paymentRefund.Id}, Amount: {amount}, Reason: {reason}"
+                };
+                _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+            }
+            else
+            {
+                return Result.Failure("No successful payment found for this service order to determine refund method.", 400);
+            }
+
+            return Result.Success("Refund payment created successfully.");
+        }
+
+        public async Task<Result> CreateRefundForProductOrderAsync(Guid orderId, decimal Amount, string Reason, Guid managerId, string userRole)
         {
             var order = await _orderRepository.GetByIdAsync(orderId);
             if (order == null)
@@ -675,7 +736,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var auditLog = new AuditLog
                 {
                     UserId = managerId,
-                    UserRole = DAL.Constants.Role.Manager,
+                    UserRole = userRole,
                     ActionType = "CreateRefundPayment",
                     Message = $"Created refund payment for ProductOrderId: {refundPayment.Id}, OrderCode: {refundPayment.OrderCode}, RefundPaymentId: {refundPayment.Id}, Amount: {Amount}, Reason: {Reason}"
                 };
@@ -685,12 +746,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success("Refund payment created successfully.");
         }
 
-        public async Task<Result> CreateRefundForTradeInOrderAsync(Guid tradeInOrderId, decimal Amount, string Reason, Guid managerId)
+        public async Task<Result> CreateRefundForTradeInOrderAsync(Guid tradeInOrderId, decimal Amount, string Reason, Guid managerId, string userRole)
         {
             var tradeInOrder = await _tradeInOrderRepository.GetByIdAsync(tradeInOrderId);
             if (tradeInOrder == null)
             {
                 return Result.Failure("Trade-in order not found.", 404);
+            }
+
+            if (tradeInOrder.Status != TradeInOrderStatus.CANCELLED && tradeInOrder.Status != TradeInOrderStatus.FORCED_CANCELLED && tradeInOrder.Status != TradeInOrderStatus.ADMINCANCELLED)
+            {
+                return Result.Failure("Refund can be created for cancelled or ForcedCancelled or Rejected trade-in orders.", 400);
             }
 
             // Check if deposit was paid
@@ -727,7 +793,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     var auditLog = new AuditLog
                     {
                         UserId = managerId,
-                        UserRole = DAL.Constants.Role.Manager,
+                        UserRole = userRole,
                         ActionType = "CreateRefundPayment",
                         Message = $"Created refund payment for TradeInOrderId: {tradeInOrder.TradeInOrderId}, RefundPaymentId: {paymentRefund.Id}, Amount: {Amount}, Reason: {Reason}"
                     };

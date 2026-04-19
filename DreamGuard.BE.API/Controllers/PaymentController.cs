@@ -201,7 +201,8 @@ namespace DreamGuard.BE.API.Controllers
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
 
-            var result = await _paymentService.CreateRefundPaymentAsync(request, managerId);
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+            var result = await _paymentService.CreateRefundPaymentAsync(request, managerId, userRole);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

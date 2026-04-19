@@ -10,6 +10,7 @@ namespace DreamGuard.BE.BLL.Requests
     {
         public Guid? OrderId { get; set; }
         public Guid? TradeInOrderId { get; set; }
+        public Guid? SoId { get; set; }
         [Required(ErrorMessage = "Reason is required.")]
         public string Reason { get; set; }
         [Required(ErrorMessage = "Amount is required.")]

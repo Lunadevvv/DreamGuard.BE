@@ -20,6 +20,6 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus, Guid managerId, string userRole, string? evidenceUrl = null);
         Task<Result> ExpireTradeinPayment(Guid paymentId);
         Task<Result> ExpireProductOrderPayment(Guid paymentId);
-        Task<Result> CreateRefundPaymentAsync(RefundPaymentRequest request, Guid managerId);
+        Task<Result> CreateRefundPaymentAsync(RefundPaymentRequest request, Guid managerId, string userRole);
     }
 }

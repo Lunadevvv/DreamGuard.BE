@@ -104,10 +104,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             try
             {
                 return await _context.ServiceOrders
-                     .Include(so => so.ServiceTasks)
-                     .Include(so => so.Payments)
-                     .Include(so => so.Rating)
-                     .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
+                    .Include(so => so.ServiceTasks)
+                    .Include(so => so.Payments)
+                    .Include(so => so.Rating)
+                    .AsSplitQuery()
+                    .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
             }
             catch (Exception ex)
             {
