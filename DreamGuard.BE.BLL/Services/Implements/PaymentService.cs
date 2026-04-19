@@ -495,7 +495,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 (PaymentStatus.Pending, PaymentStatus.Paid) => true,
                 (PaymentStatus.Pending, PaymentStatus.Failed) => true,
                 (PaymentStatus.Pending, PaymentStatus.CODPaid) => true,
-                (PaymentStatus.Pending, PaymentStatus.Refunded) => true,
+                (PaymentStatus.Refunding, PaymentStatus.Refunded) => true,
                 _ => false
             };
         }
@@ -658,7 +658,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     OrderCode = lastPayment.OrderCode,
                     PaymentType = PaymentType.Refund,
                     PaymentMethod = PaymentMethod.VnPay,
-                    Status = PaymentStatus.Refunded,
+                    Status = PaymentStatus.Refunding,
                     Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
                 };
                 
@@ -720,7 +720,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Id = Guid.NewGuid(),
                 OrderCode = order.OrderCode,
                 POrderId = order.Id,
-                Status = PaymentStatus.Paid,
+                Status = PaymentStatus.Refunding,
                 PaymentType = PaymentType.Refund,
                 Amount = Amount,
                 Description = $"Refund for Order {order.OrderCode}.",
@@ -784,7 +784,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     OrderCode = tradeInOrder.OrderCode,
                     PaymentType = PaymentType.Refund,
                     PaymentMethod = lastPaymentPaid.PaymentMethod,
-                    Status = PaymentStatus.Refunded,
+                    Status = PaymentStatus.Refunding,
                     Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
                 };
                 var result = await _paymentRepository.CreateAsync(paymentRefund);
