@@ -194,13 +194,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("You are not assigned to this service task.", 403);
             }
-            if (serviceTask.Status != ServiceTaskStatus.CheckedIn && serviceTask.Status != ServiceTaskStatus.Rescheduled)
+            if (serviceTask.Status != ServiceTaskStatus.CheckedIn)
             {
-                return Result.Failure("Service task is not in checked in status or rescheduled.", 400);
+                return Result.Failure("Service task is not in checked in status.", 400);
             }
             serviceTask.Status = ServiceTaskStatus.Processing;
             var serviceOrder = serviceTask.ServiceOrder;
-            if(serviceOrder.Status != OrderServiceStatus.Confirmed && serviceTask.Status != ServiceTaskStatus.Rescheduled)
+            if(serviceOrder.Status != OrderServiceStatus.Confirmed && serviceOrder.Status != OrderServiceStatus.Rescheduled)
             {
                 return Result.Failure("Service order must be confirmed or rescheduled before processing service task.", 400);
             }
