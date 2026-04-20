@@ -10,6 +10,7 @@ namespace DreamGuard.BE.BLL.Responses
     public class OrderItemResponse
     {
         public Guid Id { get; set; }
+        public Guid OrderId { get; set; }
         public Guid? ProductVariantId { get; set; }
         public Guid? ComboId { get; set; }
         public string ProductVariantImageUrl { get; set; } = string.Empty;
