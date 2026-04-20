@@ -1074,6 +1074,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         _evidenceRepository.AddEntity(evidence);
                     }
                 }
+                //update payment trade in order thành failed
+                var payments = tradeInOrder.Payments.Where(p => p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.COD).FirstOrDefault();
+                if (payments != null)
+                {
+                    payments.Status = PaymentStatus.Failed;
+                    _paymentRepository.UpdateEntity(payments);
+                }
                 await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 //audit và log

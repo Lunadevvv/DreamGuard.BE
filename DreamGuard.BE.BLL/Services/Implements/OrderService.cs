@@ -816,6 +816,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var orderItemResponseList = orderItems.Select(oi => new OrderItemResponse
             {
                 Id = oi.Id,
+                OrderId = oi.OrderId,
                 ProductVariantId = oi.ProductVariantId,
                 ProductVariantImageUrl = oi.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? "",
                 ComboId = oi.ComboId,
