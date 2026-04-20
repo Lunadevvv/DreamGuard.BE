@@ -32,14 +32,15 @@ namespace DreamGuard.BE.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMyPayments(
             [FromQuery] int pageNumber = 1,
-            [FromQuery] PaymentStatus? status = null)
+            [FromQuery] PaymentStatus? status = null,
+            [FromQuery] string? orderCode = null)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             {
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
 
-            var result = await _paymentService.GetPaymentsByUserAsync(userId, pageNumber, status);
+            var result = await _paymentService.GetPaymentsByUserAsync(userId, pageNumber, status, orderCode);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

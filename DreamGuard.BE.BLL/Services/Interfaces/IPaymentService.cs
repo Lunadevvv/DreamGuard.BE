@@ -14,7 +14,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<VnPaymentResponse>> HandleVnPayCallbackAsync(Microsoft.AspNetCore.Http.IQueryCollection queryParams);
         Task<Result<PaymentResponse>> GetPaymentByIdAsync(Guid userId, Guid paymentId);
         Task<Result<PaymentResponse>> GetPaymentByOrderIdAsync(Guid userId, Guid orderId);
-        Task<Result<PaginatedList<PaymentSummaryResponse>>> GetPaymentsByUserAsync(Guid userId, int pageNumber, PaymentStatus? status);
+        Task<Result<PaginatedList<PaymentSummaryResponse>>> GetPaymentsByUserAsync(Guid userId, int pageNumber, PaymentStatus? status, string? orderCode);
         Task<Result<PaginatedList<PaymentSummaryResponse>>> GetAllPaymentsForAdminAsync(int pageNumber, PaymentStatus? status, PaymentMethod? method, string? orderCode);
         Task<Result<PaymentResponse>> GetPaymentDetailForAdminAsync(Guid paymentId);
         Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus, Guid managerId, string userRole, string? evidenceUrl = null);

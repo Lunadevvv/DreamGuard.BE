@@ -344,7 +344,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
 
         public async Task<Result<PaginatedList<PaymentSummaryResponse>>> GetPaymentsByUserAsync(
-            Guid userId, int pageNumber, PaymentStatus? status)
+            Guid userId, int pageNumber, PaymentStatus? status, string? orderCode)
         {
             var customer = await _customerRepository.GetByUserIdAsync(userId);
             if (customer == null)
@@ -352,7 +352,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             var customerId = customer.CustomerId;
 
-            var payments = await _paymentRepository.GetPaymentsByCustomerIdAsync(customerId, pageNumber, status);
+            var payments = await _paymentRepository.GetPaymentsByCustomerIdAsync(customerId, pageNumber, status, orderCode);
 
             var responses = payments.Items.Select(p => new PaymentSummaryResponse
             {
@@ -654,7 +654,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var paymentRefund = new Payment
                 {
                     SoId = serviceOrder.SoId,
-                    Amount = lastPayment.Amount,
+                    Amount = amount,
                     OrderCode = lastPayment.OrderCode,
                     PaymentType = PaymentType.Refund,
                     PaymentMethod = PaymentMethod.VnPay,
@@ -681,9 +681,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success("Refund payment created successfully.");
         }
 
-        public async Task<Result> CreateRefundForProductOrderAsync(Guid orderId, decimal Amount, string Reason, Guid managerId, string userRole)
+        public async Task<Result> CreateRefundForProductOrderAsync(Guid orderId, decimal amount, string reason, Guid managerId, string userRole)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId);
+            var order = await _orderRepository.GetOrderByIdAsync(orderId);
             if (order == null)
             {
                 return Result.Failure("Order not found.", 404);
@@ -694,14 +694,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Cannot create refund for delivered or completed or ExchangeRequested orders.", 400);
             }
 
-            var payment = await _paymentRepository.GetPaymentByOrderIdAsync(orderId);
-            if (payment == null)
-            {
-                return Result.Failure("No payment found for this order.", 400);
-            }
+            // var payment = await _paymentRepository.GetPaymentByOrderIdAsync(orderId);
+            // if (payment == null)
+            // {
+            //     return Result.Failure("No payment found for this order.", 400);
+            // }
 
             var lastPaymentPaid = order.Payments
-                .Where(p => p.Status == PaymentStatus.Paid)
+                .Where(p => p.Status == PaymentStatus.Paid && p.PaymentType != PaymentType.Refund && p.PaymentMethod == PaymentMethod.VnPay)
                 .OrderByDescending(p => p.CreatedAt)
                 .FirstOrDefault();
 
@@ -710,7 +710,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("No successful payment found for this order to determine refund method.", 400);
             }
 
-            if (Amount <= 0 || Amount > lastPaymentPaid.Amount)
+            if (amount <= 0 || amount > lastPaymentPaid.Amount)
             {
                 return Result.Failure("Refund amount must be greater than 0 and less than or equal to the original payment amount.", 400);
             }
@@ -722,7 +722,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 POrderId = order.Id,
                 Status = PaymentStatus.Refunding,
                 PaymentType = PaymentType.Refund,
-                Amount = Amount,
+                Amount = amount,
                 Description = $"Refund for Order {order.OrderCode}.",
                 PaymentMethod = PaymentMethod.VnPay,
                 CreatedAt = DateTime.UtcNow,
@@ -738,7 +738,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     UserId = managerId,
                     UserRole = userRole,
                     ActionType = "CreateRefundPayment",
-                    Message = $"Created refund payment for ProductOrderId: {refundPayment.Id}, OrderCode: {refundPayment.OrderCode}, RefundPaymentId: {refundPayment.Id}, Amount: {Amount}, Reason: {Reason}"
+                    Message = $"Created refund payment for ProductOrderId: {refundPayment.Id}, OrderCode: {refundPayment.OrderCode}, RefundPaymentId: {refundPayment.Id}, Amount: {amount}, Reason: {reason}"
                 };
             _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
             }
@@ -746,9 +746,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success("Refund payment created successfully.");
         }
 
-        public async Task<Result> CreateRefundForTradeInOrderAsync(Guid tradeInOrderId, decimal Amount, string Reason, Guid managerId, string userRole)
+        public async Task<Result> CreateRefundForTradeInOrderAsync(Guid tradeInOrderId, decimal amount, string reason, Guid managerId, string userRole)
         {
-            var tradeInOrder = await _tradeInOrderRepository.GetByIdAsync(tradeInOrderId);
+            var tradeInOrder = await _tradeInOrderRepository.GetOrderDetailById(tradeInOrderId);
             if (tradeInOrder == null)
             {
                 return Result.Failure("Trade-in order not found.", 404);
@@ -770,7 +770,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("No successful deposit payment found for this trade-in order to determine refund method.", 400);
             }
 
-            if (Amount <= 0 || Amount > lastPaymentPaid.Amount)
+            if (amount <= 0 || amount > lastPaymentPaid.Amount)
             {
                 return Result.Failure("Refund amount must be greater than 0 and less than or equal to the original deposit payment amount.", 400);
             }
@@ -780,7 +780,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var paymentRefund = new Payment
                 {
                     TradeInOrderId = tradeInOrder.TradeInOrderId,
-                    Amount = Amount,
+                    Amount = amount,
                     OrderCode = tradeInOrder.OrderCode,
                     PaymentType = PaymentType.Refund,
                     PaymentMethod = lastPaymentPaid.PaymentMethod,
@@ -795,7 +795,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         UserId = managerId,
                         UserRole = userRole,
                         ActionType = "CreateRefundPayment",
-                        Message = $"Created refund payment for TradeInOrderId: {tradeInOrder.TradeInOrderId}, RefundPaymentId: {paymentRefund.Id}, Amount: {Amount}, Reason: {Reason}"
+                        Message = $"Created refund payment for TradeInOrderId: {tradeInOrder.TradeInOrderId}, RefundPaymentId: {paymentRefund.Id}, Amount: {amount}, Reason: {reason}"
                     };
                 _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
                 }

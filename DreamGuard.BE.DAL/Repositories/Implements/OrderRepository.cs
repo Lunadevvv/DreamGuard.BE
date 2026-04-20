@@ -25,6 +25,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         public async Task<Order?> GetOrderByIdAsync(Guid orderId)
         {
             return await _context.Orders
+                .Include(o => o.Payments)
                 .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 

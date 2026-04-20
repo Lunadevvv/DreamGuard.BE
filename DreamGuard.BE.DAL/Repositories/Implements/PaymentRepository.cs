@@ -58,7 +58,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         }
 
         public async Task<PaginatedList<Payment>> GetPaymentsByCustomerIdAsync(
-            Guid customerId, int pageNumber, PaymentStatus? status)
+            Guid customerId, int pageNumber, PaymentStatus? status, string? orderCode)
         {
             var query = _context.Payments
                 .Include(p => p.POrder)
@@ -69,6 +69,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             if (status.HasValue)
             {
                 query = query.Where(p => p.Status == status.Value);
+            }
+
+            if (!string.IsNullOrEmpty(orderCode))
+            {
+                query = query.Where(p => p.OrderCode.Contains(orderCode));
             }
 
             return await PaginatedList<Payment>.CreateAsync(query, pageNumber, 10);
