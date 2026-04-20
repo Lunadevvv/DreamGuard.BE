@@ -754,7 +754,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Trade-in order not found.", 404);
             }
 
-            if (tradeInOrder.Status != TradeInOrderStatus.CANCELLED && tradeInOrder.Status != TradeInOrderStatus.FORCED_CANCELLED && tradeInOrder.Status != TradeInOrderStatus.ADMINCANCELLED)
+            if (tradeInOrder.Status != TradeInOrderStatus.CANCELLED && tradeInOrder.Status != TradeInOrderStatus.FORCED_CANCELLED && tradeInOrder.Status != TradeInOrderStatus.ADMINCANCELLED && tradeInOrder.Status != TradeInOrderStatus.RefundedAndDamaged && tradeInOrder.Status != TradeInOrderStatus.RefundedAndRestocked)
             {
                 return Result.Failure("Refund can be created for cancelled or ForcedCancelled or Rejected trade-in orders.", 400);
             }
