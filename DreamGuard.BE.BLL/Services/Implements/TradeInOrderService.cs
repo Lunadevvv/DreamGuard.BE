@@ -532,7 +532,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     await _unitOfWork.SaveChangeAsync();
                     //ko save(fixed)
                 }
-                
+                //hủy payment cod
+                var codPayment = tradeInOrder.Payments.FirstOrDefault(p => p.PaymentType == PaymentType.Purchase && p.PaymentMethod == PaymentMethod.COD && p.Status == PaymentStatus.COD);
+                if (codPayment != null)
+                {
+                    codPayment.Status = PaymentStatus.Failed;
+                    _paymentRepository.UpdateEntity(codPayment);
+                    await _unitOfWork.SaveChangeAsync();
+                }
+
                 await transaction.CommitAsync();
                 if(isStockIncreased == true)
                 {
@@ -574,8 +582,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Only orders in NEGOTIATING status can be confirmed", 400);
             }
-            //check if the trade-in price is lower than the minimum price
-            if (tradeInPrice < tradeInOrder.ProductVariant.Product.MinTradeInPrice)
+            //check if the trade-in price is lower than the minimum price of order item product variant
+            if (tradeInPrice < tradeInOrder.OrderItem.ProductVariant.Product.MinTradeInPrice)
             {
                 return Result.Failure("Trade-in price cannot be lower than the minimum price", 400);
             }
