@@ -775,7 +775,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var notification = new Notification
             {
                 UserId = tradeInOrder.CustomerId,
-                ActionType = "Trade-in Order Delivered",
+                ActionType = "Trade-in Order Conversation created",
                 Message = $"Please join conversation to negotiating trade in price with our seller about your trade-in order {tradeInOrderId}",
             };
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
