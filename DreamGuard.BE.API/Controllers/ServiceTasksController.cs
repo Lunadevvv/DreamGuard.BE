@@ -118,13 +118,13 @@ namespace DreamGuard.BE.API.Controllers
         }
         [HttpPatch("{serviceTaskId}/updateCheckedOutStatus")]
         [Authorize(Roles = Role.CleaningStaff)]
-        public async Task<IActionResult> UpdateCheckedOutStatusAsync(Guid serviceTaskId)
+        public async Task<IActionResult> UpdateCheckedOutStatusAsync(Guid serviceTaskId, ServiceTaskCheckOutRequest request)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
             {
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
-            var result = await _service.UpdateCheckedOutStatusAsync(serviceTaskId, staffId);
+            var result = await _service.UpdateCheckedOutStatusAsync(serviceTaskId, staffId, request);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -177,13 +177,13 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpPatch("{serviceTaskId}/updateCheckedInStatus")]
         [Authorize(Roles = Role.CleaningStaff)]
-        public async Task<IActionResult> UpdateCheckedInStatusAsync(Guid serviceTaskId)
+        public async Task<IActionResult> UpdateCheckedInStatusAsync(Guid serviceTaskId, ServiceTaskCheckInRequest request)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))
             {
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
-            var result = await _service.UpdateCheckedInStatusAsync(serviceTaskId, staffId);
+            var result = await _service.UpdateCheckedInStatusAsync(serviceTaskId, staffId, request);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

@@ -21,8 +21,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPaymentRepository _paymentRepo;
         private readonly IHangFireService _hangFireService;
+        private readonly IServiceEvidenceRepository _serviceEvidenceRepository;
 
-        public ServiceTaskService(IServiceTaskRepository repo, IMapper mapper, IServiceOrderRepository soRepo, IStaffRepository staffRepo, IUnitOfWork unitOfWork, IPaymentRepository paymentRepo, IHangFireService hangFireService)
+        public ServiceTaskService(IServiceTaskRepository repo, IMapper mapper, IServiceOrderRepository soRepo, IStaffRepository staffRepo, IUnitOfWork unitOfWork, IPaymentRepository paymentRepo, IHangFireService hangFireService, IServiceEvidenceRepository serviceEvidenceRepository)
         {
             _repo = repo;
             _mapper = mapper;
@@ -31,6 +32,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _unitOfWork = unitOfWork;
             _paymentRepo = paymentRepo;
             _hangFireService = hangFireService;
+            _serviceEvidenceRepository = serviceEvidenceRepository;
         }
 
         public async Task<Result> CreateAsync(ServiceTaskCreateRequest serviceTaskCreateRequest)
@@ -156,7 +158,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
 
 
-        public async Task<Result> UpdateCheckedInStatusAsync(Guid serviceTaskId, Guid staffId)
+        public async Task<Result> UpdateCheckedInStatusAsync(Guid serviceTaskId, Guid staffId, ServiceTaskCheckInRequest request)
         {
             var serviceTask = await _repo.GetByIdAsync(serviceTaskId);
             if (serviceTask == null)
@@ -171,9 +173,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service task is not in pending status.", 400);
             }
+            foreach (var url in request.EvidenceUrls)
+            {
+                var serviceEvidence = new ServiceEvidence
+                {
+                    ServiceTaskId = serviceTaskId,
+                    ImageUrl = url,
+                    EvidenceType = "CheckedIn"
+                };
+                _serviceEvidenceRepository.AddEntity(serviceEvidence);
+            }
             serviceTask.Status = ServiceTaskStatus.CheckedIn;
             serviceTask.CheckIn = DateTime.UtcNow;
-            var result = await _repo.UpdateAsync(serviceTask);
+            _repo.UpdateEntity(serviceTask);
+            var result = await _unitOfWork.SaveChangeAsync();
             var notification = new Notification
             {
                 UserId = serviceTask.StaffId,
@@ -256,8 +269,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(managerNotification));
             return Result.Success($"{result}");
         }
-        public async Task<Result> UpdateCheckedOutStatusAsync(Guid serviceTaskId, Guid staffId)
+        public async Task<Result> UpdateCheckedOutStatusAsync(Guid serviceTaskId, Guid staffId, ServiceTaskCheckOutRequest request)
         {
+            
             var serviceTask = await _repo.GetByIdAsync(serviceTaskId);
             if (serviceTask == null)
             {
@@ -271,9 +285,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service task is not in processing status.", 400);
             }
+            foreach (var url in request.EvidenceUrls)
+            {
+                var serviceEvidence = new ServiceEvidence
+                {
+                    ServiceTaskId = serviceTaskId,
+                    ImageUrl = url,
+                    EvidenceType = "CheckedOut"
+                };
+                _serviceEvidenceRepository.AddEntity(serviceEvidence);
+            }
+
             serviceTask.Status = ServiceTaskStatus.CheckedOut;
             serviceTask.CheckOut = DateTime.UtcNow;
-            var result = await _repo.UpdateAsync(serviceTask);
+            _repo.UpdateEntity(serviceTask);
+            var result = await _unitOfWork.SaveChangeAsync();
             var notification = new Notification
             {
                 UserId = serviceTask.StaffId,
