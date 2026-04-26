@@ -38,6 +38,23 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
+        //GetAllProductToTradeInWithPaging (User)
+        [HttpGet("GetAllProductToTradeIn")]
+        public async Task<IActionResult> GetAllProductToTradeIn([FromQuery] int? cateId, decimal? maxPrice, string? color, int? maxAgeGroup, int pageNumber = 1, int pageSize = 10)
+        {
+            var result = await _productService.GetAllProductToTradeInAsync(cateId, pageNumber, pageSize, maxPrice, color, maxAgeGroup);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         //GetById
         [HttpGet("{id}")]
         public async Task<IActionResult> GetProductByIdAsync(Guid id)
@@ -71,7 +88,7 @@ namespace DreamGuard.BE.API.Controllers
 
         //Get All With Paging (Admin)
         [HttpGet("admin")]
-        [Authorize(Roles = "Admin, Manager")]
+        [Authorize(Roles = "Admin, Manager, Seller")]
         public async Task<IActionResult> GetAllProductsForAdminAsync([FromQuery]int pageNumber, string? name)
         {
             var result = await _productService.GetAllProductsForAdminAsync(pageNumber, name);

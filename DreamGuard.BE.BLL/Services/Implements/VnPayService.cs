@@ -23,6 +23,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public string CreatePaymentUrl(VnPaymentRequest model)
         {
             var vnpay = new VnPayLibrary();
+            
             var version = _configuration.Version!;
             var command = _configuration.Command!;
             var locale = _configuration.Locale!;
@@ -34,7 +35,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             vnpay.AddRequestData("vnp_Version", version);
             vnpay.AddRequestData("vnp_Command", command);
             vnpay.AddRequestData("vnp_TmnCode", tmnCode);
-            vnpay.AddRequestData("vnp_Amount", ((int)model.Amount * 100).ToString()); 
+            vnpay.AddRequestData("vnp_Amount", ((long)model.Amount * 100).ToString()); 
             vnpay.AddRequestData("vnp_CreateDate", model.CreatedDate.ToString("yyyyMMddHHmmss"));
             vnpay.AddRequestData("vnp_CurrCode", currCode); 
             vnpay.AddRequestData("vnp_IpAddr", model.IpAddress);
@@ -42,6 +43,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             vnpay.AddRequestData("vnp_OrderInfo", "Pay for the Order Code:" + model.OrderCode);
             vnpay.AddRequestData("vnp_OrderType", "other");
             vnpay.AddRequestData("vnp_ReturnUrl", returnUrl);
+            vnpay.AddRequestData("vnp_ExpireDate",model.ExpiredAt.ToString("yyyyMMddHHmmss"));
             vnpay.AddRequestData("vnp_TxnRef", model.PaymentId);
             var paymentUrl = vnpay.CreateRequestUrl(baseUrl, hashSecret);
             return paymentUrl;
@@ -111,7 +113,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var tmnCode = _configuration.TmnCode!;
             var txType = "02"; // 02 is full refund
             var txnRef = request.OrderId;
-            var amount = ((int)request.Amount * 100).ToString();
+            var amount = ((long)request.Amount * 100).ToString();
             var orderInfo = "Hoan tien GD " + txnRef;
             var txNo = string.IsNullOrEmpty(request.TransactionNo) ? "0" : request.TransactionNo;
             var txDate = request.PaymentDate.ToString("yyyyMMddHHmmss");

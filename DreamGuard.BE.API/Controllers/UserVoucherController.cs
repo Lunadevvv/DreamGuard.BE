@@ -17,21 +17,21 @@ namespace DreamGuard.BE.API.Controllers
     public class UserVoucherController : ControllerBase
     {
         private readonly IVoucherService _voucherService;
-        private readonly IMapper _mapper;
-        public UserVoucherController(IVoucherService VoucherService, IMapper mapper)
+        private readonly IUserVoucherService _userVoucherService;
+        public UserVoucherController(IVoucherService VoucherService, IUserVoucherService userVoucherService)
         {
             _voucherService = VoucherService;
-            _mapper = mapper;
+            _userVoucherService = userVoucherService;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync(int pageNumber = 1)
+        public async Task<IActionResult> GetAllAsync(int pageNumber = 1, bool? isUsed = null)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             {
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
-            var result = await _voucherService.GetAllAsync(userId, pageNumber);
+            var result = await _userVoucherService.GetAllByUserAsync(userId, pageNumber, isUsed);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -42,14 +42,12 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
-        [HttpGet("{voucherId}")]
-        public async Task<IActionResult> GetByIdAsync(Guid voucherId)
+        //Get all vouchers of user for admin
+        [HttpGet("admin")]
+        [Authorize(Roles = $"{Role.Admin} + {Role.Seller} + {Role.Manager}")]
+        public async Task<IActionResult> GetAllByAdminAsync(Guid userId, int pageNumber = 1, bool? isUsed = null)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-            {
-                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
-            }
-            var result = await _voucherService.GetByIdAsync(userId, voucherId);
+            var result = await _userVoucherService.GetAllByUserAsync(userId, pageNumber, isUsed);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -60,6 +58,24 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        // [HttpGet("{voucherId}")]
+        // public async Task<IActionResult> GetByIdAsync(Guid voucherId)
+        // {
+        //     if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        //     {
+        //         return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+        //     }
+        //     var result = await _voucherService.GetByIdAsync(userId, voucherId);
+        //     if (!result.Succeeded)
+        //     {
+        //         return StatusCode(result.StatusCode, new ErrorResponse
+        //         {
+        //             ErrorCode = result.StatusCode,
+        //             Message = new List<string> { result.Error }
+        //         });
+        //     }
+        //     return Ok(result.Data);
+        // }
         [HttpPost("ClaimVoucher")]
         public async Task<IActionResult> ClaimVoucherAsync([FromBody] VoucherClaimRequest voucherClaimRequest)
         {

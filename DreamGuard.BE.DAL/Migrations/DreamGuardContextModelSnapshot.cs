@@ -66,6 +66,37 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.ToTable("Addresses", (string)null);
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.AuditLog", b =>
+                {
+                    b.Property<Guid>("AuditLogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserRole")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("AuditLogId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.BabyProfile", b =>
                 {
                     b.Property<Guid>("BabyId")
@@ -200,6 +231,39 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ChatMessage", b =>
+                {
+                    b.Property<Guid>("ChatMessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SenderType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("ChatMessageId");
+
+                    b.HasIndex("ConversationId");
+
+                    b.ToTable("ChatMessages", (string)null);
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Combo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -295,6 +359,36 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.ToTable("ComboProductVariants");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Conversation", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TradeInOrderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ConversationId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("StaffId");
+
+                    b.HasIndex("TradeInOrderId")
+                        .IsUnique();
+
+                    b.ToTable("Conversations", (string)null);
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Customer", b =>
                 {
                     b.Property<Guid>("CustomerId")
@@ -317,6 +411,9 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
+
+                    b.Property<int>("MemberCoin")
+                        .HasColumnType("integer");
 
                     b.HasKey("CustomerId");
 
@@ -396,6 +493,36 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsUnique();
 
                     b.ToTable("Inventories", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Notification", b =>
+                {
+                    b.Property<Guid>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Order", b =>
@@ -525,6 +652,9 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("numeric");
 
+                    b.Property<int>("TradeInUsedAmount")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("numeric");
 
@@ -595,6 +725,9 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("EvidenceUrl")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("ExpiredAt")
                         .HasColumnType("TIMESTAMPTZ");
 
@@ -611,6 +744,11 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("PaymentType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<Guid?>("SoId")
                         .HasColumnType("uuid");
 
@@ -619,10 +757,8 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<Guid?>("TradeInOrderId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TIMESTAMPTZ");
@@ -636,6 +772,8 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasIndex("SoId");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("TradeInOrderId");
 
                     b.ToTable("Payments", (string)null);
                 });
@@ -658,6 +796,9 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TIMESTAMPTZ");
 
+                    b.Property<decimal>("DepositAmount")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -667,9 +808,15 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<bool>("IsTradeInEligible")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Material")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<decimal>("MinTradeInPrice")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -693,6 +840,9 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int>("TotalRating")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("WarrantyPolicyDay")
                         .HasColumnType("integer");
@@ -809,6 +959,51 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ProductCustomizeTypes", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ProductFeedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TIMESTAMPTZ");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ProductId", "OrderId", "CustomerId")
+                        .IsUnique();
+
+                    b.ToTable("ProductFeedbacks", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ProductType", b =>
@@ -1159,6 +1354,9 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime?>("CheckOut")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("SoId")
                         .HasColumnType("uuid");
 
@@ -1175,8 +1373,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.HasKey("ServiceTaskId");
 
-                    b.HasIndex("SoId")
-                        .IsUnique();
+                    b.HasIndex("SoId");
 
                     b.HasIndex("StaffId");
 
@@ -1220,7 +1417,10 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<DateTime?>("CompletionDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("OrderId")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OrderId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ShippingDate")
@@ -1239,14 +1439,18 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("TradeInOrderId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("ShippingTaskId");
 
-                    b.HasIndex("OrderId")
-                        .IsUnique();
+                    b.HasIndex("OrderId");
 
                     b.HasIndex("StaffId");
 
-                    b.ToTable("ShippingTasks");
+                    b.HasIndex("TradeInOrderId");
+
+                    b.ToTable("ShippingTasks", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Staff", b =>
@@ -1290,6 +1494,120 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.HasKey("StaffId");
 
                     b.ToTable("Staffs", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.SystemConfig", b =>
+                {
+                    b.Property<string>("ConfigKey")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ConfigValue")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ConfigKey");
+
+                    b.ToTable("SystemConfigs");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.TradeInImage", b =>
+                {
+                    b.Property<Guid>("TradeInImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TradeInOrderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TradeInImageId");
+
+                    b.HasIndex("TradeInOrderId");
+
+                    b.ToTable("TradeInImages", (string)null);
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.TradeInOrder", b =>
+                {
+                    b.Property<Guid>("TradeInOrderId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("AmountToPay")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("DepositAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsGood")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OrderCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("POrderItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProductVariantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReceiverName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("TradeInPrice")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("TradeInOrderId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("POrderItemId");
+
+                    b.HasIndex("ProductVariantId");
+
+                    b.ToTable("TradeInOrders", (string)null);
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.User", b =>
@@ -1453,16 +1771,20 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Property<decimal>("MaxDiscountAmount")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("MinDiscountAmount")
-                        .HasColumnType("numeric");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int>("RequiredCoin")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("TIMESTAMPTZ");
+
+                    b.Property<string>("VoucherType")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("VoucherId");
 
@@ -1628,6 +1950,17 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("Customer");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.AuditLog", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.User", "User")
+                        .WithMany("AuditLogs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.BabyProfile", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.Customer", "Customer")
@@ -1685,6 +2018,17 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("CateParent");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ChatMessage", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Conversation", "Conversation")
+                        .WithMany("ChatMessages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Combo", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.Combo", "ComboParent")
@@ -1712,6 +2056,33 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("Combo");
 
                     b.Navigation("ProductVariant");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Conversation", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Customer", "Customer")
+                        .WithMany("Conversations")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.Staff", "Staff")
+                        .WithMany("Conversations")
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.TradeInOrder", "TradeInOrder")
+                        .WithOne("Conversation")
+                        .HasForeignKey("DreamGuard.BE.DAL.Models.Conversation", "TradeInOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Staff");
+
+                    b.Navigation("TradeInOrder");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Customer", b =>
@@ -1761,6 +2132,17 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("ProductVariant");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Notification", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Order", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.Customer", "Customer")
@@ -1793,7 +2175,7 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired();
 
                     b.HasOne("DreamGuard.BE.DAL.Models.ProductVariant", "ProductVariant")
-                        .WithMany()
+                        .WithMany("OrderItems")
                         .HasForeignKey("ProductVariantId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -1815,9 +2197,16 @@ namespace DreamGuard.BE.DAL.Migrations
                         .WithMany("Payments")
                         .HasForeignKey("SoId");
 
+                    b.HasOne("DreamGuard.BE.DAL.Models.TradeInOrder", "TradeInOrder")
+                        .WithMany("Payments")
+                        .HasForeignKey("TradeInOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("POrder");
 
                     b.Navigation("ServiceOrder");
+
+                    b.Navigation("TradeInOrder");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Product", b =>
@@ -1837,6 +2226,33 @@ namespace DreamGuard.BE.DAL.Migrations
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.ProductFeedback", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Customer", "Customer")
+                        .WithMany("ProductFeedbacks")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.Order", "Order")
+                        .WithMany("ProductFeedbacks")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.Product", "Product")
+                        .WithMany("ProductFeedbacks")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
 
                     b.Navigation("Product");
                 });
@@ -1951,8 +2367,8 @@ namespace DreamGuard.BE.DAL.Migrations
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServiceTask", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.ServiceOrder", "ServiceOrder")
-                        .WithOne("ServiceTask")
-                        .HasForeignKey("DreamGuard.BE.DAL.Models.ServiceTask", "SoId")
+                        .WithMany("ServiceTasks")
+                        .HasForeignKey("SoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1981,10 +2397,9 @@ namespace DreamGuard.BE.DAL.Migrations
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ShippingTask", b =>
                 {
                     b.HasOne("DreamGuard.BE.DAL.Models.Order", "Order")
-                        .WithOne("ShippingTask")
-                        .HasForeignKey("DreamGuard.BE.DAL.Models.ShippingTask", "OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .WithMany("ShippingTasks")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("DreamGuard.BE.DAL.Models.Staff", "Staff")
                         .WithMany("ShippingTasks")
@@ -1992,9 +2407,16 @@ namespace DreamGuard.BE.DAL.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("DreamGuard.BE.DAL.Models.TradeInOrder", "TradeInOrder")
+                        .WithMany("ShippingTasks")
+                        .HasForeignKey("TradeInOrderId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.Navigation("Order");
 
                     b.Navigation("Staff");
+
+                    b.Navigation("TradeInOrder");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Staff", b =>
@@ -2006,6 +2428,44 @@ namespace DreamGuard.BE.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.TradeInImage", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.TradeInOrder", "TradeInOrder")
+                        .WithMany("TradeInImages")
+                        .HasForeignKey("TradeInOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TradeInOrder");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.TradeInOrder", b =>
+                {
+                    b.HasOne("DreamGuard.BE.DAL.Models.Customer", "Customer")
+                        .WithMany("TradeInOrders")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.OrderItem", "OrderItem")
+                        .WithMany("TradeInOrders")
+                        .HasForeignKey("POrderItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DreamGuard.BE.DAL.Models.ProductVariant", "ProductVariant")
+                        .WithMany("TradeInOrders")
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("OrderItem");
+
+                    b.Navigation("ProductVariant");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.UserVoucher", b =>
@@ -2131,6 +2591,11 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("ComboProductVariants");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.Conversation", b =>
+                {
+                    b.Navigation("ChatMessages");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Customer", b =>
                 {
                     b.Navigation("Addresses");
@@ -2139,11 +2604,17 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Navigation("Cart");
 
+                    b.Navigation("Conversations");
+
                     b.Navigation("FavoriteProducts");
 
                     b.Navigation("Orders");
 
+                    b.Navigation("ProductFeedbacks");
+
                     b.Navigation("ServiceOrders");
+
+                    b.Navigation("TradeInOrders");
 
                     b.Navigation("UserVouchers");
                 });
@@ -2154,12 +2625,21 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Navigation("Payments");
 
-                    b.Navigation("ShippingTask");
+                    b.Navigation("ProductFeedbacks");
+
+                    b.Navigation("ShippingTasks");
+                });
+
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.OrderItem", b =>
+                {
+                    b.Navigation("TradeInOrders");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Product", b =>
                 {
                     b.Navigation("Assets");
+
+                    b.Navigation("ProductFeedbacks");
 
                     b.Navigation("Variants");
                 });
@@ -2180,6 +2660,10 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Navigation("Inventory");
 
+                    b.Navigation("OrderItems");
+
+                    b.Navigation("TradeInOrders");
+
                     b.Navigation("VariantCustomizeTypes");
                 });
 
@@ -2193,7 +2677,7 @@ namespace DreamGuard.BE.DAL.Migrations
 
                     b.Navigation("ServiceOrderItems");
 
-                    b.Navigation("ServiceTask");
+                    b.Navigation("ServiceTasks");
                 });
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.ServicePackage", b =>
@@ -2218,6 +2702,8 @@ namespace DreamGuard.BE.DAL.Migrations
 
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.Staff", b =>
                 {
+                    b.Navigation("Conversations");
+
                     b.Navigation("Ratings");
 
                     b.Navigation("ServiceTasks");
@@ -2225,9 +2711,24 @@ namespace DreamGuard.BE.DAL.Migrations
                     b.Navigation("ShippingTasks");
                 });
 
+            modelBuilder.Entity("DreamGuard.BE.DAL.Models.TradeInOrder", b =>
+                {
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("ShippingTasks");
+
+                    b.Navigation("TradeInImages");
+                });
+
             modelBuilder.Entity("DreamGuard.BE.DAL.Models.User", b =>
                 {
+                    b.Navigation("AuditLogs");
+
                     b.Navigation("Customer");
+
+                    b.Navigation("Notifications");
 
                     b.Navigation("Staff");
                 });

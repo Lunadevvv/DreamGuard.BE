@@ -1,21 +1,33 @@
-using System;
-using System.Collections.Generic;
+using AutoMapper;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
+using DreamGuard.BE.DAL.Models;
+using System;
+using System.Collections.Generic;
 
 namespace DreamGuard.BE.BLL.Responses
 {
     public class OrderItemResponse
     {
         public Guid Id { get; set; }
+        public Guid OrderId { get; set; }
         public Guid? ProductVariantId { get; set; }
         public Guid? ComboId { get; set; }
+        public string ProductVariantImageUrl { get; set; } = string.Empty;
         public string ItemName { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
+        public int TradeInUsedAmount { get; set; }
         public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new();
         public string? CustomizeHash { get; set; }
+        private class Mapping : Profile
+        {
+            public Mapping()
+            {
+                CreateMap<OrderItem, OrderItemResponse>();
+            }
+        }
     }
 
     public class OrderResponse
@@ -27,6 +39,8 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal DiscountAmount { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal TotalAddonPrice { get; set; }
+        public Guid PaymentId { get; set; }
+        public DateTime PaymentExpiredAt { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
         public string? PaymentUrl { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -54,10 +68,14 @@ namespace DreamGuard.BE.BLL.Responses
 
         public string? VoucherCode { get; set; }
         public decimal? VoucherDiscountValue { get; set; }
-
+        public PaymentMethod PaymentMethod { get; set; }
+        public PaymentStatus PaymentStatus { get; set; }
         public string? Note { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public string? ShippingStaffName { get; set; }
+        public string? ShippingStatus { get; set; }
+        public string? ShippingStaffAvatarUrl { get; set; }
     }
 
     public class OrderSummaryResponse

@@ -15,10 +15,17 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
     public class OrderRepository : GenericRepository<Order>, IOrderRepository
     {
         public OrderRepository(DreamGuardContext context) : base(context) { }
+        public async Task<List<Order>> GetOrderDashBoardAsync(DateTime fromDate, DateTime toDate)
+        {
+            return await _context.Orders.Include(ti => ti.Payments)
+                .Where(ti => ti.CreatedAt >= fromDate && ti.CreatedAt < toDate)
+                .ToListAsync();
+        }
 
         public async Task<Order?> GetOrderByIdAsync(Guid orderId)
         {
             return await _context.Orders
+                .Include(o => o.Payments)
                 .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
@@ -33,6 +40,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                     .ThenInclude(oi => oi.Combo)
                 .Include(o => o.UserVoucher)
                     .ThenInclude(uv => uv!.Voucher)
+                .Include(o => o.ShippingTasks)
+                    .ThenInclude(st => st.Staff)
+                .Include(o => o.Payments)
                 .AsSplitQuery()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.Id == orderId);
@@ -90,6 +100,29 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             await _context.OrderItems.AddRangeAsync(items);
             await _context.SaveChangesAsync();
+        }
+        public async Task<List<OrderItem>> GetOrdersToTradeInAsync(Guid customerId, int categoryParentId, decimal basePriceWithDepositReduce)
+        {
+            return await _context.OrderItems
+                .Include(v => v.ProductVariant)
+                    .ThenInclude(pv => pv.Product)
+                        .ThenInclude(p => p.Assets)
+                .Where(oi => oi.Order!.CustomerId == customerId
+                && oi.ProductVariant!.Product!.Category!.CateParentId == categoryParentId
+                && oi.TradeInUsedAmount < oi.Quantity && (basePriceWithDepositReduce - oi.ProductVariant.Product.MinTradeInPrice >= 0)
+                && oi.Order.Payments.Any(p => p.PaymentType == PaymentType.Purchase && (p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.CODPaid) ))
+                .ToListAsync();
+        }
+        public async Task<OrderItem?> GetOrderItemByIdAsync(Guid orderItemId)
+        {
+            return await _context.OrderItems
+                .Include(oi => oi.ProductVariant)
+                    .ThenInclude(pv => pv.Product)
+                        .ThenInclude(p => p.Category)
+                .Include(oi => oi.Order)
+                    .ThenInclude(o => o.Payments)
+                .Include(oi => oi.TradeInOrders)
+                .FirstOrDefaultAsync(oi => oi.Id == orderItemId);
         }
     }
 }

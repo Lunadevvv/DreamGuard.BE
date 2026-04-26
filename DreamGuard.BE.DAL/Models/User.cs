@@ -11,5 +11,7 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public Customer? Customer { get; set; }
         public Staff? Staff { get; set; }
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
     }
 }

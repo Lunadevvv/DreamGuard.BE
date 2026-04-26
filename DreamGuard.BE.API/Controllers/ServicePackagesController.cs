@@ -26,7 +26,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("Admin")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> GetAllByAdminAsync(int pageNumber = 1, int pageSize = 4, ServicePackageStatus status = ServicePackageStatus.Active)
         {
             var result = await _servicePackage.GetAllByAdminAsync(pageNumber, pageSize, status);
@@ -42,7 +42,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpGet("{servicePackageId}")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> GetByIdAsync(Guid servicePackageId)
         {
             var result = await _servicePackage.GetByIdAsync(servicePackageId);
@@ -59,7 +59,7 @@ namespace DreamGuard.BE.API.Controllers
 
 
         [HttpPost]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> CreateAsync([FromForm] ServicePackageCreateRequest servicePackageRequest)
         {
             var result = await _servicePackage.CreateAsync(servicePackageRequest);
@@ -75,7 +75,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost("{servicePackageId}/ReplaceImage")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> ReplaceImage(Guid servicePackageId, [FromForm] PackageImageUploadRequest files)
         {
             var result = await _servicePackage.ReplaceImagesAsync(servicePackageId, files);
@@ -90,7 +90,7 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
         [HttpDelete("{servicePackageId}/DeleteImage")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> DeleteImage(Guid servicePackageId)
         {
             var result = await _servicePackage.DeleteImageAsync(servicePackageId);
@@ -106,7 +106,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPut("{servicePackageId}")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> UpdateAsync(Guid servicePackageId, [FromBody] ServicePackageUpdateRequest servicePackageRequest)
         {
             var result = await _servicePackage.UpdateAsync(servicePackageId, servicePackageRequest);
@@ -122,7 +122,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPatch("{servicePackageId}")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> UpdateServicePackageStatusAsync(Guid servicePackageId, ServicePackageStatus status)
         {
             var result = await _servicePackage.UpdateServicePackageStatusAsync(servicePackageId, status);

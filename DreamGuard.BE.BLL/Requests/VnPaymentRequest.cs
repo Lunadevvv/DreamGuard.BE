@@ -13,5 +13,6 @@ namespace DreamGuard.BE.BLL.Requests
         public required decimal Amount { get; set; }
         public required string IpAddress { get; set; }
         public DateTime CreatedDate { get; set; }
+        public DateTime ExpiredAt { get; set; } = DateTime.UtcNow.AddMinutes(5).AddHours(7);
     }
 }

@@ -17,5 +17,9 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal BasePrice { get; set; }
         public decimal SalePrice { get; set; }
         public List<string> ImageUrls { get; set; } = new List<string>();
+        public bool IsTradeInEligible { get; set; }
+        public decimal MinTradeInPrice { get; set; }
+        public decimal DepositAmount { get; set; }
+
     }
 }

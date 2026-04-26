@@ -14,6 +14,7 @@ namespace DreamGuard.BE.DAL.Models
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
         public string ItemName { get; set; } = string.Empty;
+        public int TradeInUsedAmount { get; set; } = 0;
 
         //Customize order details
         public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new List<ProductCustomizeDetail>();
@@ -25,5 +26,6 @@ namespace DreamGuard.BE.DAL.Models
         public ProductVariant? ProductVariant { get; set; }
         [JsonIgnore]
         public Combo? Combo { get; set; }
+        public ICollection<TradeInOrder> TradeInOrders { get; set; }
     }
 }

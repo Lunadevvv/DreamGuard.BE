@@ -23,7 +23,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             try
             {
-                var query = _context.ServiceOrders.Include(so => so.Payments).Include(so => so.ServiceTask)
+                var query = _context.ServiceOrders.Include(so => so.Payments).Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
                         .Include(so => so.Rating)
@@ -39,13 +39,14 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<PaginatedList<ServiceOrder>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<PaginatedList<ServiceOrder>> GetAllAsync(Guid customerId, int pageNumber, int pageSize)
         {
             try
             {
                 var query = _context.ServiceOrders
+                    .Where(so => so.CustomerId == customerId)
                     .Include(so => so.Payments)
-                    .Include(so => so.ServiceTask)
+                    .Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
                     .Include(so => so.Rating);
@@ -70,7 +71,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                             .ThenInclude(soi => soi.ServicePackageMapping)
                                  .ThenInclude(spm => spm.ProductType)
                      .Include(so => so.ServiceAssets)
-                     .Include(so => so.ServiceTask)
+                     .Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
                             .ThenInclude(s => s.User)
                      .Include(so => so.Rating)
@@ -88,7 +89,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             {
                 return await _context.ServiceOrders
                      .Include(so => so.Rating)
-                     .Include(so => so.ServiceTask)
+                     .Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)
 
                      .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
@@ -104,15 +105,23 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             try
             {
                 return await _context.ServiceOrders
-                     .Include(so => so.ServiceTask)
-                     .Include(so => so.Payments)
-                     .Include(so => so.Rating)
-                     .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
+                    .Include(so => so.ServiceTasks)
+                    .Include(so => so.Payments)
+                    .Include(so => so.Rating)
+                    .AsSplitQuery()
+                    .FirstOrDefaultAsync(so => so.SoId == serviceOrderId);
             }
             catch (Exception ex)
             {
                 throw new Exception($"Error retrieving ServiceOrder with payment");
             }
+        }
+
+        public async Task<List<ServiceOrder>> GetServiceOrderDashBoardAsync(DateTime fromDate, DateTime toDate)
+        {
+            return await _context.ServiceOrders.Include(ti => ti.Payments)
+                                .Where(ti => ti.CreatedAt >= fromDate && ti.CreatedAt < toDate)
+                                .ToListAsync();
         }
     }
 }

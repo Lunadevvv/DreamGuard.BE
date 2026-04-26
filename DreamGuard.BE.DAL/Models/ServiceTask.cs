@@ -18,6 +18,7 @@ namespace DreamGuard.BE.DAL.Models
         public string StaffNote { get; set; } = string.Empty;
         public Staff Staff { get; set; } = null!;
         public ServiceOrder ServiceOrder { get; set; } = null!;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<ServiceEvidence> ServiceEvidences { get; set; } = new List<ServiceEvidence>();
     }
 }

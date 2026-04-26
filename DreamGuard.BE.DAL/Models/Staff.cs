@@ -23,5 +23,6 @@ namespace DreamGuard.BE.DAL.Models
         public ICollection<ServiceTask> ServiceTasks { get; set; } = new List<ServiceTask>();
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
         public ICollection<ShippingTask> ShippingTasks { get; set; } = new List<ShippingTask>();
+        public ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
     }
 }

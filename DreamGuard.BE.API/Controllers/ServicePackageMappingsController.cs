@@ -20,7 +20,7 @@ namespace DreamGuard.BE.API.Controllers
             _service = service;
         }
         [HttpGet]
-        [Authorize(Roles = $"{Role.Admin}")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
         {
             var result = await _service.GetAllAsync(pageNumber, pageSize);
@@ -65,6 +65,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPut("{servicePackageMappingId}")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> UpdateByIdAsync(Guid servicePackageMappingId, ServicePackageMappingUpdateRequest request)
         {
             var result = await _service.UpdateByIdAsync(servicePackageMappingId, request);

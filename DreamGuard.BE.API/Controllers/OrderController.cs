@@ -4,8 +4,10 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +23,67 @@ namespace DreamGuard.BE.API.Controllers
         public OrderController(IOrderService orderService)
         {
             _orderService = orderService;
+        }
+
+        [HttpGet("get-order-dash-board")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetOrderDashBoard([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate)
+        {
+            var result = await _orderService.GetOrderDashBoardAsync(fromDate, toDate);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+        [HttpGet("get-total-amount-line-chart")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetTotalAmountLineChart([FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate)
+        {
+            if (fromDate == null)
+            {
+                fromDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+            }
+            if (toDate == null)
+            {
+                toDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            }
+            var result = await _orderService.GetTotalAmountLineChartAsync(fromDate.Value, toDate.Value);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        [HttpPost("create")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}, {Role.Seller}")]
+        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderByAdminRequest request)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _orderService.CreateOrderByAdminAsync(userId, request, GetIpAddress());
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            
+            return Ok(result.Data);
         }
 
         [HttpPost]
@@ -40,6 +103,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
+            BackgroundJob.Schedule<PaymentService>(job => job.ExpireProductOrderPayment(result.Data!.PaymentId), result.Data!.PaymentExpiredAt.AddSeconds(30));
             return Ok(result.Data);
         }
 
@@ -54,6 +118,26 @@ namespace DreamGuard.BE.API.Controllers
             }
 
             var result = await _orderService.GetOrdersAsync(userId, pageNumber, status);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        [HttpGet("{productVariantId}/GetOrderItemsToTradeInAsync")]
+        [Authorize]
+        public async Task<IActionResult> GetOrderItemsToTradeIn(Guid productVariantId)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _orderService.GetOrdersToTradeInAsync(customerId, productVariantId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

@@ -30,5 +30,7 @@ namespace DreamGuard.BE.DAL.Models
         public List<ComboProductVariant> ComboProductVariants { get; set; } = new List<ComboProductVariant>();
         [JsonIgnore]
         public List<VariantCustomizeType> VariantCustomizeTypes { get; set; } = new List<VariantCustomizeType>();
+        public List<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+        public List<TradeInOrder> TradeInOrders { get; set; } = new List<TradeInOrder>();
     }
 }

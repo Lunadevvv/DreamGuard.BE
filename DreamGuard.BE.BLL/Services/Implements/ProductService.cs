@@ -72,7 +72,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 WarrantyPolicyDay = product.WarrantyPolicyDay,
                 ReturnPolicyDay = product.ReturnPolicyDay,
                 Slug = product.Slug,
-                CateId = product.CateId
+                CateId = product.CateId,
+                IsTradeInEligible = product.IsTradeInEligible,
+                MinTradeInPrice = product.MinTradeInPrice,
+                DepositAmount = product.DepositAmount,
             };
 
             //add product to database
@@ -118,6 +121,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             existingProduct.ReturnPolicyDay = product.ReturnPolicyDay;
             existingProduct.FullyCustomizedProductType = product.FullyCustomizedProductType;
             existingProduct.CateId = product.CateId;
+            existingProduct.IsTradeInEligible = product.IsTradeInEligible;
+            existingProduct.MinTradeInPrice = product.MinTradeInPrice;
+            existingProduct.DepositAmount = product.DepositAmount;
 
             await _productRepository.UpdateProductCertificatesAsync(existingProduct, certificates);
 
@@ -178,6 +184,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     AverageRating = p.AverageRating,
                     BasePrice = hasVariants ? p.Variants.Min(v => v.BasePrice) : 0,
                     SalePrice = hasVariants ? p.Variants.Min(v => v.SalePrice) : 0,
+                    IsTradeInEligible = p.IsTradeInEligible,
+                    MinTradeInPrice = p.MinTradeInPrice,
+                    DepositAmount = p.DepositAmount,
                     ImageUrls = p.Assets.Select(a => a.Url).ToList()
                 };
             }).ToList();
@@ -192,6 +201,43 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             return Result<PaginatedList<ProductResponse>>.Success(paginatedResponse);
         }
+        public async Task<Result<PaginatedList<ProductResponse>>> GetAllProductToTradeInAsync(int? cateId, int pageNumber, int pageSize, decimal? maxPrice, string? color, int? maxAgeGroup)
+        {
+            var products = await _productRepository.GetAllProductToTradeInAsync(cateId, pageNumber, pageSize, maxPrice, color, maxAgeGroup);
+
+            // Map products to ProductResponse
+            var productResponses = products.Items.Select(p =>
+            {
+                var hasVariants = p.Variants != null && p.Variants.Any();
+                return new ProductResponse
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Summary = p.Summary,
+                    Slug = p.Slug,
+                    Material = p.Material,
+                    AgeGroup = p.AgeGroup,
+                    AverageRating = p.AverageRating,
+                    BasePrice = hasVariants ? p.Variants.Min(v => v.BasePrice) : 0,
+                    SalePrice = hasVariants ? p.Variants.Min(v => v.SalePrice) : 0,
+                    IsTradeInEligible = p.IsTradeInEligible,
+                    MinTradeInPrice = p.MinTradeInPrice,
+                    DepositAmount = p.DepositAmount,
+                    ImageUrls = p.Assets.Select(a => a.Url).ToList()
+                };
+            }).ToList();
+
+            // Create a new PaginatedList for ProductResponse
+            var paginatedResponse = new PaginatedList<ProductResponse>(
+                productResponses,
+                products.TotalCount,
+                products.PageNumber,
+                products.PageSize
+            );
+
+            return Result<PaginatedList<ProductResponse>>.Success(paginatedResponse);
+        }
+
 
         public async Task<Result<Product>> GetProductByIdAsync(Guid id)
         {
@@ -234,6 +280,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 AverageRating = prod.AverageRating,
                 WarrantyPolicyDay = prod.WarrantyPolicyDay,
                 ReturnPolicyDay = prod.ReturnPolicyDay,
+                IsTradeInEligible = prod.IsTradeInEligible,
+                MinTradeInPrice = prod.MinTradeInPrice,
+                DepositAmount = prod.DepositAmount,
                 Status = prod.Status,
                 Variants = variantsResult.Data!,
                 FullyCustomizedProductType = prod.FullyCustomizedProductType,
@@ -270,6 +319,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Status = p.Status,
                     CategoryName = p.Category != null ? p.Category.Name : string.Empty,
                     VariantCount = p.Variants.Count,
+                    DepositAmount = p.DepositAmount,
+                    IsTradeInEligible = p.IsTradeInEligible,
+                    MinTradeInPrice = p.MinTradeInPrice,
                     FullyCustomizedProductType = p.FullyCustomizedProductType
                 };
             }).ToList();
@@ -308,7 +360,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 WarrantyPolicyDay = request.WarrantyPolicyDay,
                 ReturnPolicyDay = request.ReturnPolicyDay,
                 Slug = request.Slug,
-                FullyCustomizedProductType = request.FullyCustomizedProductType
+                FullyCustomizedProductType = request.FullyCustomizedProductType,
+                IsTradeInEligible = request.IsTradeInEligible,
+                MinTradeInPrice = request.MinTradeInPrice,
+                DepositAmount = request.DepositAmount
             };
 
             //begin transaction
@@ -385,6 +440,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     AverageRating = p.AverageRating,
                     BasePrice = hasVariants ? p.Variants.Min(v => v.BasePrice) : 0,
                     SalePrice = hasVariants ? p.Variants.Min(v => v.SalePrice) : 0,
+                    IsTradeInEligible = p.IsTradeInEligible,
+                    MinTradeInPrice = p.MinTradeInPrice,
+                    DepositAmount = p.DepositAmount,
                     ImageUrls = p.Assets.Select(a => a.Url).ToList()
                 };
             }).ToList();

@@ -5,6 +5,7 @@ using DreamGuard.BE.BLL.Services.Implements;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.Models;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,10 +21,43 @@ namespace DreamGuard.BE.API.Controllers
     {
         private readonly IServiceOrderService _serviceOrderService;
         private readonly IMapper _mapper;
-        public ServiceOrdersController(IServiceOrderService serviceOrderService, IMapper mapper)
+        private readonly IBackgroundJobClient _backgroundJobClient;
+        public ServiceOrdersController(IServiceOrderService serviceOrderService, IMapper mapper, IBackgroundJobClient backgroundJobClient)
         {
             _serviceOrderService = serviceOrderService;
             _mapper = mapper;
+            _backgroundJobClient = backgroundJobClient;
+        }
+
+        [HttpGet("get-service-order-dash-board")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetServiceOrderDashBoard([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate)
+        {
+            var result = await _serviceOrderService.GetServiceOrderDashBoardAsync(fromDate, toDate);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+        [HttpPost("reschedule-service-order")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> RescheduleServiceOrder([FromBody] RescheduleServiceOrderRequest request)
+        {
+            var result = await _serviceOrderService.RescheduleServiceOrder(request.ServiceOrderId, request.NewAppointmentDate, request.newStaffId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
         }
 
         [HttpPost("OrderService")]
@@ -44,6 +78,12 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
+            if(result.Data.PaymentUrl != null)
+            {
+                _backgroundJobClient.Schedule<PaymentService>(job => job.ExpireServiceOrderPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+            }
+
+
             return Ok(result.Data);
         }
         [HttpPost("OrderService/{serviceOrderId}/assets")]
@@ -80,6 +120,10 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error }
                 });
             }
+            if (result.Data.PaymentUrl != null)
+            {
+                _backgroundJobClient.Schedule<PaymentService>(job => job.ExpireServiceOrderPayment(result.Data.PaymentId), result.Data.ExpiredAt.AddSeconds(30));
+            }
             return Ok(result.Data);
         }
         private string GetIpAddress()
@@ -96,7 +140,11 @@ namespace DreamGuard.BE.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
         {
-            var result = await _serviceOrderService.GetAllAsync(pageNumber, pageSize);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _serviceOrderService.GetAllAsync(customerId, pageNumber, pageSize);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -109,7 +157,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost("AdminSearchOrderService")]
-        [Authorize(Roles = Role.Admin)]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> AdminSearchOrderServiceAsync([FromQuery]ServiceOrderSearchRequest searchRequest, int pageNumber = 1, int pageSize = 4)
         {
             var result = await _serviceOrderService.GetAllByAdminAsync(pageNumber, pageSize, searchRequest);

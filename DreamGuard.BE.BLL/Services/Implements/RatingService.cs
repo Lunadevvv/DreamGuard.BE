@@ -27,13 +27,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IMapper _mapper;
         private readonly IRatingRepository _ratingRepository;
         private readonly IServiceOrderRepository _serviceOrderRepository;
-        public RatingService(IRatingRepository ratingRepository, IServiceOrderRepository serviceOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IStaffRepository staffRepository)
+        private readonly IHangFireService _hangFireService;
+        public RatingService(IRatingRepository ratingRepository, IServiceOrderRepository serviceOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IStaffRepository staffRepository, IHangFireService hangFireService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _ratingRepository = ratingRepository;
             _serviceOrderRepository = serviceOrderRepository;
             _staffRepository = staffRepository;
+            _hangFireService = hangFireService;
         }
         
         public async Task<Result> CreateRatingAsync(Guid serviceOrderId, Guid customerId, RatingCreateRequest request)
@@ -57,15 +59,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Cannot rate a service order that is not completed", 400);
             }
-
+            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Completed);
+            if (serviceTask == null)
+            {
+                return Result.Failure("serviceTask is not completed", 400);
+            }
             Rating rating = new Rating
             {
                 ServiceOrderId = serviceOrderId,
                 Score = request.Score,
                 Comment = request.Comment,
-                StaffId = serviceOrder.ServiceTask!.StaffId,
+                StaffId = serviceTask.StaffId,
             };
-            var staff = serviceOrder.ServiceTask!.Staff;
+            var staff = serviceTask.Staff;
             staff.TotalRating += 1;
             staff.AverageRating = ((staff.AverageRating * (staff.TotalRating - 1)) + request.Score) / staff.TotalRating;
             _staffRepository.UpdateEntity(staff);
@@ -75,6 +81,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Nothing created", 400);
             }
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ServiceTask Rating",
+                Message = $"You have rated the quality of staff for this serviceOrder:{serviceOrderId}. Thank you",
+            };
+            var staffNotification = new Notification
+            {
+                UserId = staff.StaffId,
+                ActionType = "ServiceTask Rating",
+                Message = $"You have received a new rating for this serviceOrder:{serviceOrderId}. Check it out!",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(staffNotification));
             return Result.Success($"{rating.RatingId}");
         }
 

@@ -42,6 +42,30 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
             return await PaginatedList<Product>.CreateAsync(query, pageNumber, 10);
         }
+        public async Task<PaginatedList<Product>> GetAllProductToTradeInAsync(int? cateId, int pageNumber, int pageSize, decimal? maxPrice, string? color, int? maxAgeGroup)
+        {
+            var query = _context.Products
+                    .Include(p => p.Variants.Where(v => v.Status != ProductStatus.Hidden && v.Status != ProductStatus.Draft))
+                    .Include(p => p.Assets)
+                    .Where(p => (cateId == null || p.CateId == cateId) && p.Status == ProductStatus.Published && p.IsTradeInEligible)
+                    .OrderByDescending(p => p.AverageRating)
+                    .AsNoTracking();
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.Variants.Any(v => v.SalePrice <= maxPrice.Value));
+            }
+
+            if (!string.IsNullOrEmpty(color))
+            {
+                query = query.Where(p => p.Variants.Any(v => v.Attributes.Color == color));
+            }
+
+            if (maxAgeGroup.HasValue)
+            {
+                query = query.Where(p => p.AgeGroup <= maxAgeGroup.Value);
+            }
+            return await PaginatedList<Product>.CreateAsync(query, pageNumber, pageSize);
+        }
 
         public async Task<Product?> GetProductBySlugAsync(string slug)
         {

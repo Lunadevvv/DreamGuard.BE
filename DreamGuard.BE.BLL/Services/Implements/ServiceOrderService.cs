@@ -7,6 +7,7 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -34,7 +35,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ICloudinaryService _cloudinaryService;
         private readonly IUserVoucherRepository _userVoucherRepository;
         private readonly IServiceAssetRepository _serviceAssetRepository;
-        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository, IUnitOfWork unitOfWork, IServiceTaskRepository serviceTaskRepository, ICloudinaryService cloudinaryService, IServiceAssetRepository serviceAssetRepository, IUserVoucherRepository userVoucherRepository)
+        private readonly IHangFireService _hangFireService;
+        private readonly IStaffRepository _staffRepository;
+        public ServiceOrderService(IServicePackageMappingRepository servicePackageMappingRepository, ICustomerRepository customerRepository, IServiceOrderRepository serviceOrderRepository, IVnPayService vnPayService, IMapper mapper, IServiceOrderRepository serviceOrderRepo, IPaymentRepository paymentRepository, IUnitOfWork unitOfWork, IServiceTaskRepository serviceTaskRepository, ICloudinaryService cloudinaryService, IServiceAssetRepository serviceAssetRepository, IUserVoucherRepository userVoucherRepository, IHangFireService hangFireService, IStaffRepository staffRepository)
         {
             _servicePackageMappingRepository = servicePackageMappingRepository;
             _customerRepository = customerRepository;
@@ -48,6 +51,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _cloudinaryService = cloudinaryService;
             _serviceAssetRepository = serviceAssetRepository;
             _userVoucherRepository = userVoucherRepository;
+            _hangFireService = hangFireService;
+            _staffRepository = staffRepository;
         }
         public async Task<Result<OrderServiceResponse>> ReOrderServiceAsync(Guid SoId, Guid customerId, string ipAddress)
         {
@@ -79,11 +84,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result<OrderServiceResponse>.Failure("Customer not found", 404);
             }
-            var newOrderCode = GenerateOrderCode();
+            var oldOrderCode = serviceOrder.OrderCode;
             Payment payment = new Payment
             {
                 Amount = serviceOrder.TotalPrice,
-                OrderCode = newOrderCode,
+                OrderCode = oldOrderCode,
                 PaymentMethod = lastPayment.PaymentMethod,
                 Status = PaymentStatus.Pending,
                 Description = $"Payment for service order {serviceOrder.OrderCode}",
@@ -97,7 +102,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var vnPayRequest = new VnPaymentRequest
             {
                 PaymentId = payment.Id.ToString(),
-                OrderCode = newOrderCode,
+                OrderCode = oldOrderCode,
                 Description = payment.Description,
                 Amount = (int)serviceOrder.TotalPrice,
                 IpAddress = ipAddress,
@@ -107,10 +112,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var response = new OrderServiceResponse
             {
                 ServiceOrderId = serviceOrder.SoId,
+                PaymentId = payment.Id,
                 Price = serviceOrder.TotalPrice,
                 PaymentUrl = paymentUrl,
                 ExpiredAt = payment.ExpiredAt
             };
+
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ReOrder service",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} payment is being retried",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+
             return Result<OrderServiceResponse>.Success(response);
         }
         public async Task<Result<OrderServiceResponse>> OrderServiceAsync(ServiceOrderCreateRequest serviceOrderRequest, Guid customerId, string ipAddress)
@@ -216,8 +231,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     decimal discountAmount = 0;
                     discountAmount = subTotalPrice * voucher.DiscountValue;
                     discountAmount = Math.Min(discountAmount, voucher.MaxDiscountAmount);
-                    discountAmount = Math.Max(discountAmount, voucher.MinDiscountAmount);
                     discountAmount = Math.Min(discountAmount, subTotalPrice); // Discount cannot exceed subtotal
+
+                    if (voucher.VoucherType == DAL.Constants.VoucherType.Product)
+                    {
+                        return Result<OrderServiceResponse>.Failure("This voucher is specifically for products only.", 400);
+                    }
 
                     serviceOrder.UserVoucherId = userVoucher.UserVoucherId;
                     serviceOrder.TotalPrice = Math.Max(serviceOrder.SubTotalPrice - discountAmount, 0); // Total price cannot be negative
@@ -229,6 +248,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     OrderCode = serviceOrder.OrderCode,
                     PaymentMethod = serviceOrderRequest.PaymentMethod,
                     Status = serviceOrderRequest.PaymentMethod == PaymentMethod.VnPay ? PaymentStatus.Pending : PaymentStatus.COD,
+                    PaymentType = PaymentType.Purchase,
                     Description = $"Payment for service order {serviceOrder.OrderCode}",
                     ExpiredAt = DateTime.UtcNow.AddMinutes(5)
                 };
@@ -250,7 +270,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         Description = payment.Description,
                         Amount = (int)serviceOrder.TotalPrice,
                         IpAddress = ipAddress,
-                        CreatedDate = payment.CreatedAt
+                        CreatedDate = payment.CreatedAt,
+                        ExpiredAt = payment.ExpiredAt.AddHours(7) // Convert to local time for VnPay
                     };
                     paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
                 }
@@ -258,10 +279,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var response = new OrderServiceResponse
                 {
                     ServiceOrderId = serviceOrder.SoId,
+                    PaymentId = payment.Id,
                     Price = serviceOrder.TotalPrice,
                     PaymentUrl = paymentUrl,
                     ExpiredAt = payment.ExpiredAt
                 };
+
+                var notification = new Notification
+                {
+                    UserId = serviceOrder.CustomerId,
+                    ActionType = "Order service",
+                    Message = $"Your ServiceOrder {serviceOrder.SoId} has been created",
+                };
+                
+                _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+
 
                 return Result<OrderServiceResponse>.Success(response);
             }
@@ -278,9 +310,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var randomPart = Guid.NewGuid().ToString("N")[..4].ToUpper();
             return $"DGSV-{datePart}-{randomPart}";
         }
-        public async Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(Guid customerId, int pageNumber, int pageSize)
         {
-            var serviceOrder = await _serviceOrderRepository.GetAllAsync(pageNumber, pageSize);
+            var serviceOrder = await _serviceOrderRepository.GetAllAsync(customerId, pageNumber, pageSize);
             var serviceOrderResponse = _mapper.Map<List<ServiceOrderResponse>>(serviceOrder.Items);
             for (int i = 0; i < serviceOrder.Items.Count; i++)
             {
@@ -345,8 +377,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ImageUrl = serviceOrder.ServiceAssets.Select(sa => sa.Url).ToList(),
                 Rating = serviceOrder.Rating == null ? null : _mapper.Map<RatingResponse>(serviceOrder.Rating)
             };
-            var staff = serviceOrder.ServiceTask?.Staff;
-            if(staff != null)
+            var staff = serviceOrder.ServiceTasks.OrderByDescending(st => st.CreatedAt).FirstOrDefault()?.Staff;
+            if (staff != null)
             {
                 serviceOrderResponse.Staff = _mapper.Map<StaffResponse>(staff);
             }
@@ -389,16 +421,46 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only pending order can be rejected", 400);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-            if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
-            {
-                serviceOrder.Status = OrderServiceStatus.Refund;
-            }
-            else
-            {
+            //luồng refund (bỏ)
+            //var isRefunded = false;
+            //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
+            //{
+            //    isRefunded = true;
+            //    var paymentRefund = new Payment
+            //    {
+            //        SoId = serviceOrder.SoId,
+            //        Amount = lastPayment.Amount,
+            //        OrderCode = lastPayment.OrderCode,
+            //        PaymentType = PaymentType.Refund,
+            //        PaymentMethod = PaymentMethod.VnPay,
+            //        Status = PaymentStatus.Refunded,
+            //        Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+            //    };
+            //    serviceOrder.Status = OrderServiceStatus.Refund;
+            //    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+            //    {
+            //        OrderId = serviceOrder.SoId.ToString(),
+            //        Amount = lastPayment.Amount,
+            //        PaymentDate = lastPayment.CreatedAt,
+            //    };
+            //    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+            //    _paymentRepository.AddEntity(paymentRefund);
+            //}
+            //else
+            //{
                 serviceOrder.Status = OrderServiceStatus.Rejected;
-            }
+            //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            
+            //var notification = new Notification
+            //{
+            //    UserId = serviceOrder.CustomerId,
+            //    ActionType = "RejectPendingServiceOrder",
+            //    Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been rejected and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been rejected" ,
+            //};
+            //_hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+
             return Result.Success($"{result}");
         }
 
@@ -411,7 +473,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             if (serviceOrder.Status != OrderServiceStatus.Pending)
             {
-                return Result.Failure("Only pending order can be confirmed", 400);
+                return Result.Failure("Only pending order and rescheduled can be confirmed", 400);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             if (lastPayment!.Status != PaymentStatus.Paid && lastPayment.PaymentMethod != PaymentMethod.COD)
@@ -421,6 +483,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             serviceOrder.Status = OrderServiceStatus.Confirmed;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ConfirmedPendingServiceOrder",
+                Message = $"Your ServiceOrder: {serviceOrder.SoId} has been Confirmed",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
 
@@ -440,17 +509,46 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Only pending order can be cancelled", 400);
             }
-            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-            if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
-            {
-                serviceOrder.Status = OrderServiceStatus.Refund;
-            }
-            else
-            {
+            //luồng rend tiền (bỏ)
+            //var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            //bool isRefunded = false;
+            //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
+            //{
+            //    isRefunded = true;
+            //    var paymentRefund = new Payment
+            //    {
+            //        SoId = serviceOrder.SoId,
+            //        Amount = lastPayment.Amount,
+            //        OrderCode = lastPayment.OrderCode,
+            //        PaymentType = PaymentType.Refund,
+            //        PaymentMethod = PaymentMethod.VnPay,
+            //        Status = PaymentStatus.Refunded,
+            //        Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+            //    };
+            //    serviceOrder.Status = OrderServiceStatus.Refund;
+            //    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+            //    {
+            //        OrderId = serviceOrder.SoId.ToString(),
+            //        Amount = lastPayment.Amount,
+            //        PaymentDate = lastPayment.CreatedAt,
+            //    };
+            //    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+            //    _paymentRepository.AddEntity(paymentRefund);
+            //}
+            //else
+            //{
                 serviceOrder.Status = OrderServiceStatus.Cancelled;
-            }
+            //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "CancelPendingServiceOrder",
+                //Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
 
@@ -465,24 +563,57 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Only confirmed order can be cancelled by manager", 400);
             }
-            if (serviceOrder.ServiceTask != null)
+            if (serviceOrder.ServiceTasks != null)
             {
-                var serviceTask = serviceOrder.ServiceTask;
-                serviceTask.Status = ServiceTaskStatus.Cancelled;
+                var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Pending);
+                if(serviceTask == null)
+                {
+                    return Result.Failure("service task not found or there are no pending serviceTasks", 400);
+                }
+                    serviceTask.Status = ServiceTaskStatus.Cancelled;
                 _serviceTaskRepository.UpdateEntity(serviceTask);
             }
-            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-            if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
-            {
-                serviceOrder.Status = OrderServiceStatus.Refund;
-            }
-            else
-            {
+            // luong refund (bỏ)
+            //var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            //bool isRefunded = false;
+            //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
+            //{
+            //    isRefunded = true;
+            //    var paymentRefund = new Payment
+            //    {
+            //        SoId = serviceOrder.SoId,
+            //        Amount = lastPayment.Amount,
+            //        OrderCode = lastPayment.OrderCode,
+            //        PaymentType = PaymentType.Refund,
+            //        PaymentMethod = PaymentMethod.VnPay,
+            //        Status = PaymentStatus.Refunded,
+            //        Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
+            //    };
+            //    serviceOrder.Status = OrderServiceStatus.Refund;
+            //    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+            //    {
+            //        OrderId = serviceOrder.SoId.ToString(),
+            //        Amount = lastPayment.Amount,
+            //        PaymentDate = lastPayment.CreatedAt,
+            //    };
+            //    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+            //    _paymentRepository.AddEntity(paymentRefund);
+            //}
+            //else
+            //{
                 serviceOrder.Status = OrderServiceStatus.Cancelled;
-            }
+            //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             _serviceOrderRepo.UpdateEntity(serviceOrder);
-            var result = await _unitOfWork.SaveChangeAsync();           
+            var result = await _unitOfWork.SaveChangeAsync();
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ManagerCancelConfirmedServiceOrder",
+                //Message = isRefunded ? $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason and you will be refunded" : $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} has been Cancelled for some reason",
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
         public async Task<Result> ManagerCancelProcessingServiceOrderAsync(Guid serviceOrderId)
@@ -498,7 +629,19 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceOrder.Status = OrderServiceStatus.ForcedCancelled;
             serviceOrder.UpdatedAt = DateTime.UtcNow;
+            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.ForcedCancelled);
+            if (serviceTask == null)
+            {
+                return Result.Failure("no forcedcancelled service task found for this order", 400);
+            }
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
+            var notification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ManagerCancelProcessingServiceOrder",
+                Message = $"Your ServiceOrder {serviceOrder.SoId} has been ForcedCancelled for some reason"
+            };
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
 
@@ -533,6 +676,126 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             var result = await _unitOfWork.SaveChangeAsync();
             return Result.Success($"{result}");
+        }
+        public async Task<Result<ServiceOrderDashBoardResponse>> GetServiceOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate)
+        {
+            var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var to = toDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
+            var data = await _serviceOrderRepo.GetServiceOrderDashBoardAsync(from, to);
+            if (data == null || !data.Any())
+            {
+                return Result<ServiceOrderDashBoardResponse>.Success(new ServiceOrderDashBoardResponse());
+            }
+            decimal totalAmount = 0;
+            decimal totalCODAmount = 0;
+            decimal totalRefundAmount = 0;
+            decimal totalVnPayAmount = 0;
+            foreach (var item in data)
+            {
+                if (item.Payments == null || !item.Payments.Any())
+                {
+                    continue;
+                }
+                foreach (var p in item.Payments)
+                {
+                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.CODPaid)
+                    {
+                        totalAmount += p.Amount;
+                        totalCODAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.Paid)
+                    {
+                        totalAmount += p.Amount;
+                        totalVnPayAmount += p.Amount;
+                    }
+                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded)
+                    {
+                        totalRefundAmount += p.Amount;
+                    }
+                };
+            }
+            var response = new ServiceOrderDashBoardResponse
+            {
+                TotalServiceOrders = data.Count(),
+                TotalCancelledOrders = data.Count(so => so.Status == OrderServiceStatus.Cancelled || so.Status == OrderServiceStatus.ForcedCancelled),
+                TotalRefundOrders = data.Count(so => so.Status == OrderServiceStatus.Refund),
+                TotalRejectedOrders = data.Count(so => so.Status == OrderServiceStatus.Rejected),
+                TotalCompletedOrders = data.Count(so => so.Status == OrderServiceStatus.Completed),
+                TotalAmount = totalAmount,
+                TotalRefundAmount = totalRefundAmount,
+                TotalVnPayAmount = totalVnPayAmount,
+                TotalCODAmount = totalCODAmount,
+                FromDate = fromDate,
+                ToDate = toDate,
+            };
+            return Result<ServiceOrderDashBoardResponse>.Success(response);
+        }
+
+        public async Task<Result> RescheduleServiceOrder(Guid serviceOrderId, DateTime newAppointmentDate, Guid newStaffId)
+        {
+            var serviceOrder = await _serviceOrderRepository.GetByIdWithServiceTask(serviceOrderId);
+            if (serviceOrder == null)
+            {
+                return Result.Failure("Service order not found", 404);
+            }
+            if (newAppointmentDate <= serviceOrder.AppointmentDate)
+            {
+                return Result.Failure("Can't reschedule past appointment or newAppointmentDate is invalid", 400);
+            }
+            if (serviceOrder.Status != OrderServiceStatus.Processing)
+            {
+                return Result.Failure("Only processing order can be rescheduled", 400);
+            }
+            var serviceTask = serviceOrder.ServiceTasks.FirstOrDefault(st => st.Status == ServiceTaskStatus.Processing);
+            if (serviceTask == null)
+            {
+                return Result.Failure("service task not found or there are no processing serviceTask", 400);
+            }
+            var newStaff = await _staffRepository.GetByIdAsync(newStaffId);
+            if (newStaff == null)
+            {
+                return Result.Failure("New staff not found", 404);
+            }
+            serviceOrder.AppointmentDate = newAppointmentDate;
+            serviceOrder.UpdatedAt = DateTime.UtcNow;
+            serviceOrder.Status = OrderServiceStatus.Rescheduled;
+            _serviceOrderRepository.UpdateEntity(serviceOrder);
+            serviceTask.Status = ServiceTaskStatus.Rescheduled;
+            _serviceTaskRepository.UpdateEntity(serviceTask);
+            var newServiceTask = new ServiceTask
+            {
+                SoId = serviceOrder.SoId,
+                StaffId = newStaffId,
+            };
+            _serviceTaskRepository.AddEntity(newServiceTask);
+            var result = await _unitOfWork.SaveChangeAsync();
+            if(result == 0)
+            {
+                return Result.Failure("Failed to reschedule service order", 500);
+            }
+            var notification = new Notification
+            {
+                UserId = newStaffId,
+                ActionType = "ServiceTask Create",
+                Message = $"You have been assigned ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+            var oldStaffNotification = new Notification
+            {
+                UserId = serviceTask.StaffId,
+                ActionType = "ServiceTask Rescheduled",
+                Message = $"Your ServiceTask: {serviceTask.ServiceTaskId} has been rescheduled and assigned to another staff",
+            };
+            var customerNotification = new Notification
+            {
+                UserId = serviceOrder.CustomerId,
+                ActionType = "ServiceOrder Rescheduled",
+                Message = $"Your ServiceOrder: {serviceOrder.SoId} has been rescheduled to {newAppointmentDate.ToString("f")} and assigned to another staff",
+            };
+             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(oldStaffNotification));
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            return Result.Success($"new serviceTask created: {serviceTask.ServiceTaskId}");
+
         }
     }
 }

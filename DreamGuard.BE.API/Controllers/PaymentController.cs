@@ -1,12 +1,16 @@
+using DreamGuard.BE.BLL.Requests;
+using DreamGuard.BE.BLL.Responses;
+using DreamGuard.BE.BLL.Services.Implements;
+using DreamGuard.BE.BLL.Services.Interfaces;
+using DreamGuard.BE.DAL.Constants;
+using DreamGuard.BE.DAL.Models;
+using Hangfire;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using DreamGuard.BE.BLL.Responses;
-using DreamGuard.BE.BLL.Services.Interfaces;
-using DreamGuard.BE.DAL.Constants;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 
 namespace DreamGuard.BE.API.Controllers
 {
@@ -16,24 +20,27 @@ namespace DreamGuard.BE.API.Controllers
     public class PaymentController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
+        private readonly IBackgroundJobClient _backgroundJobClient;
 
-        public PaymentController(IPaymentService paymentService)
+        public PaymentController(IPaymentService paymentService, IBackgroundJobClient backgroundJobClient)
         {
             _paymentService = paymentService;
+            _backgroundJobClient = backgroundJobClient;
         }
 
         // Get payments for the current user
         [HttpGet]
         public async Task<IActionResult> GetMyPayments(
             [FromQuery] int pageNumber = 1,
-            [FromQuery] PaymentStatus? status = null)
+            [FromQuery] PaymentStatus? status = null,
+            [FromQuery] string? orderCode = null)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             {
                 return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
             }
 
-            var result = await _paymentService.GetPaymentsByUserAsync(userId, pageNumber, status);
+            var result = await _paymentService.GetPaymentsByUserAsync(userId, pageNumber, status, orderCode);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -101,6 +108,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
+
             return Redirect(result.Data!.RedirectUrl);
         }
 
@@ -118,6 +126,7 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
+
             return Redirect(result.Data!.RedirectUrl);
         }
 
@@ -161,10 +170,40 @@ namespace DreamGuard.BE.API.Controllers
 
         // [Admin] Update payment status (e.g. confirm COD payment)
         [HttpPut("admin/{paymentId}/status")]
-        [Authorize(Roles = "Admin, Manager, Seller")]
-        public async Task<IActionResult> UpdatePaymentStatus(Guid paymentId, [FromQuery] PaymentStatus status)
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> UpdatePaymentStatus(Guid paymentId, [FromQuery] PaymentStatus status, [FromQuery]string? evidenceUrl = null)
         {
-            var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, status);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, status, managerId, userRole, evidenceUrl);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(result.Message);
+        }
+
+        // [Admin] Create refund payment
+        [HttpPost("admin/refund")]
+        [Authorize(Roles = "Admin, Manager")]
+        public async Task<IActionResult> CreateRefundPayment([FromBody] RefundPaymentRequest request)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+            var result = await _paymentService.CreateRefundPaymentAsync(request, managerId, userRole);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

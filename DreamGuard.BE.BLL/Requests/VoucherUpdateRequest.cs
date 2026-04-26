@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using DreamGuard.BE.DAL.Models;
 using System.ComponentModel.DataAnnotations;
 
@@ -16,8 +16,10 @@ namespace DreamGuard.BE.BLL.Requests
         public decimal DiscountValue { get; set; }
         [Range(0.01, double.MaxValue)]
         public decimal MaxDiscountAmount { get; set; }
-        [Range(0.01, double.MaxValue)]
-        public decimal MinDiscountAmount { get; set; }
+        [Range(0, int.MaxValue)]
+        public int RequiredCoin { get; set; }
+        [Required]
+        public string VoucherType { get; set; }
         [Required]
         public DateTime? StartDate { get; set; }
         [Required]

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,9 +15,11 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
 {
     public interface IServiceOrderService
     {
+        Task<Result> RescheduleServiceOrder(Guid serviceOrderId, DateTime newAppointmentDate, Guid newStaffId);
+        Task<Result<ServiceOrderDashBoardResponse>> GetServiceOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate);
         Task<Result<OrderServiceResponse>> OrderServiceAsync(ServiceOrderCreateRequest serviceOrderRequest, Guid customerId, string ipAddress);
         Task<Result> UploadServiceAsset(Guid serviceOrderId, ServiceAssetCreateRequest assetCreateRequest);
-        Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(Guid customerId, int pageNumber, int pageSize);
         Task<Result<PaginatedList<ServiceOrderAdminResponse>>> GetAllByAdminAsync(int pageNumber, int pageSize, ServiceOrderSearchRequest searchRequest);
         Task<Result<ServiceOrderDetailResponse>> GetByIdAsync(Guid serviceOrderId, Guid customerId, string role);
         Task<Result> UpdateServiceOrderAsync(Guid customerId, Guid serviceOrderId, ServiceOrderUpdateRequest updateRequest);

@@ -19,19 +19,22 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IProductVariantRepository _productVariantRepository;
         private readonly IProductRepository _productRepository;
         private readonly IComboRepository _comboRepository;
+        private readonly IHangFireService _hangFireService;
 
         public InventoryService(
             IInventoryRepository inventoryRepository,
             IUnitOfWork unitOfWork,
             IProductVariantRepository productVariantRepository,
             IProductRepository productRepository,
-            IComboRepository comboRepository)
+            IComboRepository comboRepository,
+            IHangFireService hangFireService)
         {
             _inventoryRepository = inventoryRepository;
             _unitOfWork = unitOfWork;
             _productVariantRepository = productVariantRepository;
             _productRepository = productRepository;
             _comboRepository = comboRepository;
+            _hangFireService = hangFireService;
         }
 
         public async Task<Result> CreateInventoryAsync(Inventory inventory)
