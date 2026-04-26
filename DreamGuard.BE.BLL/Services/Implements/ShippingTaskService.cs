@@ -710,7 +710,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 task.StaffNote = request.Reason;
                 task.CompletionDate = DateTime.UtcNow;
                 _taskRepository.UpdateEntity(task);
-                //trả tồn kho quantity + 1
+  
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)

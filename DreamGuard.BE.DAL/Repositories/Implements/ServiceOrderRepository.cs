@@ -39,11 +39,12 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             }
         }
 
-        public async Task<PaginatedList<ServiceOrder>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<PaginatedList<ServiceOrder>> GetAllAsync(Guid customerId, int pageNumber, int pageSize)
         {
             try
             {
                 var query = _context.ServiceOrders
+                    .Where(so => so.CustomerId == customerId)
                     .Include(so => so.Payments)
                     .Include(so => so.ServiceTasks)
                         .ThenInclude(st => st.Staff)

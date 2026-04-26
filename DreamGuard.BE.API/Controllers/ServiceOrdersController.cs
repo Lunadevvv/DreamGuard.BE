@@ -140,7 +140,11 @@ namespace DreamGuard.BE.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetAllAsync(int pageNumber = 1, int pageSize = 4)
         {
-            var result = await _serviceOrderService.GetAllAsync(pageNumber, pageSize);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            var result = await _serviceOrderService.GetAllAsync(customerId, pageNumber, pageSize);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

@@ -280,21 +280,21 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPatch("{tradeInOrderId}/delivered")]
-        [Authorize(Roles = $"{Role.DeliveryStaff}, {Role.Manager}, {Role.Admin}")]
-        public async Task<IActionResult> Delivered(Guid tradeInOrderId)
-        {
-            var result = await _service.DeliveredAsync(tradeInOrderId);
-            if (!result.Succeeded)
-            {
-                return StatusCode(result.StatusCode, new ErrorResponse
-                {
-                    ErrorCode = result.StatusCode,
-                    Message = new List<string> { result.Error }
-                });
-            }
-            return Ok(result.Message);
-        }
+        //[HttpPatch("{tradeInOrderId}/delivered")]
+        //[Authorize(Roles = $"{Role.DeliveryStaff}, {Role.Manager}, {Role.Admin}")]
+        //public async Task<IActionResult> Delivered(Guid tradeInOrderId)
+        //{
+        //    var result = await _service.DeliveredAsync(tradeInOrderId);
+        //    if (!result.Succeeded)
+        //    {
+        //        return StatusCode(result.StatusCode, new ErrorResponse
+        //        {
+        //            ErrorCode = result.StatusCode,
+        //            Message = new List<string> { result.Error }
+        //        });
+        //    }
+        //    return Ok(result.Message);
+        //}
 
         [HttpPatch("{tradeInOrderId}/completed")]
         [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]

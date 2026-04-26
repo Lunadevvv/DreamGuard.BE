@@ -431,6 +431,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             try
             {
                 var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
+ 
                 if (tradeInOrder == null)
                 {
                     return Result.Failure("TradeInOrder not found", 404);
@@ -665,32 +666,32 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success("Trade-in order status updated to PROCESSING successfully");
         }
 
-        public async Task<Result> DeliveredAsync(Guid tradeInOrderId)
-        {
-            var tradeInOrder = await _tradeInOrderRepository.GetByIdAsync(tradeInOrderId);
-            if (tradeInOrder == null)
-            {
-                return Result.Failure("TradeInOrder not found", 404);
-            }
-            if (tradeInOrder.Status != TradeInOrderStatus.PROCESSING)
-            {
-                return Result.Failure("Only orders in PROCESSING status can be moved to DELIVERED", 400);
-            }
-            tradeInOrder.Status = TradeInOrderStatus.DELIVERED;
-            var result = await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
-            if (result == 0)
-            {
-                return Result.Failure("Failed to update trade-in order status", 500);
-            }
-            var notification = new Notification
-            {
-                UserId = tradeInOrder.CustomerId,
-                ActionType = "Trade-in Order Delivered",
-                Message = $"Your trade-in order {tradeInOrderId} has been delivered",
-            };
-            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
-            return Result.Success("Trade-in order status updated to DELIVERED successfully");
-        }
+        //public async Task<Result> DeliveredAsync(Guid tradeInOrderId)
+        //{
+        //    var tradeInOrder = await _tradeInOrderRepository.GetByIdAsync(tradeInOrderId);
+        //    if (tradeInOrder == null)
+        //    {
+        //        return Result.Failure("TradeInOrder not found", 404);
+        //    }
+        //    if (tradeInOrder.Status != TradeInOrderStatus.PROCESSING)
+        //    {
+        //        return Result.Failure("Only orders in PROCESSING status can be moved to DELIVERED", 400);
+        //    }
+        //    tradeInOrder.Status = TradeInOrderStatus.DELIVERED;
+        //    var result = await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
+        //    if (result == 0)
+        //    {
+        //        return Result.Failure("Failed to update trade-in order status", 500);
+        //    }
+        //    var notification = new Notification
+        //    {
+        //        UserId = tradeInOrder.CustomerId,
+        //        ActionType = "Trade-in Order Delivered",
+        //        Message = $"Your trade-in order {tradeInOrderId} has been delivered",
+        //    };
+        //    _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+        //    return Result.Success("Trade-in order status updated to DELIVERED successfully");
+        //}
 
         public async Task<Result> CompletedAsync(Guid tradeInOrderId)
         {
@@ -775,7 +776,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var notification = new Notification
             {
                 UserId = tradeInOrder.CustomerId,
-                ActionType = "Trade-in Order Delivered",
+                ActionType = "Trade-in Order Conversation created",
                 Message = $"Please join conversation to negotiating trade in price with our seller about your trade-in order {tradeInOrderId}",
             };
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
@@ -829,7 +830,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TotalTradeInOrders = data.Count,
                 TotalCompletedTradeInOrders = data.Where(ti => ti.Status == TradeInOrderStatus.COMPLETED).Count(),
                 TotalCancelledTradeInOrders = data.Where(t1 => t1.Status == TradeInOrderStatus.CANCELLED || t1.Status == TradeInOrderStatus.FORCED_CANCELLED || t1.Status == TradeInOrderStatus.ADMINCANCELLED).Count(),
-                TotalRefundedTradeInOrders = data.Where(ti => ti.Status == TradeInOrderStatus.REFUNDED || ti.Status == TradeInOrderStatus.RefundedAndDamaged || ti.Status == TradeInOrderStatus.RefundedAndRestocked).Count(),
+                TotalRefundedTradeInOrders = data.Where(ti => ti.Status == TradeInOrderStatus.RefundedAndDamaged || ti.Status == TradeInOrderStatus.RefundedAndRestocked).Count(),
                 TotalAmount = totalAmount,
                 TotalDepositAmount = totalDepositAmount,
                 TotalCODAmount = totalCODAmount,

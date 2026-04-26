@@ -13,7 +13,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     public interface IServiceOrderRepository : IGenericRepository<ServiceOrder>
     {
         Task<PaginatedList<ServiceOrder>> GetAllAdminAsync(int pageNumber, int pageSize, Guid? serviceOrderId, string? orderCode, PaymentMethod? paymentMethod, PaymentStatus? paymentStatus);
-        Task<PaginatedList<ServiceOrder>> GetAllAsync(int pageNumber, int pageSize);
+        Task<PaginatedList<ServiceOrder>> GetAllAsync(Guid customerId, int pageNumber, int pageSize);
         Task<ServiceOrder?> GetByIdWithDetail(Guid serviceOrderId);
         Task<ServiceOrder?> GetByIdWithRating(Guid serviceOrderId);
         Task<ServiceOrder?> GetByIdWithServiceTask(Guid serviceOrderId);

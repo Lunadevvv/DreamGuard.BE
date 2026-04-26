@@ -310,9 +310,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var randomPart = Guid.NewGuid().ToString("N")[..4].ToUpper();
             return $"DGSV-{datePart}-{randomPart}";
         }
-        public async Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<Result<PaginatedList<ServiceOrderResponse>>> GetAllAsync(Guid customerId, int pageNumber, int pageSize)
         {
-            var serviceOrder = await _serviceOrderRepository.GetAllAsync(pageNumber, pageSize);
+            var serviceOrder = await _serviceOrderRepository.GetAllAsync(customerId, pageNumber, pageSize);
             var serviceOrderResponse = _mapper.Map<List<ServiceOrderResponse>>(serviceOrder.Items);
             for (int i = 0; i < serviceOrder.Items.Count; i++)
             {
@@ -486,7 +486,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var notification = new Notification
             {
                 UserId = serviceOrder.CustomerId,
-                ActionType = "RejectPendingServiceOrder",
+                ActionType = "ConfirmedPendingServiceOrder",
                 Message = $"Your ServiceOrder: {serviceOrder.SoId} has been Confirmed",
             };
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
