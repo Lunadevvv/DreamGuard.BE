@@ -5,6 +5,7 @@ using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
 using DreamGuard.BE.BLL.Services.Interfaces;
 using DreamGuard.BE.DAL.Basic;
+using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Implements;
@@ -34,6 +35,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             var staffs = await _repo.GetAllByAdminAsync(pageNumber, pageSize);
             var staffResponse = _mapper.Map<List<StaffResponse>>(staffs.Items);
+            var staffDict = staffResponse.ToDictionary(sr => sr.StaffId, sr => sr.TaskCount);
+            foreach (var staff in staffs.Items)
+            {
+                staffDict[staff.StaffId] = staff.ServiceTasks.Count(st => st.Status == ServiceTaskStatus.Pending && st.Status == ServiceTaskStatus.CheckedOut && st.Status == ServiceTaskStatus.CheckedIn && st.Status == ServiceTaskStatus.Processing);
+            }
             var paginatedResult = new PaginatedList<StaffResponse>(staffResponse, staffs.TotalCount, staffs.PageNumber, staffs.PageSize);
             return Result<PaginatedList<StaffResponse>>.Success(paginatedResult);
         }

@@ -16,7 +16,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<PaginatedList<Order>> GetOrdersByCustomerIdAsync(Guid customerId, int pageNumber, OrderStatus? status);
         Task<PaginatedList<Order>> GetAllOrdersForAdminAsync(int pageNumber, OrderStatus? status, string? orderCode);
         Task AddOrderItemsAsync(List<OrderItem> items);
-        Task<List<OrderItem>> GetOrdersToTradeInAsync(Guid customerId, int categoryParentId, decimal basePriceWithDepositReduce);
+        Task<List<OrderItem>> GetOrdersToTradeInAsync(Guid customerId, int categoryParentId, decimal salePrice, decimal depositAmount);
         Task<OrderItem?> GetOrderItemByIdAsync(Guid orderItemId);
     }
 }

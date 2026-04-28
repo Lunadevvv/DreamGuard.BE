@@ -22,6 +22,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string Email { get; set; }
         public double AverageRating { get; set; }
         public int TotalRating { get; set; }
+        public int TaskCount { get; set; }
         private class Mapping : Profile
         {
             public Mapping()

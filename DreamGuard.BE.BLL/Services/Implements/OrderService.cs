@@ -812,7 +812,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<List<OrderItemResponse>>.Failure("Product category parent not found.", 404);
             var salePrice = variant.SalePrice > 0 ? variant.SalePrice : variant.BasePrice;
             var basePriceWithDepositReduce = salePrice - variant.Product.DepositAmount;
-            var orderItems = await _orderRepository.GetOrdersToTradeInAsync(customerId, categoryParentId.Value, basePriceWithDepositReduce);
+            var orderItems = await _orderRepository.GetOrdersToTradeInAsync(customerId, categoryParentId.Value, salePrice, variant.Product.DepositAmount);
             var orderItemResponseList = orderItems.Select(oi => new OrderItemResponse
             {
                 Id = oi.Id,

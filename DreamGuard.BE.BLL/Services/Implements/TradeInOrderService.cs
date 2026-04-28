@@ -584,13 +584,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only orders in NEGOTIATING status can be confirmed", 400);
             }
             //check if the trade-in price is lower than the minimum price of order item product variant
-            if (tradeInPrice < tradeInOrder.OrderItem.ProductVariant.Product.MinTradeInPrice)
+            var minTradeInPrice = tradeInOrder.OrderItem.ProductVariant.Product.MinTradeInPrice;
+            if (tradeInPrice < minTradeInPrice)
             {
                 return Result.Failure("Trade-in price cannot be lower than the minimum price", 400);
             }
+            var maximumPrice = tradeInOrder.OrderItem.UnitPrice - tradeInOrder.ProductVariant.Product!.DepositAmount;
+            if (tradeInPrice > maximumPrice)
+            {
+                return Result.Failure($"Trade-in price cannot be higher than the maximum price: {maximumPrice}", 400);
+            }
             tradeInOrder.Status = TradeInOrderStatus.CONFIRMED;
             tradeInOrder.TradeInPrice = tradeInPrice;
-            tradeInOrder.AmountToPay = tradeInOrder.ProductVariant!.BasePrice - tradeInPrice - tradeInOrder.DepositAmount;
+            var salePrice = tradeInOrder.ProductVariant.SalePrice > 0 ? tradeInOrder.ProductVariant.SalePrice : tradeInOrder.ProductVariant.BasePrice;
+            tradeInOrder.AmountToPay = salePrice - tradeInPrice - tradeInOrder.DepositAmount;
             Payment payment = new Payment
             {
                 TradeInOrderId = tradeInOrder.TradeInOrderId,

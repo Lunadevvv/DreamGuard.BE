@@ -17,4 +17,8 @@ namespace DreamGuard.BE.BLL.Requests
         [MinLength(1, ErrorMessage = "At least one evidence URL is required.")]
         public List<string> EvidenceUrls { get; set; } = new List<string>();
     }
+    public class ServiceTaskCompleteRequest
+    {
+        public string EvidenceUrl { get; set; } = string.Empty;
+    }
 }

@@ -309,8 +309,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
             return Result.Success($"{result}");
         }
-        //sửa lại cái complete này dành cho admin và manager
-        public async Task<Result> UpdateCompletedStatusAsync(Guid serviceTaskId)
+      
+        public async Task<Result> UpdateCompletedStatusAsync(Guid serviceTaskId, ServiceTaskCompleteRequest request)
         {
             var serviceTask = await _repo.GetByIdWithSoAsync(serviceTaskId);
             if (serviceTask == null)
@@ -321,15 +321,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service task is not in checked out status.", 400);
             }
-            if(serviceTask.ServiceEvidences.Count == 0)
-            {
-                return Result.Failure("Please upload service evidence before completing service task.", 400);
-            }
             var serviceOrder = serviceTask.ServiceOrder;
             var payment = serviceOrder.Payments.FirstOrDefault();
             if(payment!.PaymentMethod == PaymentMethod.COD && payment.Status == PaymentStatus.COD)
             {
                 payment.Status = PaymentStatus.CODPaid;
+                if(string.IsNullOrEmpty(request.EvidenceUrl))
+                {
+                    return Result.Failure("Evidence is required for COD payment.", 400);
+                }
             }
             serviceOrder.Status = OrderServiceStatus.Completed;
             serviceTask.Status = ServiceTaskStatus.Completed;
