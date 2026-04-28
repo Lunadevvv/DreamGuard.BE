@@ -45,10 +45,10 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
         [HttpPost("reschedule-service-order")]
-        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        [Authorize(Roles = $"{Role.CleaningStaff}")]
         public async Task<IActionResult> RescheduleServiceOrder([FromBody] RescheduleServiceOrderRequest request)
         {
-            var result = await _serviceOrderService.RescheduleServiceOrder(request.ServiceOrderId, request.NewAppointmentDate, request.newStaffId);
+            var result = await _serviceOrderService.RescheduleServiceOrder(request.ServiceOrderId, request.NewAppointmentDate, request.staffReason);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

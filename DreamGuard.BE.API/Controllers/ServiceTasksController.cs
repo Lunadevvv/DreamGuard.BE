@@ -101,6 +101,22 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Message);
         }
+        [HttpPost("reassign-staff-for-rescheduled-service-order")]
+        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
+        public async Task<IActionResult> ReassignStaffForRescheduledServiceOrder([FromBody] ReassignStaffForRescheduledOrderRequest request)
+        {
+            var result = await _service.ReassignStaffForRescheduledOrder(request.ServiceOrderId, request.NewStaffId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Message);
+        }
+
         [HttpPatch("{serviceTaskId}/updateCompletedStatus")]
         [Authorize(Roles = $"{Role.CleaningStaff}")]
         public async Task<IActionResult> UpdateCompletedStatusAsync(Guid serviceTaskId, ServiceTaskCompleteRequest request)

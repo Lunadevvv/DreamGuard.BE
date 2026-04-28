@@ -24,5 +24,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> UpdateProcessingStatusAsync(Guid serviceTaskId, Guid staffId);
         Task<Result> UpdateCheckedInStatusAsync(Guid serviceTaskId, Guid staffId, ServiceTaskCheckInRequest request);
         Task<Result> UpdateForcedCancelledStatusAsync(Guid serviceTaskId, Guid staffId, string staffNote);
+        Task<Result> ReassignStaffForRescheduledOrder(Guid serviceOrderId, Guid newStaffId);
+
     }
 }

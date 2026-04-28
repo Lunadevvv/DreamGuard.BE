@@ -37,6 +37,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly VnPayOptions _vnPayOptions;
         private readonly IVariantCustomizeTypeRepository _variantCustomizeTypeRepository;
+        private readonly IProductRepository _productRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
@@ -54,7 +55,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ISystemConfigRepository systemConfigRepository,
             IOptions<VnPayOptions> vnPayOptions,
             IHangFireService hangFireService,
-            IVariantCustomizeTypeRepository variantCustomizeTypeRepository
+            IVariantCustomizeTypeRepository variantCustomizeTypeRepository,
+            IProductRepository productRepository
             )
         {
             _orderRepository = orderRepository;
@@ -73,6 +75,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _vnPayOptions = vnPayOptions.Value;
             _hangFireService = hangFireService;
             _variantCustomizeTypeRepository = variantCustomizeTypeRepository;
+            _productRepository = productRepository;
         }
 
         public async Task<Result<OrderResponse>> CreateOrderByAdminAsync(Guid adminId, CreateOrderByAdminRequest request, string ipAddress)
@@ -1145,6 +1148,35 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 });
             }
+            //take 5 best-seller products
+            var products = await _orderRepository.GetBestSellerProductsAsync(5);
+            var productResponses = new List<TopProductResponse>();
+            foreach (var p in products)
+            {
+                var hasVariants = p.Product.Variants != null && p.Product.Variants.Any();
+                var productResponse = new ProductResponse
+                {
+                    Id = p.Product.Id,
+                    Name = p.Product.Name,
+                    Summary = p.Product.Summary,
+                    Slug = p.Product.Slug,
+                    Material = p.Product.Material,
+                    AgeGroup = p.Product.AgeGroup,
+                    AverageRating = p.Product.AverageRating,
+                    BasePrice = hasVariants ? p.Product.Variants.Min(v => v.BasePrice) : 0,
+                    SalePrice = hasVariants ? p.Product.Variants.Min(v => v.SalePrice) : 0,
+                    IsTradeInEligible = p.Product.IsTradeInEligible,
+                    MinTradeInPrice = p.Product.MinTradeInPrice,
+                    DepositAmount = p.Product.DepositAmount,
+                    ImageUrls = p.Product.Assets.Select(a => a.Url).ToList()
+                };
+                productResponses.Add(new TopProductResponse
+                {
+                    Product = productResponse,
+                    TotalQuantity = p.TotalQuantity
+                });
+            }
+
             var response = new OrderDashBoardResponse
             {
                 TotalOrders = data.Count,
@@ -1157,6 +1189,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TotalVnPayAmount = totalVnPayAmount,
                 FromDate = fromDate,
                 ToDate = toDate,
+                TopSellingProducts = productResponses
             };
             return Result<OrderDashBoardResponse>.Success(response);
         }

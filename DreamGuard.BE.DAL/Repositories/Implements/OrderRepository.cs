@@ -8,6 +8,7 @@ using DreamGuard.BE.DAL.DbContext;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
+using DreamGuard.BE.DAL.Responses;
 using Microsoft.EntityFrameworkCore;
 
 namespace DreamGuard.BE.DAL.Repositories.Implements
@@ -123,6 +124,33 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                     .ThenInclude(o => o.Payments)
                 .Include(oi => oi.TradeInOrders)
                 .FirstOrDefaultAsync(oi => oi.Id == orderItemId);
+        }
+
+        public async Task<List<TopProductSeller>> GetBestSellerProductsAsync(int top)
+        {
+            var topProducts = await _context.OrderItems
+                .Where(oi => oi.Order.Status == OrderStatus.Completed)
+                .GroupBy(oi => oi.ProductVariant!.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    TotalQuantity = g.Sum(x => x.Quantity)
+                })
+                .OrderByDescending(x => x.TotalQuantity)
+                .Take(top)
+                .ToListAsync();
+            var topIds = topProducts.Select(tp => tp.ProductId).ToList();
+            var products = await _context.Products
+                .Where(p => topIds.Contains(p.Id))
+                .Include(p => p.Assets)
+                .Include(p => p.Variants)
+                .ToListAsync();
+            var productDict = products.ToDictionary(p => p.Id);
+            return topProducts.Select(tp => new TopProductSeller
+            {
+                Product = productDict[tp.ProductId],
+                TotalQuantity = tp.TotalQuantity,
+            }).ToList();
         }
     }
 }

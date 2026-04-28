@@ -18,5 +18,11 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal TotalVnPayAmount { get; set; }
         public DateOnly FromDate { get; set; }
         public DateOnly ToDate { get; set; }
+        public List<TopProductResponse> TopSellingProducts { get; set; }
+    }
+    public class TopProductResponse
+    {
+        public ProductResponse Product { get; set; }
+        public int TotalQuantity { get; set; }
     }
 }

@@ -29,6 +29,8 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal TradeInPrice { get; set; }
         public decimal AmountToPay { get; set; }
         public decimal DepositAmount { get; set; }
+        public decimal MinTradeInPrice { get; set; }
+        public decimal MaxTradeInPrice { get; set; }
         public List<PaymentSummaryResponse> Payments { get; set; } 
         public List<TradeInImage> TradeInImages { get; set; } = new List<TradeInImage>();
         public OrderItemResponse OrderItem { get; set; }

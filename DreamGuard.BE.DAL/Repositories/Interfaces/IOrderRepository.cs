@@ -4,6 +4,7 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Responses;
 
 namespace DreamGuard.BE.DAL.Repositories.Interfaces
 {
@@ -18,5 +19,8 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task AddOrderItemsAsync(List<OrderItem> items);
         Task<List<OrderItem>> GetOrdersToTradeInAsync(Guid customerId, int categoryParentId, decimal salePrice, decimal depositAmount);
         Task<OrderItem?> GetOrderItemByIdAsync(Guid orderItemId);
+        Task<List<TopProductSeller>> GetBestSellerProductsAsync(int top);
+
+
     }
 }

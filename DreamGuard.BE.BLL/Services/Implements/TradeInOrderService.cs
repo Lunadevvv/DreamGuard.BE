@@ -394,7 +394,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result<TradeInOrderDetailResponse>.Failure("TradeInOrder not found", 404);
             }
+            var minTradeInPrice = tradeInOrder.OrderItem?.ProductVariant?.Product?.MinTradeInPrice;
+            var maxTradeInPrice = tradeInOrder.OrderItem?.UnitPrice - tradeInOrder.ProductVariant?.Product?.DepositAmount;
             var response = _mapper.Map<TradeInOrderDetailResponse>(tradeInOrder);
+            response.MinTradeInPrice = minTradeInPrice ?? 0;
+            response.MaxTradeInPrice = maxTradeInPrice ?? 0;
             response.NewProductVariantUrl = tradeInOrder.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? string.Empty;
             response.OldProductVariantUrl = tradeInOrder.OrderItem.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? string.Empty;
             //với mỗi payment type lấy ra cái mới nhất

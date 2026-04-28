@@ -7,6 +7,7 @@ using DreamGuard.BE.DAL.Basic;
 using DreamGuard.BE.DAL.Constants;
 using DreamGuard.BE.DAL.ModelExtensions;
 using DreamGuard.BE.DAL.Models;
+using DreamGuard.BE.DAL.Repositories.Implements;
 using DreamGuard.BE.DAL.Repositories.Interfaces;
 using System.Security.Cryptography.X509Certificates;
 
@@ -355,5 +356,53 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result.Success($"{result}");
         }
 
+        public async Task<Result> ReassignStaffForRescheduledOrder(Guid serviceOrderId, Guid newStaffId)
+        {
+            var serviceOrder = await _soRepo.GetByIdWithServiceTask(serviceOrderId);
+            if (serviceOrder == null)
+            {
+                return Result.Failure("Service order not found", 404);
+            }
+            //service order phải ở status rescheduled mới được assign lại staff
+            if (serviceOrder.Status != OrderServiceStatus.Rescheduled )
+            {
+                return Result.Failure("Only ServiceOrder in status Rescheduled can be reassigned new staff", 400);
+            }
+            //service task phải ở status rescheduled mới được assign lại staff
+            var serviceTask = serviceOrder.ServiceTasks.OrderByDescending(st => st.CreatedAt).FirstOrDefault();
+            if (serviceTask == null)
+            {
+                return Result.Failure("service task not found", 400);
+            }
+            if (serviceTask.Status != ServiceTaskStatus.Rescheduled)
+            {
+                return Result.Failure("Only ServiceTask in status Rescheduled can be reassigned new staff", 400);
+            }
+            var newStaff = await _staffRepo.GetByIdAsync(newStaffId);
+            if (newStaff == null)
+            {
+                return Result.Failure("New staff not found", 404);
+            }
+            var newServiceTask = new ServiceTask
+            {
+                SoId = serviceOrder.SoId,
+                StaffId = newStaffId,
+            };
+            _repo.AddEntity(newServiceTask);
+            var result = await _unitOfWork.SaveChangeAsync();
+            if (result == 0)
+            {
+                return Result.Failure("Failed to reschedule service order", 500);
+            }
+            var notification = new Notification
+            {
+                UserId = newStaffId,
+                ActionType = "ServiceTask Create",
+                Message = $"You have been assigned ServiceTask: {serviceTask.ServiceTaskId}",
+            };
+
+            _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
+            return Result.Success($"staff reassigned to service task: {serviceTask.ServiceTaskId}");
+        }
     }
 }
