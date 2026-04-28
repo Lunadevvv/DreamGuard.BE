@@ -102,7 +102,7 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
         [HttpPatch("{serviceTaskId}/updateCompletedStatus")]
-        [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
+        [Authorize(Roles = $"{Role.CleaningStaff}")]
         public async Task<IActionResult> UpdateCompletedStatusAsync(Guid serviceTaskId)
         {
             var result = await _service.UpdateCompletedStatusAsync(serviceTaskId);
