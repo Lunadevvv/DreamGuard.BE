@@ -103,9 +103,9 @@ namespace DreamGuard.BE.API.Controllers
         }
         [HttpPatch("{serviceTaskId}/updateCompletedStatus")]
         [Authorize(Roles = $"{Role.CleaningStaff}")]
-        public async Task<IActionResult> UpdateCompletedStatusAsync(Guid serviceTaskId)
+        public async Task<IActionResult> UpdateCompletedStatusAsync(Guid serviceTaskId, ServiceTaskCompleteRequest request)
         {
-            var result = await _service.UpdateCompletedStatusAsync(serviceTaskId);
+            var result = await _service.UpdateCompletedStatusAsync(serviceTaskId, request);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse

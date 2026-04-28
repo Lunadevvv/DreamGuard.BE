@@ -19,7 +19,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<PaginatedList<ServiceTaskResponse>>> GetBySoIdAsync(Guid soId, int pageNumber, int pageSize);
         Task<Result<PaginatedList<ServiceTaskResponse>>> SearchAsync(AdminSearchServiceTaskRequest searchRequest, int pageNumber, int pageSize);
         Task<Result<PaginatedList<ServiceTaskResponse>>> GetByStaffIdAsync(Guid staffId, int pageNumber, int pageSize);
-        Task<Result> UpdateCompletedStatusAsync(Guid serviceTaskId);
+        Task<Result> UpdateCompletedStatusAsync(Guid serviceTaskId, ServiceTaskCompleteRequest request);
         Task<Result> UpdateCheckedOutStatusAsync(Guid serviceTaskId, Guid staffId, ServiceTaskCheckOutRequest request);
         Task<Result> UpdateProcessingStatusAsync(Guid serviceTaskId, Guid staffId);
         Task<Result> UpdateCheckedInStatusAsync(Guid serviceTaskId, Guid staffId, ServiceTaskCheckInRequest request);

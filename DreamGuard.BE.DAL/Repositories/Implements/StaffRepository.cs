@@ -17,7 +17,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             try
             {
                 var query = _context.Staffs.Include(s => s.User).Include(s => s.ServiceTasks)
-                    .OrderBy(s => s.ServiceTasks.Count(st => st.Status == ServiceTaskStatus.Pending && st.Status == ServiceTaskStatus.CheckedOut && st.Status == ServiceTaskStatus.CheckedIn && st.Status == ServiceTaskStatus.Processing))
+                    .OrderBy(s => s.ServiceTasks.Count(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedOut || st.Status == ServiceTaskStatus.CheckedIn || st.Status == ServiceTaskStatus.Processing))
                     .ThenByDescending(s => s.AverageRating);
                 return await PaginatedList<Staff>.CreateAsync(query, pageNumber, pageSize);
             }

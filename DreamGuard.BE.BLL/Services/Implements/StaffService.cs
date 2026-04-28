@@ -35,10 +35,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             var staffs = await _repo.GetAllByAdminAsync(pageNumber, pageSize);
             var staffResponse = _mapper.Map<List<StaffResponse>>(staffs.Items);
-            var staffDict = staffResponse.ToDictionary(sr => sr.StaffId, sr => sr.TaskCount);
-            foreach (var staff in staffs.Items)
+            var staffDict = staffs.Items.ToDictionary(sr => sr.StaffId);
+            foreach (var response in staffResponse)
             {
-                staffDict[staff.StaffId] = staff.ServiceTasks.Count(st => st.Status == ServiceTaskStatus.Pending && st.Status == ServiceTaskStatus.CheckedOut && st.Status == ServiceTaskStatus.CheckedIn && st.Status == ServiceTaskStatus.Processing);
+                var serviceTask = staffDict[response.StaffId].ServiceTasks;
+                response.TaskCount = serviceTask.Count(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedOut || st.Status == ServiceTaskStatus.CheckedIn || st.Status == ServiceTaskStatus.Processing);
             }
             var paginatedResult = new PaginatedList<StaffResponse>(staffResponse, staffs.TotalCount, staffs.PageNumber, staffs.PageSize);
             return Result<PaginatedList<StaffResponse>>.Success(paginatedResult);

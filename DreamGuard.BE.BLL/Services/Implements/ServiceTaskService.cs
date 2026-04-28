@@ -330,6 +330,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     return Result.Failure("Evidence is required for COD payment.", 400);
                 }
+                payment.EvidenceUrl = request.EvidenceUrl;
             }
             serviceOrder.Status = OrderServiceStatus.Completed;
             serviceTask.Status = ServiceTaskStatus.Completed;
