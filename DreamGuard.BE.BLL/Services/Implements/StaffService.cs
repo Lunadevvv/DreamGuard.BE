@@ -38,8 +38,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var staffDict = staffs.Items.ToDictionary(sr => sr.StaffId);
             foreach (var response in staffResponse)
             {
-                var serviceTask = staffDict[response.StaffId].ServiceTasks;
-                response.TaskCount = serviceTask.Count(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedOut || st.Status == ServiceTaskStatus.CheckedIn || st.Status == ServiceTaskStatus.Processing);
+                if (response.Position == DAL.Constants.Role.CleaningStaff)
+                {
+                    var serviceTask = staffDict[response.StaffId].ServiceTasks;
+                    response.TaskCount = serviceTask.Count(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedOut || st.Status == ServiceTaskStatus.CheckedIn || st.Status == ServiceTaskStatus.Processing);
+                }else if (response.Position == DAL.Constants.Role.DeliveryStaff)
+                {
+                    var shippingTask = staffDict[response.StaffId].ShippingTasks;
+                    response.TaskCount = shippingTask.Count(o => o.Status == ShippingTaskStatus.Pending || o.Status == ShippingTaskStatus.Arrived || o.Status == ShippingTaskStatus.Delivering || o.Status == ShippingTaskStatus.Returning);
+                }
+                
             }
             var paginatedResult = new PaginatedList<StaffResponse>(staffResponse, staffs.TotalCount, staffs.PageNumber, staffs.PageSize);
             return Result<PaginatedList<StaffResponse>>.Success(paginatedResult);

@@ -398,11 +398,37 @@ namespace DreamGuard.BE.BLL.Services.Implements
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                // Update Order Status
-                order.Status = isValidVnPay ? OrderStatus.Completed : OrderStatus.Delivered;
-                order.UpdatedAt = DateTime.UtcNow;
-                await _orderRepository.UpdateAsync(order);
+                if (isValidVnPay)
+                {
+                    // Update Order Status
+                    order.Status = OrderStatus.Completed;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    await _orderRepository.UpdateAsync(order);
+                }else if(payment != null && payment.PaymentMethod == PaymentMethod.COD && payment.Status == PaymentStatus.Pending)
+                {
+                    if (string.IsNullOrEmpty(request.PaymentEvidenceUrl))
+                    {
+                        return Result.Failure("Payment evidence is required for COD orders.", 400);
+                    }
 
+                    // For COD, we mark as completed but the payment is still pending until the shipper confirms the cash collection
+                    order.Status = OrderStatus.Completed;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    await _orderRepository.UpdateAsync(order);
+
+                    // Update payment evidence
+                    payment.EvidenceUrl= request.PaymentEvidenceUrl;
+
+                    // Update payment status to Paid
+                    payment.Status = PaymentStatus.CODPaid;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(payment);
+                }
+                else
+                {
+                    return Result.Failure("Payment is not completed yet.", 400);
+                }
+                
                 // Award points if order is Completed
                 if (order.Status == OrderStatus.Completed)
                 {
@@ -439,12 +465,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Update Task Status
                 task.Status = ShippingTaskStatus.Delivered;
                 task.CompletionDate = DateTime.UtcNow;
-                await _taskRepository.UpdateAsync(task);
+                _taskRepository.UpdateEntity(task);
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)
                 {
-                    await _evidenceRepository.CreateAsync(new ShippingEvidence
+                    _evidenceRepository.AddEntity(new ShippingEvidence
                     {
                         EvidenceId = Guid.NewGuid(),
                         ShippingTaskId = task.ShippingTaskId,
@@ -453,7 +479,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         CreatedAt = DateTime.UtcNow
                     });
                 }
-
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 var notification = new Notification
                 {

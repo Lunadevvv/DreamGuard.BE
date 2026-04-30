@@ -958,10 +958,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Order not found.", 404);
             }
 
-            if (newStatus == OrderStatus.Confirmed && order.CheckoutProductOrderId.HasValue)
-            {
-                return Result.Failure("Child orders cannot be confirmed directly. Please confirm the CheckoutOrder instead.", 400);
-            }
+            // if (newStatus == OrderStatus.Confirmed && order.CheckoutProductOrderId.HasValue)
+            // {
+            //     return Result.Failure("Child orders cannot be confirmed directly. Please confirm the CheckoutOrder instead.", 400);
+            // }
 
             // Validate status transition
             if (!IsValidStatusTransition(order.Status, newStatus))
@@ -997,6 +997,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
             order.Status = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
             await _orderRepository.UpdateAsync(order);
+
+            if(newStatus == OrderStatus.Confirmed && order.CheckoutProductOrderId.HasValue)
+            {
+                var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                if (checkoutOrder != null && checkoutOrder.Status == CheckoutOrderStatus.Pending)
+                {
+                    checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
+                    checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                    await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                }
+            }
+            
             // notification
             Notification notification = new Notification
             {

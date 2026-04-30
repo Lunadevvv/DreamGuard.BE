@@ -62,8 +62,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             var query = _context.Payments
                 .Include(p => p.POrder)
-                .Where(p => p.POrder != null && p.POrder.CustomerId == customerId)
+                .Include(p => p.TradeInOrder)
+                .Include(p => p.CheckoutProductOrder)
+                .Where(p => p.POrder != null && p.POrder.CustomerId == customerId || p.TradeInOrder != null && p.TradeInOrder.CustomerId == customerId || p.CheckoutProductOrder != null && p.CheckoutProductOrder.CustomerId == customerId)
                 .OrderByDescending(p => p.CreatedAt)
+                .AsSplitQuery()
                 .AsNoTracking();
 
             if (status.HasValue)

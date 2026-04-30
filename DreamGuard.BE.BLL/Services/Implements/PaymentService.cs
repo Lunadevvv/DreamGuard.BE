@@ -469,6 +469,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     $"Cannot transition payment status from '{payment.Status}' to '{newStatus}'.", 400);
             }
 
+            if (string.IsNullOrEmpty(evidenceUrl))
+            {
+                return Result.Failure("Evidence URL is required when marking a refund payment as Refunded.", 400);
+            }
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
@@ -489,10 +493,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // if payment type is refund, also add evidence url for refund proof
                 if (payment.PaymentType == PaymentType.Refund && newStatus == PaymentStatus.Refunded)
                 {
-                    if (string.IsNullOrEmpty(evidenceUrl))
-                    {
-                        return Result.Failure("Evidence URL is required when marking a refund payment as Refunded.", 400);
-                    }
                     payment.Status = newStatus;
                     payment.UpdatedAt = DateTime.UtcNow;
                     payment.EvidenceUrl = evidenceUrl;
@@ -529,6 +529,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {   
                     payment.Status = newStatus;
                     payment.UpdatedAt = DateTime.UtcNow;
+                    payment.EvidenceUrl = evidenceUrl;
                     var order = await _orderRepository.GetByIdAsync(payment.POrderId.Value);
                     if (order != null && order.Status == OrderStatus.Delivered)
                     {
@@ -683,7 +684,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (checkoutOrder != null)
                         {
                             checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
-                            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                            _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
 
                             foreach(var childOrder in checkoutOrder.Orders)
                             {
