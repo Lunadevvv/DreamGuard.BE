@@ -13,6 +13,8 @@ namespace DreamGuard.BE.BLL.Requests
 
         [MaxLength(500)]
         public string? Note { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "ShippingFee must be non-negative.")]
+        public decimal ShippingFee { get; set; }
 
         [Required(ErrorMessage = "PaymentMethod is required.")]
         public PaymentMethod PaymentMethod { get; set; }

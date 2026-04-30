@@ -37,6 +37,7 @@ namespace DreamGuard.BE.BLL.Responses
         public OrderStatus Status { get; set; }
         public decimal SubTotal { get; set; }
         public decimal DiscountAmount { get; set; }
+        public decimal ShippingFee { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal TotalAddonPrice { get; set; }
         public Guid PaymentId { get; set; }
@@ -76,6 +77,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string? ShippingStaffName { get; set; }
         public string? ShippingStatus { get; set; }
         public string? ShippingStaffAvatarUrl { get; set; }
+        public decimal ShippingFee { get; set; }
     }
 
     public class OrderSummaryResponse

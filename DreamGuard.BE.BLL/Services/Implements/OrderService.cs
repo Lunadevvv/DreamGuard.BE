@@ -618,7 +618,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     await _userVoucherRepository.UpdateAsync(userVoucher);
                 }
 
-                decimal shippingFee = 0; // Defaulting to 0 as per logic
+                decimal shippingFee = request.ShippingFee; // Defaulting to 0 as per logic
                 var totalAmount = Math.Max(0, subTotal + totalAddonPrice - discountAmount + shippingFee);
 
                 var checkoutOrderCode = GenerateOrderCode();
@@ -657,7 +657,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         childDiscount = Math.Round((childSubTotal / subTotal) * discountAmount, 0); // Proportional
                     }
                     
-                    decimal childShipping = 0;
+                    decimal childShipping = shippingFee > 0 ? shippingFee / 2 : 0; // Proportional
 
                     decimal childTotal = Math.Max(0, childSubTotal + childAddonPrice - childDiscount + childShipping);
 
@@ -766,6 +766,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         OrderCode = o.OrderCode,
                         Status = o.Status,
                         SubTotal = o.SubTotal,
+                        ShippingFee = o.ShippingFee,
                         DiscountAmount = o.DiscountAmount,
                         TotalAmount = o.TotalAmount,
                         TotalAddonPrice = o.TotalAddonPrice,
@@ -1284,7 +1285,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PaymentStatus = order.Payments?.OrderByDescending(p => p.CreatedAt).FirstOrDefault()?.Status ?? PaymentStatus.Pending,
                 ShippingStaffName = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.FullName ?? "N/A",
                 ShippingStatus = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Status.ToString() ?? "N/A",
-                ShippingStaffAvatarUrl = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.AvatarUrl ?? string.Empty
+                ShippingStaffAvatarUrl = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.AvatarUrl ?? string.Empty,
+                ShippingFee = order.ShippingFee
             };
         }
 
