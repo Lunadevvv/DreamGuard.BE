@@ -106,5 +106,34 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         }
 
 
+        public async Task<Payment?> GetPaidPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId)
+        {
+            return await _context.Payments
+                .Where(p => p.CheckoutProductOrderId == checkoutProductOrderId
+                         && p.Status == PaymentStatus.Paid
+                         && p.PaymentType != PaymentType.Refund)
+                .OrderByDescending(p => p.CreatedAt)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Payment?> GetLatestNonRefundPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId)
+        {
+            return await _context.Payments
+                .Where(p => p.CheckoutProductOrderId == checkoutProductOrderId
+                         && p.PaymentType != PaymentType.Refund)
+                .OrderByDescending(p => p.CreatedAt)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Payment?> GetPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId)
+        {
+            return await _context.Payments
+                .Where(p => p.CheckoutProductOrderId == checkoutProductOrderId)
+                .OrderByDescending(p => p.CreatedAt)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
     }
 }

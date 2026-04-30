@@ -33,6 +33,7 @@ namespace DreamGuard.BE.DAL
             builder.Services.AddScoped<IVoucherRepository, VoucherRepository>();
             builder.Services.AddScoped<ICartRepository, CartRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<ICheckoutProductOrderRepository, CheckoutProductOrderRepository>();
             builder.Services.AddScoped<IProductCustomizeTypeRepository, ProductCustomizeTypeRepository>();
             builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
             builder.Services.AddScoped<IFavoriteProductRepository, FavoriteProductRepository>();

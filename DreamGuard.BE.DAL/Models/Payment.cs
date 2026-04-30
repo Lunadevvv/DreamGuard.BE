@@ -24,6 +24,9 @@ namespace DreamGuard.BE.DAL.Models
 
         [JsonIgnore]
         public Order? POrder { get; set; }
+        public Guid? CheckoutProductOrderId { get; set; }
+        [JsonIgnore]
+        public CheckoutProductOrder? CheckoutProductOrder { get; set; }
         [JsonIgnore]
         public ServiceOrder? ServiceOrder { get; set; }
     }

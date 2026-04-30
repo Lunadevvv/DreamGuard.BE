@@ -152,5 +152,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 TotalQuantity = tp.TotalQuantity,
             }).ToList();
         }
+
+        public async Task<List<Order>> GetOrdersByCheckoutOrderIdAsync(Guid checkoutProductOrderId)
+        {
+            return await _context.Orders
+                .Where(o => o.CheckoutProductOrderId == checkoutProductOrderId)
+                .AsNoTracking()
+                .ToListAsync();
+        }
     }
 }

@@ -30,6 +30,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ITradeInOrderRepository _tradeInOrderRepository;
         private readonly IHangFireService _hangFireService;
         private readonly IServiceOrderRepository _serviceOrderRepository;
+        private readonly ICheckoutProductOrderRepository _checkoutProductOrderRepository;
+
         public PaymentService(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
@@ -42,7 +44,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IOrderItemRepository orderItemRepository,
             IInventoryRepository inventoryRepository,
             IHangFireService hangFireService,
-            IServiceOrderRepository serviceOrderRepository)
+            IServiceOrderRepository serviceOrderRepository,
+            ICheckoutProductOrderRepository checkoutProductOrderRepository)
         {
             _paymentRepository = paymentRepository;
             _orderRepository = orderRepository;
@@ -56,6 +59,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _inventoryRepository = inventoryRepository;
             _hangFireService = hangFireService;
             _serviceOrderRepository = serviceOrderRepository;
+            _checkoutProductOrderRepository = checkoutProductOrderRepository;
         }
 
         public async Task<Result<CreatePaymentResponse>> CreatePaymentAsync(Guid orderId, PaymentMethod method, string ipAddress)
@@ -197,7 +201,41 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         };
                         _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
                         _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+                    }
+                    if (payment.CheckoutProductOrderId.HasValue)
+                    {
+                        var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(payment.CheckoutProductOrderId.Value);
+                        if (checkoutOrder != null && checkoutOrder.Status == CheckoutOrderStatus.Pending)
+                        {
+                            checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
+                            checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
 
+                            foreach(var childOrder in checkoutOrder.Orders)
+                            {
+                                if (childOrder.Status == OrderStatus.Pending)
+                                {
+                                    childOrder.Status = OrderStatus.Confirmed;
+                                    childOrder.UpdatedAt = DateTime.UtcNow;
+                                    await _orderRepository.UpdateAsync(childOrder);
+                                }
+                            }
+                            
+                            AuditLog audit = new AuditLog
+                            {
+                                UserId = checkoutOrder.CustomerId,
+                                ActionType = $"Confirmed by VnPayGateWay",
+                                Message = $"CheckoutOrder:{checkoutOrder.Id} confirmed via VnPay callback. order status is now Confirmed",
+                            };
+                            Notification notification = new Notification
+                            {
+                                UserId = checkoutOrder.CustomerId,
+                                ActionType = "Confirmed By VnPayGateWay",
+                                Message = $"Your checkout order {checkoutOrder.CheckoutOrderCode} has been confirmed after successful payment.",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+                            _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+                        }
                     }
                     //update trade-in order status to WAITING_FOR_STAFF when payment succeeds
                     if (payment.TradeInOrderId.HasValue)
@@ -287,6 +325,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 if (payment.Status == PaymentStatus.Failed && payment.POrderId.HasValue)
                 {
                     await _orderService.UpdateOrderStatusAsync(payment.POrderId.Value, OrderStatus.Cancelled);
+                }
+
+                if (payment.Status == PaymentStatus.Failed && payment.CheckoutProductOrderId.HasValue)
+                {
+                    var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(payment.CheckoutProductOrderId.Value);
+                    if (checkoutOrder != null)
+                    {
+                        checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
+                        await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+
+                        foreach(var childOrder in checkoutOrder.Orders)
+                        {
+                            await _orderService.UpdateOrderStatusAsync(childOrder.Id, OrderStatus.Cancelled);
+                        }
+                    }
                 }
 
                 return Result<VnPaymentResponse>.Success(vnPayResult);
@@ -443,6 +496,32 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     payment.Status = newStatus;
                     payment.UpdatedAt = DateTime.UtcNow;
                     payment.EvidenceUrl = evidenceUrl;
+
+                    if (payment.POrderId.HasValue)
+                    {
+                        var childOrder = await _orderRepository.GetByIdAsync(payment.POrderId.Value);
+                        if (childOrder != null && childOrder.CheckoutProductOrderId.HasValue)
+                        {
+                            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(childOrder.CheckoutProductOrderId.Value);
+                            if (checkoutOrder != null)
+                            {
+                                checkoutOrder.RefundingAmount -= payment.Amount;
+                                checkoutOrder.RefundedAmount += payment.Amount;
+
+                                bool allCancelled = checkoutOrder.Orders.All(o => o.Status == OrderStatus.Cancelled);
+                                if (allCancelled && checkoutOrder.RefundingAmount <= 0)
+                                {
+                                    checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunded;
+                                }
+                                else
+                                {
+                                    checkoutOrder.Status = CheckoutOrderStatus.PartialRefunded;
+                                }
+
+                                await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                            }
+                        }
+                    }
                 }
 
                 // if marking as CODPaid, also update order with Delivered status to Completed
@@ -596,6 +675,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (!updatedResult.Succeeded){
                             await transaction.RollbackAsync();
                             return Result.Failure("Failed to cancel order after payment expiration.", 400);
+                        }
+                    }
+                    if (payment.CheckoutProductOrderId.HasValue)
+                    {
+                        var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(payment.CheckoutProductOrderId.Value);
+                        if (checkoutOrder != null)
+                        {
+                            checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
+                            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+
+                            foreach(var childOrder in checkoutOrder.Orders)
+                            {
+                                await _orderService.UpdateOrderStatusAsync(childOrder.Id, OrderStatus.Cancelled);
+                            }
                         }
                     }
                 }

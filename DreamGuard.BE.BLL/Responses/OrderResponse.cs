@@ -87,4 +87,16 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal TotalAmount { get; set; }
         public DateTime CreatedAt { get; set; }
     }
+
+    public class CheckoutProductOrderAdminSummaryResponse
+    {
+        public Guid Id { get; set; }
+        public string CheckoutOrderCode { get; set; } = string.Empty;
+        public CheckoutOrderStatus Status { get; set; }
+        public decimal TotalAmount { get; set; }
+        public decimal RefundingAmount { get; set; }
+        public decimal RefundedAmount { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public List<OrderSummaryResponse> ChildOrders { get; set; } = new List<OrderSummaryResponse>();
+    }
 }

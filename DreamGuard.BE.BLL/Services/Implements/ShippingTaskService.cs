@@ -29,6 +29,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly ITradeInOrderRepository _tradeInOrderRepository;
         private readonly IHangFireService _hangFireService;
+        private readonly ICheckoutProductOrderRepository _checkoutProductOrderRepository;
 
         public ShippingTaskService(
             IShippingTaskRepository taskRepository,
@@ -42,7 +43,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ICustomerRepository customerRepository,
             ISystemConfigRepository systemConfigRepository,
             ITradeInOrderRepository tradeInOrderRepository,
-            IHangFireService hangFireService
+            IHangFireService hangFireService,
+            ICheckoutProductOrderRepository checkoutProductOrderRepository
             )
         {
             _taskRepository = taskRepository;
@@ -57,6 +59,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _systemConfigRepository = systemConfigRepository;
             _tradeInOrderRepository = tradeInOrderRepository;
             _hangFireService = hangFireService;
+            _checkoutProductOrderRepository = checkoutProductOrderRepository;
         }
 
         public async Task<Result<ShippingTaskResponse>> CreateShippingTaskAsync(ShippingTaskCreateRequest request)
@@ -389,14 +392,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null || (order.Status != OrderStatus.Shipping && order.Status != OrderStatus.Shipping_Replacement)) return Result.Failure("Order is not in Shipping status.", 400);
 
-            var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
-            bool isVnPay = payment != null && payment.PaymentMethod == PaymentMethod.VnPay;
+            var payment = await _paymentRepository.GetPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId.HasValue ? order.CheckoutProductOrderId.Value : order.Id);
+            bool isValidVnPay = payment != null && payment.PaymentMethod == PaymentMethod.VnPay && payment.Status == PaymentStatus.Paid;
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 // Update Order Status
-                order.Status = isVnPay ? OrderStatus.Completed : OrderStatus.Delivered;
+                order.Status = isValidVnPay ? OrderStatus.Completed : OrderStatus.Delivered;
                 order.UpdatedAt = DateTime.UtcNow;
                 await _orderRepository.UpdateAsync(order);
 
@@ -415,6 +418,21 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         int coinsEarned = (int)(order.TotalAmount * percent / 100);
                         customer.MemberCoin += coinsEarned;
                         _customerRepository.UpdateEntity(customer);
+                    }
+
+                    if (order.CheckoutProductOrderId.HasValue)
+                    {
+                        var siblingOrders = await _orderRepository.GetOrdersByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+                        bool allOtherCompleted = siblingOrders.Where(o => o.Id != order.Id).All(o => o.Status == OrderStatus.Completed);
+                        if (allOtherCompleted)
+                        {
+                            var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                            if (checkoutOrder != null)
+                            {
+                                checkoutOrder.Status = CheckoutOrderStatus.Completed;
+                                _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+                            }
+                        }
                     }
                 }
 
