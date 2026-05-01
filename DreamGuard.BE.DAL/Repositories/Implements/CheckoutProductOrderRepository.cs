@@ -30,7 +30,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
-        public async Task<DreamGuard.BE.DAL.ModelExtensions.PaginatedList<CheckoutProductOrder>> GetAllForAdminAsync(int pageNumber, DreamGuard.BE.DAL.Constants.CheckoutOrderStatus? status, string? orderCode)
+        public async Task<ModelExtensions.PaginatedList<CheckoutProductOrder>> GetAllForAdminAsync(int pageNumber, Constants.CheckoutOrderStatus? status, string? orderCode)
         {
             var query = _context.CheckoutProductOrders
                 .Include(c => c.Orders)
@@ -53,6 +53,32 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
 
             return new DreamGuard.BE.DAL.ModelExtensions.PaginatedList<CheckoutProductOrder>(items, totalCount, pageNumber, pageSize);
+        }
+
+        public async Task<ModelExtensions.PaginatedList<CheckoutProductOrder>> GetAllForUserAsync(int pageNumber, Constants.CheckoutOrderStatus? status, string? orderCode, Guid userId)
+        {
+            var query = _context.CheckoutProductOrders
+                .Include(c => c.Orders)
+                .Where(c => c.CustomerId == userId)
+                .AsQueryable();
+
+            if (status.HasValue)
+            {
+                query = query.Where(o => o.Status == status.Value);
+            }
+
+            if (!string.IsNullOrEmpty(orderCode))
+            {
+                query = query.Where(o => o.CheckoutOrderCode.Contains(orderCode));
+            }
+
+            query = query.OrderByDescending(o => o.CreatedAt);
+
+            int pageSize = 10;
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            return new ModelExtensions.PaginatedList<CheckoutProductOrder>(items, totalCount, pageNumber, pageSize);
         }
     }
 }

@@ -8,6 +8,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         Task<CheckoutProductOrder?> GetWithOrdersByIdAsync(Guid id);
         Task<CheckoutProductOrder?> GetWithOrdersAndPaymentsByIdAsync(Guid id);
-        Task<DreamGuard.BE.DAL.ModelExtensions.PaginatedList<CheckoutProductOrder>> GetAllForAdminAsync(int pageNumber, DreamGuard.BE.DAL.Constants.CheckoutOrderStatus? status, string? orderCode);
+        Task<ModelExtensions.PaginatedList<CheckoutProductOrder>> GetAllForAdminAsync(int pageNumber, Constants.CheckoutOrderStatus? status, string? orderCode);
+        Task<ModelExtensions.PaginatedList<CheckoutProductOrder>> GetAllForUserAsync(int pageNumber, Constants.CheckoutOrderStatus? status, string? orderCode, Guid userId);
     }
 }

@@ -918,6 +918,36 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     responses, checkoutOrders.TotalCount, checkoutOrders.PageNumber, checkoutOrders.PageSize));
         }
 
+        public async Task<Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>> GetAllUserCheckoutOrdersAsync(
+            int pageNumber, CheckoutOrderStatus? status, string? orderCode, Guid userId)
+        {
+            var checkoutOrders = await _checkoutProductOrderRepository.GetAllForUserAsync(pageNumber, status, orderCode, userId);
+
+            var responses = checkoutOrders.Items.Select(c => new CheckoutProductOrderAdminSummaryResponse
+            {
+                Id = c.Id,
+                CheckoutOrderCode = c.CheckoutOrderCode,
+                Status = c.Status,
+                TotalAmount = c.TotalAmount,
+                RefundingAmount = c.RefundingAmount,
+                RefundedAmount = c.RefundedAmount,
+                CreatedAt = c.CreatedAt,
+                ChildOrders = c.Orders.Select(o => new OrderSummaryResponse
+                {
+                    Id = o.Id,
+                    OrderCode = o.OrderCode,
+                    Status = o.Status,
+                    ItemCount = o.OrderItems?.Count ?? 0,
+                    TotalAmount = o.TotalAmount,
+                    CreatedAt = o.CreatedAt
+                }).ToList()
+            }).ToList();
+
+            return Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>.Success(
+                new PaginatedList<CheckoutProductOrderAdminSummaryResponse>(
+                    responses, checkoutOrders.TotalCount, checkoutOrders.PageNumber, checkoutOrders.PageSize));
+        }
+
         public async Task<Result> UpdateCheckoutOrderStatusAsync(Guid checkoutOrderId, CheckoutOrderStatus newStatus)
         {
             var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(checkoutOrderId);
