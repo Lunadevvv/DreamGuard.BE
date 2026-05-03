@@ -6,8 +6,11 @@ namespace DreamGuard.BE.DAL.Constants
         Confirmed = 1,
         PartialRefunding = 2,
         PartialRefunded = 3,
-        CancelledAndRefunded = 4,
-        Cancelled = 5,
-        Completed = 6
+        CancelledAndRefunding = 4,
+        CancelledAndRefunded = 5,
+        Cancelled = 6,
+        Completed = 7,
+        ReturnedAndRefunded = 8,
+        PartialCompleted = 9
     }
 }

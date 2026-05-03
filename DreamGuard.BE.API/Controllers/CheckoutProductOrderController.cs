@@ -64,11 +64,11 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
-        [HttpPatch("admin/{checkoutOrderId}/status")]
+        [HttpPatch("admin/{checkoutOrderId}/confirmed")]
         [Authorize(Roles = "Admin, Manager, Seller")]
-        public async Task<IActionResult> UpdateCheckoutOrderStatus(Guid checkoutOrderId, [FromBody] CheckoutOrderStatus newStatus)
+        public async Task<IActionResult> ConfirmCheckoutOrderAsync(Guid checkoutOrderId)
         {
-            var result = await _orderService.UpdateCheckoutOrderStatusAsync(checkoutOrderId, newStatus);
+            var result = await _orderService.ConfirmCheckoutOrderAsync(checkoutOrderId);
             if (!result.Succeeded)
             {
                 return StatusCode(result.StatusCode, new ErrorResponse
@@ -78,6 +78,43 @@ namespace DreamGuard.BE.API.Controllers
                 });
             }
             return Ok(new { Message = "Status updated successfully" });
+        }
+
+        [HttpPatch("admin/{checkoutOrderId}/cancelled")]
+        [Authorize(Roles = "Admin, Manager, Seller")]
+        public async Task<IActionResult> CancelCheckoutOrderByAdminAsync(Guid checkoutOrderId)
+        {
+            var result = await _orderService.CancelCheckoutOrderByAdminAsync(checkoutOrderId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(new { Message = "Status updated successfully" });
+        }
+
+        [HttpPatch("{checkoutOrderId}/cancelled")]
+        [Authorize]
+        public async Task<IActionResult> CancelCheckoutOrderByUserAsync(Guid checkoutOrderId)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var customerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _orderService.CancelCheckoutOrderByUserAsync(checkoutOrderId, customerId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(new { Message = "Cancel checkout order successfully" });
         }
     }
 }

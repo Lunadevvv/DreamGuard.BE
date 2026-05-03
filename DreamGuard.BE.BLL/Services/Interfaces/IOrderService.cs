@@ -19,9 +19,11 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<PaginatedList<OrderSummaryResponse>>> GetAllOrdersForAdminAsync(int pageNumber, OrderStatus? status, string? orderCode);
         Task<Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>> GetAllCheckoutOrdersForAdminAsync(int pageNumber, CheckoutOrderStatus? status, string? orderCode);
         Task<Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>> GetAllUserCheckoutOrdersAsync(int pageNumber, CheckoutOrderStatus? status, string? orderCode, Guid userId);
-        Task<Result> UpdateCheckoutOrderStatusAsync(Guid checkoutOrderId, CheckoutOrderStatus newStatus);
+        Task<Result> ConfirmCheckoutOrderAsync(Guid checkoutOrderId);
         Task<Result> UpdateOrderStatusAsync(Guid orderId, OrderStatus newStatus);
         Task<Result> CancelOrderAsync(Guid userId, Guid orderId);
         Task<Result<List<OrderItemResponse>>> GetOrdersToTradeInAsync(Guid customerId, Guid productVariantId);
+        Task<Result> CancelCheckoutOrderByAdminAsync(Guid checkoutOrderId);
+        Task<Result> CancelCheckoutOrderByUserAsync(Guid checkoutOrderId, Guid customerId);
     }
 }

@@ -486,7 +486,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     {
                         order.Status = OrderStatus.Confirmed;
                         order.UpdatedAt = DateTime.UtcNow;
-                        await _orderRepository.UpdateAsync(order);
+                        _orderRepository.UpdateEntity(order);
                     }
                 }
 
@@ -500,26 +500,56 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     if (payment.POrderId.HasValue)
                     {
                         var childOrder = await _orderRepository.GetByIdAsync(payment.POrderId.Value);
-                        if (childOrder != null && childOrder.CheckoutProductOrderId.HasValue)
+                        if (childOrder != null)
                         {
-                            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(childOrder.CheckoutProductOrderId.Value);
-                            if (checkoutOrder != null)
+                            if (childOrder.Status == OrderStatus.ReturnedAndRefunding)
                             {
-                                checkoutOrder.RefundingAmount -= payment.Amount;
-                                checkoutOrder.RefundedAmount += payment.Amount;
-
-                                bool allCancelled = checkoutOrder.Orders.All(o => o.Status == OrderStatus.Cancelled);
-                                if (allCancelled && checkoutOrder.RefundingAmount <= 0)
-                                {
-                                    checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunded;
-                                }
-                                else
-                                {
-                                    checkoutOrder.Status = CheckoutOrderStatus.PartialRefunded;
-                                }
-
-                                await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                                childOrder.Status = OrderStatus.ReturnedAndRefunded;
+                                _orderRepository.UpdateEntity(childOrder);
                             }
+
+                            if (childOrder.CheckoutProductOrderId.HasValue)
+                            {
+                                var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(childOrder.CheckoutProductOrderId.Value);
+                                if (checkoutOrder != null)
+                                {
+                                    checkoutOrder.RefundingAmount -= payment.Amount;
+                                    checkoutOrder.RefundedAmount += payment.Amount;
+
+                                    bool allCancelled = checkoutOrder.Orders.All(o => o.Status == OrderStatus.Cancelled);
+                                    if (allCancelled && checkoutOrder.RefundingAmount <= 0)
+                                    {
+                                        checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunded;
+                                    }
+                                    else if (checkoutOrder.Status == CheckoutOrderStatus.Confirmed) // Only move to PartialRefunded if it was previously Confirmed, otherwise keep it in Cancelled status until all are refunded
+                                    {
+                                        checkoutOrder.Status = CheckoutOrderStatus.PartialRefunded;
+                                    }
+
+                                    bool allReturnedAndRefunded = checkoutOrder.Orders.All(o => o.Status == OrderStatus.ReturnedAndRefunded);
+                                    if (allReturnedAndRefunded)
+                                    {
+                                        checkoutOrder.Status = CheckoutOrderStatus.ReturnedAndRefunded;
+                                    }
+
+                                    _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+                                }
+                            }
+                        }
+                    }
+
+                    if (payment.CheckoutProductOrderId.HasValue)
+                    {
+                        var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(payment.CheckoutProductOrderId.Value);
+                        if (checkoutOrder != null)
+                        {
+                            checkoutOrder.RefundingAmount -= payment.Amount;
+                            checkoutOrder.RefundedAmount += payment.Amount;
+
+                            checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunded;
+                            checkoutOrder.UpdatedAt = DateTime.UtcNow;
+
+                            _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
                         }
                     }
                 }
@@ -535,11 +565,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     {
                         order.Status = OrderStatus.Completed;
                         order.UpdatedAt = DateTime.UtcNow;
-                        await _orderRepository.UpdateAsync(order);
+                        _orderRepository.UpdateEntity(order);
                     }
                 }
 
-                await _paymentRepository.UpdateAsync(payment);
+                _paymentRepository.UpdateEntity(payment);
+
+                await _unitOfWork.SaveChangeAsync();
 
                 await transaction.CommitAsync();
 
@@ -688,7 +720,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                             foreach(var childOrder in checkoutOrder.Orders)
                             {
-                                await _orderService.UpdateOrderStatusAsync(childOrder.Id, OrderStatus.Cancelled);
+                                childOrder.Status = OrderStatus.Cancelled;
+                                _orderRepository.UpdateEntity(childOrder);
                             }
                         }
                     }
@@ -751,7 +784,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Amount = amount,
                     OrderCode = lastPayment.OrderCode,
                     PaymentType = PaymentType.Refund,
-                    PaymentMethod = PaymentMethod.VnPay,
+                    PaymentMethod = PaymentMethod.Other,
                     Status = PaymentStatus.Refunding,
                     Description = $"Refund for cancelled ServiceOrder {lastPayment.OrderCode}",
                 };
@@ -818,7 +851,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PaymentType = PaymentType.Refund,
                 Amount = amount,
                 Description = $"Refund for Order {order.OrderCode}.",
-                PaymentMethod = PaymentMethod.VnPay,
+                PaymentMethod = PaymentMethod.Other,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 ExpiredAt = DateTime.UtcNow.AddMinutes(5)
@@ -877,7 +910,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Amount = amount,
                     OrderCode = tradeInOrder.OrderCode,
                     PaymentType = PaymentType.Refund,
-                    PaymentMethod = lastPaymentPaid.PaymentMethod,
+                    PaymentMethod = PaymentMethod.Other,
                     Status = PaymentStatus.Refunding,
                     Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
                 };

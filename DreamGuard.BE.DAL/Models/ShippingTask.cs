@@ -18,10 +18,16 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime? CompletionDate { get; set; }
         public string StaffNote { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+        public List<DamagedItem> DamagedItems { get; set; } = new List<DamagedItem>(); 
         public Staff Staff { get; set; } = null!;
         public Order? Order { get; set; }
         public TradeInOrder? TradeInOrder { get; set; }
         public ICollection<ShippingEvidence> ShippingEvidences { get; set; } = new List<ShippingEvidence>();
+    }
+
+    public class DamagedItem
+    {
+        public Guid OrderItemId { get; set; }
+        public int DamagedQuantity { get; set; }
     }
 }

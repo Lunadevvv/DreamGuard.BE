@@ -16,7 +16,14 @@ namespace DreamGuard.BE.BLL.Responses
         public DateTime? ShippingDate { get; set; }
         public DateTime? CompletionDate { get; set; }
         public string StaffNote { get; set; } = string.Empty;
+        public List<DamagedItemResponse> DamagedItems { get; set; } = new List<DamagedItemResponse>();
         public List<ShippingEvidenceResponse> Evidences { get; set; } = new List<ShippingEvidenceResponse>();
+
+    }
+    public class DamagedItemResponse
+    {
+        public Guid OrderItemId { get; set; }
+        public int DamagedQuantity { get; set; }
     }
 
     public class ShippingEvidenceResponse

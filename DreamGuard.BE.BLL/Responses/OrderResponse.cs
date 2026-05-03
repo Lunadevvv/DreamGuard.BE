@@ -19,6 +19,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
         public int TradeInUsedAmount { get; set; }
+        public int ExchangeRequestedQuantity { get; set; }
         public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new();
         public string? CustomizeHash { get; set; }
         private class Mapping : Profile

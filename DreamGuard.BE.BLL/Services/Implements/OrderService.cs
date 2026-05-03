@@ -581,7 +581,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 if (customizeItems.Any() && request.PaymentMethod == PaymentMethod.COD)
                 {
                     await transaction.RollbackAsync();
-                    return Result<CheckoutProductOrderResponse>.Failure("Không hỗ trợ thanh toán COD đối với sản phẩm Customize.", 400);
+                    return Result<CheckoutProductOrderResponse>.Failure("COD is not able for customize order", 400);
                 }
 
                 decimal discountAmount = 0;
@@ -948,39 +948,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     responses, checkoutOrders.TotalCount, checkoutOrders.PageNumber, checkoutOrders.PageSize));
         }
 
-        public async Task<Result> UpdateCheckoutOrderStatusAsync(Guid checkoutOrderId, CheckoutOrderStatus newStatus)
-        {
-            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(checkoutOrderId);
-            if (checkoutOrder == null)
-            {
-                return Result.Failure("Checkout order not found.", 404);
-            }
-
-            if (checkoutOrder.Status != CheckoutOrderStatus.Pending && newStatus == CheckoutOrderStatus.Confirmed)
-            {
-                 return Result.Failure("Only pending checkout orders can be confirmed.", 400);
-            }
-
-            checkoutOrder.Status = newStatus;
-            checkoutOrder.UpdatedAt = DateTime.UtcNow;
-            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
-
-            if (newStatus == CheckoutOrderStatus.Confirmed)
-            {
-                foreach(var childOrder in checkoutOrder.Orders)
-                {
-                    if (childOrder.Status == OrderStatus.Pending)
-                    {
-                        childOrder.Status = OrderStatus.Confirmed;
-                        childOrder.UpdatedAt = DateTime.UtcNow;
-                        await _orderRepository.UpdateAsync(childOrder);
-                    }
-                }
-            }
-
-            return Result.Success($"Checkout order status updated to '{newStatus}'.");
-        }
-
         public async Task<Result> UpdateOrderStatusAsync(Guid orderId, OrderStatus newStatus)
         {
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(orderId);
@@ -1031,7 +998,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             if(newStatus == OrderStatus.Confirmed && order.CheckoutProductOrderId.HasValue)
             {
-                var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(order.CheckoutProductOrderId.Value);
                 if (checkoutOrder != null && checkoutOrder.Status == CheckoutOrderStatus.Pending)
                 {
                     checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
@@ -1171,7 +1138,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                     PaymentType = PaymentType.Refund,
                                     Amount = order.TotalAmount,
                                     Description = $"Refund for cancelled child Order {order.OrderCode}.",
-                                    PaymentMethod = PaymentMethod.COD,
+                                    PaymentMethod = PaymentMethod.Other,
                                     CreatedAt = DateTime.UtcNow,
                                     UpdatedAt = DateTime.UtcNow,
                                     ExpiredAt = DateTime.UtcNow.AddMinutes(5)
@@ -1295,6 +1262,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     TotalPrice = oi.TotalPrice,
                     CustomizeHash = oi.CustomizeHash,
                     TradeInUsedAmount = oi.TradeInUsedAmount,
+                    ExchangeRequestedQuantity = oi.ExchangeRequestedQuantity,
                     ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
                     {
                         CustomizeTypeName = d.CustomizeTypeName,
@@ -1351,7 +1319,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         totalAmount += p.Amount;
                         totalVnPayAmount += p.Amount;
                     }
-                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Paid)
+                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded)
                     {
                         totalRefundAmount += p.Amount;
                     }
@@ -1391,7 +1359,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TotalOrders = data.Count,
                 TotalCompletedOrders = data.Where(ti => ti.Status == OrderStatus.Completed).Count(),
                 TotalCancelledOrders = data.Where(t1 => t1.Status == OrderStatus.Cancelled).Count(),
-                TotalRefundedOrders = data.Where(ti => ti.Status == OrderStatus.RefundedAndDamaged || ti.Status == OrderStatus.RefundedAndRestocked).Count(),
+                TotalRefundedOrders = data.Where(ti => ti.Status == OrderStatus.ReturnedAndRefunded).Count(),
                 TotalAmount = totalAmount,
                 TotalCODAmount = totalCODAmount,
                 TotalRefundAmount = totalRefundAmount,
@@ -1428,5 +1396,228 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             return Result<List<TotalAmountLineChartResponse>>.Success(result);
         }
+    
+    //////////////////////////////////Checkout order logic//////////////////////////////////////
+        public async Task<Result> ConfirmCheckoutOrderAsync(Guid checkoutOrderId)
+        {
+            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(checkoutOrderId);
+            if (checkoutOrder == null)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (!checkoutOrder.Payments.Any(p => p.PaymentType == PaymentType.Purchase && p.PaymentMethod == PaymentMethod.COD))
+            {
+                return Result.Failure("Only COD checkout orders can be confirmed.", 400);
+            }
+            if (checkoutOrder.Status != CheckoutOrderStatus.Pending)
+            {
+                return Result.Failure("Only pending checkout orders can be confirmed.", 400);
+            }
+
+            checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
+            checkoutOrder.UpdatedAt = DateTime.UtcNow;
+            _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+            foreach(var childOrder in checkoutOrder.Orders)
+            {
+                if (childOrder.Status == OrderStatus.Pending)
+                {
+                    childOrder.Status = OrderStatus.Confirmed;
+                    childOrder.UpdatedAt = DateTime.UtcNow;
+                    _orderRepository.UpdateEntity(childOrder);
+                }
+            }
+
+            await _unitOfWork.SaveChangeAsync();
+            return Result.Success($"Checkout order status updated to 'Confirmed'.");
+        }
+    
+        public async Task<Result> CancelCheckoutOrderByAdminAsync(Guid checkoutOrderId)
+        {
+            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(checkoutOrderId);
+            if (checkoutOrder == null)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (checkoutOrder.Status == CheckoutOrderStatus.Cancelled || checkoutOrder.Status == CheckoutOrderStatus.CancelledAndRefunding || checkoutOrder.Status == CheckoutOrderStatus.CancelledAndRefunded)
+            {
+                return Result.Failure("Checkout order is already cancelled.", 400);
+            }
+
+            // Check if any child order is already confirmed or beyond
+            // if (checkoutOrder.Orders.Any(o => o.Status != OrderStatus.Pending))
+            // {
+            //     return Result.Failure("Cannot cancel checkout order when some child orders are already confirmed or beyond. Please cancel child orders first.", 400);
+            // }
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Cancel all child orders
+                foreach(var childOrder in checkoutOrder.Orders)
+                {
+                    if (childOrder.Status >= OrderStatus.Delivered && childOrder.Status <= OrderStatus.ReturnedAndRefunded)
+                    {
+                        childOrder.Status = OrderStatus.Cancelled;
+                        childOrder.UpdatedAt = DateTime.UtcNow;
+                        _orderRepository.UpdateEntity(childOrder);
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        return Result.Failure($"Cannot cancel child order in {childOrder.Status}, please contact to staff!", 400);
+                    }
+                }
+
+                var lastPurchasePayment = checkoutOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault(p => p.PaymentType == PaymentType.Purchase);
+                if (lastPurchasePayment != null && lastPurchasePayment.Status == PaymentStatus.Paid)
+                {
+                    var refundPayment = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        CheckoutProductOrderId = checkoutOrder.Id,
+                        Amount = lastPurchasePayment.Amount,
+                        OrderCode = checkoutOrder.CheckoutOrderCode,
+                        PaymentType = PaymentType.Refund,
+                        PaymentMethod = PaymentMethod.Other,
+                        Status = PaymentStatus.Refunding,
+                        Description = $"Refund for cancelled CheckoutOrder {checkoutOrder.CheckoutOrderCode}.",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                    };
+                    _paymentRepository.AddEntity(refundPayment);
+
+                    checkoutOrder.RefundingAmount = refundPayment.Amount;
+                    checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunding;
+                }
+                else
+                {
+                    checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
+                }
+                checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+                HandleVoucherRestore(checkoutOrder);
+
+                await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
+            }catch(Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to cancel checkout order.", 500);
+            }
+            
+            return Result.Success($"Checkout order and its child orders have been cancelled.");
+        }
+
+        private void HandleVoucherRestore(CheckoutProductOrder checkoutOrder)
+        {
+            if (checkoutOrder.UserVoucherId.HasValue)
+            {
+                var userVoucher = _userVoucherRepository.GetByIdAsync(checkoutOrder.UserVoucherId.Value).Result;
+                if (userVoucher != null)
+                {
+                    userVoucher.IsUsed = false;
+                    userVoucher.UsedAt = null;
+                    _userVoucherRepository.UpdateEntity(userVoucher);
+                }
+            }
+        }
+
+        public async Task<Result> CancelCheckoutOrderByUserAsync(Guid checkoutOrderId, Guid customerId)
+        {
+            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(checkoutOrderId);
+            if (checkoutOrder == null)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (checkoutOrder.CustomerId != customerId)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (checkoutOrder.Status == CheckoutOrderStatus.Cancelled)
+            {
+                return Result.Failure("Checkout order is already cancelled.", 400);
+            }
+
+            var lastPurchasePayment = checkoutOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault(p => p.PaymentType == PaymentType.Purchase);
+            if(lastPurchasePayment == null)
+            {
+                return Result.Failure("Cannot find purchase payment for this checkout order.", 400);
+            }
+
+            if (checkoutOrder.Status > CheckoutOrderStatus.Confirmed)
+            {
+                return Result.Failure($"Cannot Cancel check out order in {checkoutOrder.Status}, please contact to staff!", 400);
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Cancel child orders that belong to the user
+                foreach(var childOrder in checkoutOrder.Orders.Where(o => o.CustomerId == customerId))
+                {
+                    if (childOrder.Status <= OrderStatus.Confirmed)
+                    {
+                        childOrder.Status = OrderStatus.Cancelled;
+                        childOrder.UpdatedAt = DateTime.UtcNow;
+                        _orderRepository.UpdateEntity(childOrder);
+                    }else
+                    {
+                        return Result.Failure($"Cannot cancel child order in {childOrder.Status}, please contact to staff!", 400);
+                    }
+                }
+                if (lastPurchasePayment.Status == PaymentStatus.Pending)
+                {
+                    lastPurchasePayment.Status = PaymentStatus.Failed;
+                    lastPurchasePayment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(lastPurchasePayment);
+                }
+
+                if (lastPurchasePayment.Status == PaymentStatus.Paid)
+                {
+                    var refundPayment = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        CheckoutProductOrderId = checkoutOrder.Id,
+                        Amount = lastPurchasePayment.Amount,
+                        OrderCode = checkoutOrder.CheckoutOrderCode,
+                        PaymentType = PaymentType.Refund,
+                        PaymentMethod = PaymentMethod.Other,
+                        Status = PaymentStatus.Refunding,
+                        Description = $"Refund for cancelled CheckoutOrder {checkoutOrder.CheckoutOrderCode}.",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                    };
+                    _paymentRepository.AddEntity(refundPayment);
+
+                    checkoutOrder.RefundingAmount = refundPayment.Amount;
+                    checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunding;
+                }
+                else
+                {
+                    checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
+                }
+                checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+                HandleVoucherRestore(checkoutOrder);
+
+                await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
+            }catch(Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to cancel checkout order.", 500);
+            }
+            
+            return Result.Success($"Checkout order and its child orders have been cancelled.");
+        }
+    
     }
 }
