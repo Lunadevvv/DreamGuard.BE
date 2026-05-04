@@ -696,7 +696,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             try
             {
                 var payment = await _paymentRepository.GetPaymentByIdAsync(paymentId);
-                if (payment != null && payment.Status == PaymentStatus.Pending)
+                if (payment != null && payment.Status == PaymentStatus.Pending && payment.PaymentMethod == PaymentMethod.VnPay)
                 {
                     payment.Status = PaymentStatus.Failed;
                     payment.UpdatedAt = DateTime.UtcNow;

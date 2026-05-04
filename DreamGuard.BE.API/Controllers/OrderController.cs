@@ -103,7 +103,9 @@ namespace DreamGuard.BE.API.Controllers
                     Message = new List<string> { result.Error! }
                 });
             }
-            BackgroundJob.Schedule<PaymentService>(job => job.ExpireProductOrderPayment(result.Data!.PaymentId), result.Data!.PaymentExpiredAt.AddSeconds(30));
+            if (result.Data!.PaymentMethod == PaymentMethod.VnPay)
+                BackgroundJob.Schedule<PaymentService>(job => job.ExpireProductOrderPayment(result.Data!.PaymentId), result.Data!.PaymentExpiredAt.AddSeconds(30));
+            
             return Ok(result.Data);
         }
 
