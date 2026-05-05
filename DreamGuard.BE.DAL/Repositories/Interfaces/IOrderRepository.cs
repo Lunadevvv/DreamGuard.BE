@@ -20,6 +20,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<List<OrderItem>> GetOrdersToTradeInAsync(Guid customerId, int categoryParentId, decimal salePrice, decimal depositAmount);
         Task<OrderItem?> GetOrderItemByIdAsync(Guid orderItemId);
         Task<List<TopProductSeller>> GetBestSellerProductsAsync(int top);
+        Task<List<Order>> GetOrdersByCheckoutOrderIdAsync(Guid checkoutProductOrderId);
 
 
     }

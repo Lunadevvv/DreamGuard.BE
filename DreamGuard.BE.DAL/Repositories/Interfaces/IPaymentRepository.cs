@@ -16,5 +16,8 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
         Task<Payment?> GetPaymentByOrderCodeAsync(string orderCode);
         Task<PaginatedList<Payment>> GetPaymentsByCustomerIdAsync(Guid customerId, int pageNumber, PaymentStatus? status, string? orderCode);
         Task<PaginatedList<Payment>> GetAllPaymentsForAdminAsync(int pageNumber, PaymentStatus? status, PaymentMethod? method, string? orderCode);
+        Task<Payment?> GetPaidPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId);
+        Task<Payment?> GetPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId);
+        Task<Payment?> GetLatestNonRefundPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId);
     }
 }

@@ -49,7 +49,7 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(t => t.Order)
                 .Include(t => t.ShippingEvidences)
                 .Include(t => t.TradeInOrder)
-                // TradeInOrder + các navigation bên trong
+                // TradeInOrder + cï¿½c navigation bï¿½n trong
                 .Include(t => t.TradeInOrder)
                     .ThenInclude(ti => ti.Payments)
                 .Include(t => t.TradeInOrder)
@@ -65,11 +65,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         }
 
 
-        public async Task<ShippingTask?> GetTaskByOrderIdAsync(Guid orderId)
+        public async Task<List<ShippingTask>> GetTaskByOrderIdAsync(Guid orderId)
         {
             return await _context.ShippingTasks
                 .OrderByDescending(t => t.CreatedAt)
-                .FirstOrDefaultAsync(t => t.OrderId == orderId);
+                .Where(t => t.OrderId == orderId).ToListAsync();
         }
 
         public async Task<PaginatedList<ShippingTask>> GetTasksByStaffIdAsync(Guid staffId, int pageNumber = 1)

@@ -208,7 +208,7 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpPut("{id}/returned")]
         [Authorize(Roles = Role.DeliveryStaff)]
-        public async Task<IActionResult> FailShipping(Guid id, [FromBody] FailShippingRequest request)
+        public async Task<IActionResult> ReturnOrderRequest(Guid id, [FromBody] FailShippingRequest request)
         {
             if (!ModelState.IsValid)
             {
@@ -228,6 +228,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok();
         }
+        
         [HttpPut("{id}/returned-for-TradeIn")]
         [Authorize(Roles = Role.DeliveryStaff)]
         public async Task<IActionResult> FailShippingForTradeIn(Guid id, [FromBody] FailShippingRequest request)
@@ -250,6 +251,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok();
         }
+        
         [HttpPut("{id}/forced-cancelled-TradeIn")]
         [Authorize(Roles = Role.DeliveryStaff)]
         public async Task<IActionResult> ForceCancelShipping(Guid id, [FromBody] FailShippingRequest request)

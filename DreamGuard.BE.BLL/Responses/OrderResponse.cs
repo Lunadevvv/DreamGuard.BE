@@ -19,6 +19,7 @@ namespace DreamGuard.BE.BLL.Responses
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
         public int TradeInUsedAmount { get; set; }
+        public int ExchangeRequestedQuantity { get; set; }
         public List<ProductCustomizeDetail> ProductCustomizeDetails { get; set; } = new();
         public string? CustomizeHash { get; set; }
         private class Mapping : Profile
@@ -37,6 +38,7 @@ namespace DreamGuard.BE.BLL.Responses
         public OrderStatus Status { get; set; }
         public decimal SubTotal { get; set; }
         public decimal DiscountAmount { get; set; }
+        public decimal ShippingFee { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal TotalAddonPrice { get; set; }
         public Guid PaymentId { get; set; }
@@ -76,6 +78,7 @@ namespace DreamGuard.BE.BLL.Responses
         public string? ShippingStaffName { get; set; }
         public string? ShippingStatus { get; set; }
         public string? ShippingStaffAvatarUrl { get; set; }
+        public decimal ShippingFee { get; set; }
     }
 
     public class OrderSummaryResponse
@@ -86,5 +89,17 @@ namespace DreamGuard.BE.BLL.Responses
         public int ItemCount { get; set; }
         public decimal TotalAmount { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class CheckoutProductOrderAdminSummaryResponse
+    {
+        public Guid Id { get; set; }
+        public string CheckoutOrderCode { get; set; } = string.Empty;
+        public CheckoutOrderStatus Status { get; set; }
+        public decimal TotalAmount { get; set; }
+        public decimal RefundingAmount { get; set; }
+        public decimal RefundedAmount { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public List<OrderSummaryResponse> ChildOrders { get; set; } = new List<OrderSummaryResponse>();
     }
 }

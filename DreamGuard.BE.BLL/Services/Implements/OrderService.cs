@@ -1,4 +1,4 @@
-using CloudinaryDotNet.Actions;
+﻿using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -38,6 +38,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly VnPayOptions _vnPayOptions;
         private readonly IVariantCustomizeTypeRepository _variantCustomizeTypeRepository;
         private readonly IProductRepository _productRepository;
+        private readonly ICheckoutProductOrderRepository _checkoutProductOrderRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
@@ -56,7 +57,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             IOptions<VnPayOptions> vnPayOptions,
             IHangFireService hangFireService,
             IVariantCustomizeTypeRepository variantCustomizeTypeRepository,
-            IProductRepository productRepository
+            IProductRepository productRepository,
+            ICheckoutProductOrderRepository checkoutProductOrderRepository
             )
         {
             _orderRepository = orderRepository;
@@ -76,6 +78,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _hangFireService = hangFireService;
             _variantCustomizeTypeRepository = variantCustomizeTypeRepository;
             _productRepository = productRepository;
+            _checkoutProductOrderRepository = checkoutProductOrderRepository;
         }
 
         public async Task<Result<OrderResponse>> CreateOrderByAdminAsync(Guid adminId, CreateOrderByAdminRequest request, string ipAddress)
@@ -393,35 +396,34 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
 
-        public async Task<Result<OrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
+        public async Task<Result<CheckoutProductOrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
         {
             var customer = await _customerRepository.GetByUserIdAsync(userId);
             if (customer == null)
-                return Result<OrderResponse>.Failure("Customer profile not found.", 404);
+                return Result<CheckoutProductOrderResponse>.Failure("Customer profile not found.", 404);
 
             var customerId = customer.CustomerId;
 
-            // Load cart with items
             var cart = await _cartRepository.GetCartWithItemsAsync(customerId);
             if (cart == null || !cart.CartItems.Any())
             {
-                return Result<OrderResponse>.Failure("Cart is empty.", 400);
+                return Result<CheckoutProductOrderResponse>.Failure("Cart is empty.", 400);
             }
 
-            // Validate address belongs to user
             var address = await _addressRepository.GetByIdAsync(customerId, request.AddressId);
             if (address == null)
             {
-                return Result<OrderResponse>.Failure("Address not found.", 404);
+                return Result<CheckoutProductOrderResponse>.Failure("Address not found.", 404);
             }
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var orderItems = new List<OrderItem>();
+                var normalItems = new List<OrderItem>();
+                var customizeItems = new List<OrderItem>();
                 decimal subTotal = 0;
+                decimal totalAddonPrice = 0;
 
-                // Pre-load all variants and inventories
                 var variantIds = cart.CartItems
                     .Where(ci => ci.ProductVariantId.HasValue)
                     .Select(ci => ci.ProductVariantId!.Value)
@@ -440,45 +442,43 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     .ToDictionary(i => i.ProductVariantId);
                 var combosDict = (await _comboRepository.GetCombosWithProductsByIdsAsync(comboIds))
                     .ToDictionary(c => c.Id);
-                // audit log for stock unchanged
+
                 var auditUnChanged = new AuditLog
                 {
                     UserId = userId,
                     ActionType = "CreateOrderFailed",
                     Message = $"user: {userId} create order failed. Stock remain unchanged",
                 };
-     
-                // Validate and prepare each cart item
+
                 foreach (var cartItem in cart.CartItems)
                 {
+                    OrderItem orderItem = null;
+                    bool isCustomize = false;
+
                     if (cartItem.ProductVariantId.HasValue)
                     {
                         variantsDict.TryGetValue(cartItem.ProductVariantId.Value, out var variant);
                         if (variant == null || variant.Status != ProductStatus.Published)
                         {
                             await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure(
-                                $"Product variant '{cartItem.ProductVariantId}' is no longer available.", 400);
+                            return Result<CheckoutProductOrderResponse>.Failure($"Product variant '{cartItem.ProductVariantId}' is no longer available.", 400);
                         }
 
                         inventoriesDict.TryGetValue(cartItem.ProductVariantId.Value, out var inventory);
                         if (inventory == null || inventory.Quantity < cartItem.Quantity)
                         {
                             await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure(
-                                $"Insufficient stock for product variant '{variant.Sku}'. Available: {inventory?.Quantity ?? 0}, Requested: {cartItem.Quantity}.", 400);
+                            return Result<CheckoutProductOrderResponse>.Failure($"Insufficient stock for product variant '{variant.Sku}'. Available: {inventory?.Quantity ?? 0}, Requested: {cartItem.Quantity}.", 400);
                         }
 
-                        // Deduct stock
-                        var deductResult = await _inventoryService.DeductVariantStockAsync(
-                            cartItem.ProductVariantId.Value, cartItem.Quantity);
+                        var deductResult = await _inventoryService.DeductVariantStockAsync(cartItem.ProductVariantId.Value, cartItem.Quantity);
                         if (!deductResult.Succeeded)
                         {
                             await transaction.RollbackAsync();
                             _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
-                            return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
+                            return Result<CheckoutProductOrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
                         }
-                        // audit log for stock deduction
+
                         var audit = new AuditLog
                         {
                             UserId = userId,
@@ -487,7 +487,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         };
                         _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
 
-                        // Update RAM inventory state for next consecutive identical items
                         if (inventory != null)
                         {
                             inventory.Quantity -= cartItem.Quantity;
@@ -496,7 +495,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         var productName = cartItem.ProductVariant?.Product?.Name ?? "Unknown";
                         var itemPrice = variant.SalePrice;
                         var itemAddonPrice = cartItem.ProductCustomizeDetails?.Sum(d => d.AddOnPrice) ?? 0;
-                        orderItems.Add(new OrderItem
+                        
+                        isCustomize = cartItem.ProductCustomizeDetails != null && cartItem.ProductCustomizeDetails.Any();
+
+                        orderItem = new OrderItem
                         {
                             Id = Guid.NewGuid(),
                             ProductVariantId = cartItem.ProductVariantId,
@@ -512,8 +514,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                 CustomizeContent = d.CustomizeContent,
                                 AddOnPrice = d.AddOnPrice
                             }).ToList() ?? new List<ProductCustomizeDetail>()
-                        });
+                        };
+                        
                         subTotal += itemPrice * cartItem.Quantity;
+                        totalAddonPrice += itemAddonPrice * cartItem.Quantity;
                     }
                     else if (cartItem.ComboId.HasValue)
                     {
@@ -521,29 +525,24 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (combo == null || combo.Status != ProductStatus.Published)
                         {
                             await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure(
-                                $"Combo '{cartItem.ComboId}' is no longer available.", 400);
+                            return Result<CheckoutProductOrderResponse>.Failure($"Combo '{cartItem.ComboId}' is no longer available.", 400);
                         }
 
-                        // Validate combo stock
                         var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
                         if (comboStock < cartItem.Quantity)
                         {
                             await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure(
-                                $"Insufficient stock for combo '{combo.Name}'. Available: {comboStock}, Requested: {cartItem.Quantity}.", 400);
+                            return Result<CheckoutProductOrderResponse>.Failure($"Insufficient stock for combo '{combo.Name}'. Available: {comboStock}, Requested: {cartItem.Quantity}.", 400);
                         }
 
-                        // Deduct combo stock
-                        var deductResult = await _inventoryService.DeductComboStockAsync(
-                            cartItem.ComboId.Value, cartItem.Quantity);
+                        var deductResult = await _inventoryService.DeductComboStockAsync(cartItem.ComboId.Value, cartItem.Quantity);
                         if (!deductResult.Succeeded)
                         {
                             await transaction.RollbackAsync();
                             _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
-                            return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
+                            return Result<CheckoutProductOrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
                         }
-                        // audit log for combo deduction
+
                         var audit = new AuditLog
                         {
                             UserId = userId,
@@ -552,9 +551,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         };
                         _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
 
-
                         var itemPrice = combo.SalePrice;
-                        orderItems.Add(new OrderItem
+                        orderItem = new OrderItem
                         {
                             Id = Guid.NewGuid(),
                             ProductVariantId = null,
@@ -563,167 +561,182 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             UnitPrice = itemPrice,
                             TotalPrice = itemPrice * cartItem.Quantity,
                             ItemName = combo.Name
-                        });
+                        };
                         subTotal += itemPrice * cartItem.Quantity;
+                    }
+
+                    if (orderItem != null)
+                    {
+                        if (isCustomize)
+                        {
+                            customizeItems.Add(orderItem);
+                        }
+                        else
+                        {
+                            normalItems.Add(orderItem);
+                        }
                     }
                 }
 
-                // Handle voucher
+                if (customizeItems.Any() && request.PaymentMethod == PaymentMethod.COD)
+                {
+                    await transaction.RollbackAsync();
+                    return Result<CheckoutProductOrderResponse>.Failure("COD is not able for customize order", 400);
+                }
+
                 decimal discountAmount = 0;
                 UserVoucher? userVoucher = null;
 
                 if (request.UserVoucherId.HasValue)
                 {
                     userVoucher = await _userVoucherRepository.GetByIdAsync(request.UserVoucherId.Value);
-                    if (userVoucher == null)
+                    if (userVoucher == null || userVoucher.CustomerId != customerId || userVoucher.IsUsed || userVoucher.ExpiredAt < DateTime.UtcNow)
                     {
                         await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("Voucher not found.", 404);
+                        return Result<CheckoutProductOrderResponse>.Failure("Voucher invalid or expired.", 400);
                     }
 
-                    if (userVoucher.CustomerId != customerId)
-                    {
-                        await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("Voucher does not belong to this user.", 403);
-                    }
-
-                    if (userVoucher.IsUsed)
-                    {
-                        await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("Voucher has already been used.", 400);
-                    }
-
-                    if (userVoucher.ExpiredAt < DateTime.UtcNow)
-                    {
-                        await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("Voucher has expired.", 400);
-                    }
-
-                    // Load voucher details
                     var voucher = userVoucher.Voucher;
                     if (voucher == null || !voucher.IsActive || voucher.EndDate < DateTime.UtcNow)
                     {
                         await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("Voucher is no longer active.", 400);
+                        return Result<CheckoutProductOrderResponse>.Failure("Voucher is no longer active.", 400);
                     }
 
-                    // Calculate discount
                     discountAmount = subTotal * voucher.DiscountValue;
                     discountAmount = Math.Min(discountAmount, voucher.MaxDiscountAmount);
-                    discountAmount = Math.Min(discountAmount, subTotal); // Discount cannot exceed subtotal
+                    discountAmount = Math.Min(discountAmount, subTotal); 
 
-                    // Check Voucher Type
-                    if (voucher.VoucherType == DAL.Constants.VoucherType.Service)
+                    if (voucher.VoucherType == VoucherType.Service)
                     {
                         await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("This voucher is specifically for services only.", 400);
+                        return Result<CheckoutProductOrderResponse>.Failure("This voucher is specifically for services only.", 400);
                     }
 
-                    // Mark voucher as used
                     userVoucher.IsUsed = true;
                     userVoucher.UsedAt = DateTime.UtcNow;
                     await _userVoucherRepository.UpdateAsync(userVoucher);
                 }
 
-                // Calculate TotalAddonPrice from cart items' customize details
-                decimal totalAddonPrice = 0;
-                var allCustomizeDetails = new List<ProductCustomizeDetail>();
-                foreach (var cartItem in cart.CartItems)
-                {
-                    if (cartItem.ProductCustomizeDetails != null && cartItem.ProductCustomizeDetails.Any())
-                    {
-                        var itemAddon = cartItem.ProductCustomizeDetails.Sum(d => d.AddOnPrice) * cartItem.Quantity;
-                        totalAddonPrice += itemAddon;
-                        allCustomizeDetails.AddRange(cartItem.ProductCustomizeDetails);
-                    }
-                }
+                decimal shippingFee = request.ShippingFee; // Defaulting to 0 as per logic
+                var totalAmount = Math.Max(0, subTotal + totalAddonPrice - discountAmount + shippingFee);
 
-                var totalAmount = Math.Max(0, subTotal + totalAddonPrice - discountAmount);
+                var checkoutOrderCode = GenerateOrderCode();
 
-                // Generate order code
-                var orderCode = GenerateOrderCode();
-
-                // Create order with address snapshot
-                var order = new Order
+                var checkoutProductOrder = new CheckoutProductOrder
                 {
                     Id = Guid.NewGuid(),
                     CustomerId = customerId,
-                    OrderCode = orderCode,
-                    Status = OrderStatus.Pending,
-                    ReceiverName = address.ReceiverName,
-                    PhoneNumber = address.PhoneNumber,
-                    Street = address.Street,
-                    City = address.City,
-                    District = address.District,
-                    Ward = address.Ward,
-                    Province = address.Province,
+                    CheckoutOrderCode = checkoutOrderCode,
+                    Status = CheckoutOrderStatus.Pending,
                     SubTotal = subTotal,
                     DiscountAmount = discountAmount,
                     TotalAmount = totalAmount,
                     TotalAddonPrice = totalAddonPrice,
+                    ShippingFee = shippingFee,
                     UserVoucherId = request.UserVoucherId,
                     Note = request.Note,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                var createResult = await _orderRepository.CreateAsync(order);
-                if (createResult < 0)
+                await _checkoutProductOrderRepository.CreateAsync(checkoutProductOrder);
+
+                var createdOrders = new List<Order>();
+
+                async Task CreateChildOrder(List<OrderItem> items, string suffix)
                 {
-                    await transaction.RollbackAsync();
-                    return Result<OrderResponse>.Failure("Failed to create order.", 500);
+                    if (!items.Any()) return;
+
+                    decimal childSubTotal = items.Sum(i => i.TotalPrice);
+                    decimal childAddonPrice = items.Sum(i => i.ProductCustomizeDetails?.Sum(d => d.AddOnPrice * i.Quantity) ?? 0);
+                    
+                    decimal childDiscount = 0;
+                    if (subTotal > 0 && discountAmount > 0)
+                    {
+                        childDiscount = Math.Round((childSubTotal / subTotal) * discountAmount, 0); // Proportional
+                    }
+                    
+                    decimal childShipping = shippingFee > 0 ? shippingFee / 2 : 0; // Proportional
+
+                    decimal childTotal = Math.Max(0, childSubTotal + childAddonPrice - childDiscount + childShipping);
+
+                    var childOrder = new Order
+                    {
+                        Id = Guid.NewGuid(),
+                        CustomerId = customerId,
+                        CheckoutProductOrderId = checkoutProductOrder.Id,
+                        OrderCode = $"{checkoutOrderCode}-{suffix}",
+                        Status = OrderStatus.Pending,
+                        ReceiverName = address.ReceiverName,
+                        PhoneNumber = address.PhoneNumber,
+                        Street = address.Street,
+                        City = address.City,
+                        District = address.District,
+                        Ward = address.Ward,
+                        Province = address.Province,
+                        SubTotal = childSubTotal,
+                        DiscountAmount = childDiscount,
+                        TotalAmount = childTotal,
+                        TotalAddonPrice = childAddonPrice,
+                        ShippingFee = childShipping,
+                        UserVoucherId = request.UserVoucherId,
+                        Note = request.Note,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _orderRepository.CreateAsync(childOrder);
+
+                    foreach (var item in items)
+                    {
+                        item.OrderId = childOrder.Id;
+                    }
+                    await _orderRepository.AddOrderItemsAsync(items);
+                    createdOrders.Add(childOrder);
                 }
 
-                // Set OrderId for items and save
-                foreach (var item in orderItems)
-                {
-                    item.OrderId = order.Id;
-                }
-                await _orderRepository.AddOrderItemsAsync(orderItems);
+                await CreateChildOrder(normalItems, "N");
+                await CreateChildOrder(customizeItems, "C");
 
-                // Create Payment record
                 var payment = new Payment
                 {
                     Id = Guid.NewGuid(),
-                    OrderCode = order.OrderCode,
-                    POrderId = order.Id,
+                    OrderCode = checkoutOrderCode,
+                    CheckoutProductOrderId = checkoutProductOrder.Id,
                     Status = PaymentStatus.Pending,
                     Amount = totalAmount,
-                    Description = $"Payment for Order {order.OrderCode}",
+                    Description = $"Payment for Checkout Order {checkoutOrderCode}",
                     PaymentMethod = request.PaymentMethod,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    ExpiredAt = DateTime.UtcNow.AddMinutes(_vnPayOptions.PaymentExpirationMinutes) // Payment expires in 30 minutes
+                    ExpiredAt = DateTime.UtcNow.AddMinutes(_vnPayOptions.PaymentExpirationMinutes)
                 };
 
-                var paymentCreateResult = await _paymentRepository.CreateAsync(payment);
-                if (paymentCreateResult < 0)
-                {
-                    await transaction.RollbackAsync();
-                    return Result<OrderResponse>.Failure("Failed to create payment.", 500);
-                }
+                await _paymentRepository.CreateAsync(payment);
 
-                // Clear cart
                 await _cartRepository.ClearCartItemsAsync(cart.Id);
 
                 await transaction.CommitAsync();
 
-                Notification notification = new Notification
+                foreach (var childOrder in createdOrders)
                 {
-                    UserId = customerId,
-                    ActionType = "Create order",
-                    Message = $"Your order {order.OrderCode} has been created successfully",
-                };
-                _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+                    Notification notification = new Notification
+                    {
+                        UserId = customerId,
+                        ActionType = "Create order",
+                        Message = $"Your order {childOrder.OrderCode} has been created successfully",
+                    };
+                    _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+                }
 
-                // Generate VnPay URL after commit (external call, should not be inside transaction)
                 string? paymentUrl = null;
                 if (request.PaymentMethod == PaymentMethod.VnPay)
                 {
                     var vnPayRequest = new VnPaymentRequest
                     {
                         PaymentId = payment.Id.ToString(),
-                        OrderCode = order.OrderCode,
+                        OrderCode = checkoutOrderCode,
                         Description = payment.Description,
                         Amount = totalAmount,
                         IpAddress = ipAddress,
@@ -732,26 +745,42 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
                 }
 
-                return Result<OrderResponse>.Success(new OrderResponse
+                return Result<CheckoutProductOrderResponse>.Success(new CheckoutProductOrderResponse
                 {
-                    Id = order.Id,
-                    OrderCode = order.OrderCode,
-                    Status = order.Status,
-                    SubTotal = order.SubTotal,
-                    DiscountAmount = order.DiscountAmount,
-                    TotalAmount = order.TotalAmount,
-                    TotalAddonPrice = order.TotalAddonPrice,
+                    Id = checkoutProductOrder.Id,
+                    CheckoutOrderCode = checkoutProductOrder.CheckoutOrderCode,
+                    Status = checkoutProductOrder.Status,
+                    SubTotal = checkoutProductOrder.SubTotal,
+                    DiscountAmount = checkoutProductOrder.DiscountAmount,
+                    TotalAmount = checkoutProductOrder.TotalAmount,
+                    TotalAddonPrice = checkoutProductOrder.TotalAddonPrice,
+                    ShippingFee = checkoutProductOrder.ShippingFee,
                     PaymentMethod = request.PaymentMethod,
                     PaymentUrl = paymentUrl,
-                    CreatedAt = order.CreatedAt,
+                    CreatedAt = checkoutProductOrder.CreatedAt,
                     PaymentId = payment.Id,
-                    PaymentExpiredAt = payment.ExpiredAt
+                    PaymentExpiredAt = payment.ExpiredAt,
+                    ChildOrders = createdOrders.Select(o => new OrderResponse
+                    {
+                        Id = o.Id,
+                        OrderCode = o.OrderCode,
+                        Status = o.Status,
+                        SubTotal = o.SubTotal,
+                        ShippingFee = o.ShippingFee,
+                        DiscountAmount = o.DiscountAmount,
+                        TotalAmount = o.TotalAmount,
+                        TotalAddonPrice = o.TotalAddonPrice,
+                        PaymentMethod = request.PaymentMethod,
+                        PaymentUrl = paymentUrl,
+                        CreatedAt = o.CreatedAt,
+                        PaymentId = payment.Id,
+                        PaymentExpiredAt = payment.ExpiredAt
+                    }).ToList()
                 });
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
-                // audit log for stock unchanged
                 var audit = new AuditLog
                 {
                     UserId = userId,
@@ -759,7 +788,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Message = $"user: {userId} create order failed. Stock remain unchanged",
                 };
                 _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
-                return Result<OrderResponse>.Failure("Failed to create order.", 500);
+                return Result<CheckoutProductOrderResponse>.Failure("Failed to create order.", 500);
             }
         }
 
@@ -859,7 +888,65 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 new PaginatedList<OrderSummaryResponse>(
                     responses, orders.TotalCount, orders.PageNumber, orders.PageSize));
         }
+        public async Task<Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>> GetAllCheckoutOrdersForAdminAsync(
+            int pageNumber, CheckoutOrderStatus? status, string? orderCode)
+        {
+            var checkoutOrders = await _checkoutProductOrderRepository.GetAllForAdminAsync(pageNumber, status, orderCode);
 
+            var responses = checkoutOrders.Items.Select(c => new CheckoutProductOrderAdminSummaryResponse
+            {
+                Id = c.Id,
+                CheckoutOrderCode = c.CheckoutOrderCode,
+                Status = c.Status,
+                TotalAmount = c.TotalAmount,
+                RefundingAmount = c.RefundingAmount,
+                RefundedAmount = c.RefundedAmount,
+                CreatedAt = c.CreatedAt,
+                ChildOrders = c.Orders.Select(o => new OrderSummaryResponse
+                {
+                    Id = o.Id,
+                    OrderCode = o.OrderCode,
+                    Status = o.Status,
+                    ItemCount = o.OrderItems?.Count ?? 0,
+                    TotalAmount = o.TotalAmount,
+                    CreatedAt = o.CreatedAt
+                }).ToList()
+            }).ToList();
+
+            return Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>.Success(
+                new PaginatedList<CheckoutProductOrderAdminSummaryResponse>(
+                    responses, checkoutOrders.TotalCount, checkoutOrders.PageNumber, checkoutOrders.PageSize));
+        }
+
+        public async Task<Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>> GetAllUserCheckoutOrdersAsync(
+            int pageNumber, CheckoutOrderStatus? status, string? orderCode, Guid userId)
+        {
+            var checkoutOrders = await _checkoutProductOrderRepository.GetAllForUserAsync(pageNumber, status, orderCode, userId);
+
+            var responses = checkoutOrders.Items.Select(c => new CheckoutProductOrderAdminSummaryResponse
+            {
+                Id = c.Id,
+                CheckoutOrderCode = c.CheckoutOrderCode,
+                Status = c.Status,
+                TotalAmount = c.TotalAmount,
+                RefundingAmount = c.RefundingAmount,
+                RefundedAmount = c.RefundedAmount,
+                CreatedAt = c.CreatedAt,
+                ChildOrders = c.Orders.Select(o => new OrderSummaryResponse
+                {
+                    Id = o.Id,
+                    OrderCode = o.OrderCode,
+                    Status = o.Status,
+                    ItemCount = o.OrderItems?.Count ?? 0,
+                    TotalAmount = o.TotalAmount,
+                    CreatedAt = o.CreatedAt
+                }).ToList()
+            }).ToList();
+
+            return Result<PaginatedList<CheckoutProductOrderAdminSummaryResponse>>.Success(
+                new PaginatedList<CheckoutProductOrderAdminSummaryResponse>(
+                    responses, checkoutOrders.TotalCount, checkoutOrders.PageNumber, checkoutOrders.PageSize));
+        }
 
         public async Task<Result> UpdateOrderStatusAsync(Guid orderId, OrderStatus newStatus)
         {
@@ -868,6 +955,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Order not found.", 404);
             }
+
+            // if (newStatus == OrderStatus.Confirmed && order.CheckoutProductOrderId.HasValue)
+            // {
+            //     return Result.Failure("Child orders cannot be confirmed directly. Please confirm the CheckoutOrder instead.", 400);
+            // }
 
             // Validate status transition
             if (!IsValidStatusTransition(order.Status, newStatus))
@@ -903,6 +995,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
             order.Status = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
             await _orderRepository.UpdateAsync(order);
+
+            if(newStatus == OrderStatus.Confirmed && order.CheckoutProductOrderId.HasValue)
+            {
+                var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(order.CheckoutProductOrderId.Value);
+                if (checkoutOrder != null && checkoutOrder.Status == CheckoutOrderStatus.Pending)
+                {
+                    checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
+                    checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                    await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                }
+            }
+            
             // notification
             Notification notification = new Notification
             {
@@ -935,6 +1039,24 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure(
                     $"Cannot cancel order with status '{order.Status}'. Only Pending or Confirmed orders can be cancelled.", 400);
+            }
+
+            if (order.CheckoutProductOrderId.HasValue)
+            {
+                // Use GetByIdAsync to avoid loading Orders graph (current 'order' is already tracked)
+                var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                if (checkoutOrder != null)
+                {
+                    if (checkoutOrder.Status == CheckoutOrderStatus.Pending)
+                    {
+                        return Result.Failure("Cannot cancel child order while checkout order is pending. Please cancel the checkout order instead.", 400);
+                    }
+                    var payment = await _paymentRepository.GetLatestNonRefundPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+                    if (payment != null && payment.PaymentMethod == PaymentMethod.COD)
+                    {
+                        return Result.Failure("Cannot partially cancel a COD order. You must cancel the entire checkout order.", 400);
+                    }
+                }
             }
 
             return await CancelOrderInternalAsync(order);
@@ -989,25 +1111,78 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 }
 
-                // Restore voucher if used
-                if (order.UserVoucherId.HasValue)
+                // Handle voucher restore and refund creation
+                if (order.CheckoutProductOrderId.HasValue)
                 {
-                    var userVoucher = await _userVoucherRepository.GetByIdAsync(order.UserVoucherId.Value);
-                    if (userVoucher != null)
+                    var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                    if (checkoutOrder != null)
                     {
-                        userVoucher.IsUsed = false;
-                        userVoucher.UsedAt = null;
-                        await _userVoucherRepository.UpdateAsync(userVoucher);
+                        if (checkoutOrder.Status == CheckoutOrderStatus.Confirmed
+                            || checkoutOrder.Status == CheckoutOrderStatus.PartialRefunding
+                            || checkoutOrder.Status == CheckoutOrderStatus.PartialRefunded)
+                        {
+                            checkoutOrder.RefundingAmount += order.TotalAmount;
+                            checkoutOrder.Status = CheckoutOrderStatus.PartialRefunding;
+                            checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+
+                            var lastPayment = await _paymentRepository.GetPaidPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+                            if (lastPayment != null && order.TotalAmount > 0)
+                            {
+                                var refundPayment = new Payment
+                                {
+                                    Id = Guid.NewGuid(),
+                                    POrderId = order.Id,
+                                    OrderCode = order.OrderCode,
+                                    Status = PaymentStatus.Refunding,
+                                    PaymentType = PaymentType.Refund,
+                                    Amount = order.TotalAmount,
+                                    Description = $"Refund for cancelled child Order {order.OrderCode}.",
+                                    PaymentMethod = PaymentMethod.Other,
+                                    CreatedAt = DateTime.UtcNow,
+                                    UpdatedAt = DateTime.UtcNow,
+                                    ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                                };
+                                await _paymentRepository.CreateAsync(refundPayment);
+                            }
+                        }
+
+                        // Restore voucher ONLY if ALL other child orders are already cancelled
+                        var siblingOrders = await _orderRepository.GetOrdersByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+                        bool allOtherCancelled = siblingOrders.Where(o => o.Id != order.Id).All(o => o.Status == OrderStatus.Cancelled);
+                        if (allOtherCancelled && checkoutOrder.UserVoucherId.HasValue)
+                        {
+                            var userVoucher = await _userVoucherRepository.GetByIdAsync(checkoutOrder.UserVoucherId.Value);
+                            if (userVoucher != null)
+                            {
+                                userVoucher.IsUsed = false;
+                                userVoucher.UsedAt = null;
+                                await _userVoucherRepository.UpdateAsync(userVoucher);
+                            }
+                        }
                     }
                 }
-
-                // Mark associated payment as Failed
-                var payment = await _paymentRepository.GetPaymentByOrderIdForUpdateAsync(order.Id);
-                if (payment != null && payment.Status == PaymentStatus.Pending)
+                else
                 {
-                    payment.Status = PaymentStatus.Failed;
-                    payment.UpdatedAt = DateTime.UtcNow;
-                    await _paymentRepository.UpdateAsync(payment);
+                    // Fallback for non-checkout orders (if any)
+                    if (order.UserVoucherId.HasValue)
+                    {
+                        var userVoucher = await _userVoucherRepository.GetByIdAsync(order.UserVoucherId.Value);
+                        if (userVoucher != null)
+                        {
+                            userVoucher.IsUsed = false;
+                            userVoucher.UsedAt = null;
+                            await _userVoucherRepository.UpdateAsync(userVoucher);
+                        }
+                    }
+
+                    var payment = await _paymentRepository.GetPaymentByOrderIdForUpdateAsync(order.Id);
+                    if (payment != null && payment.Status == PaymentStatus.Pending)
+                    {
+                        payment.Status = PaymentStatus.Failed;
+                        payment.UpdatedAt = DateTime.UtcNow;
+                        await _paymentRepository.UpdateAsync(payment);
+                    }
                 }
 
                 order.Status = OrderStatus.Cancelled;
@@ -1087,6 +1262,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     TotalPrice = oi.TotalPrice,
                     CustomizeHash = oi.CustomizeHash,
                     TradeInUsedAmount = oi.TradeInUsedAmount,
+                    ExchangeRequestedQuantity = oi.ExchangeRequestedQuantity,
                     ProductCustomizeDetails = oi.ProductCustomizeDetails?.Select(d => new ProductCustomizeDetail
                     {
                         CustomizeTypeName = d.CustomizeTypeName,
@@ -1107,7 +1283,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 PaymentStatus = order.Payments?.OrderByDescending(p => p.CreatedAt).FirstOrDefault()?.Status ?? PaymentStatus.Pending,
                 ShippingStaffName = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.FullName ?? "N/A",
                 ShippingStatus = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Status.ToString() ?? "N/A",
-                ShippingStaffAvatarUrl = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.AvatarUrl ?? string.Empty
+                ShippingStaffAvatarUrl = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.AvatarUrl ?? string.Empty,
+                ShippingFee = order.ShippingFee
             };
         }
 
@@ -1142,7 +1319,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         totalAmount += p.Amount;
                         totalVnPayAmount += p.Amount;
                     }
-                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Paid)
+                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded)
                     {
                         totalRefundAmount += p.Amount;
                     }
@@ -1182,7 +1359,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TotalOrders = data.Count,
                 TotalCompletedOrders = data.Where(ti => ti.Status == OrderStatus.Completed).Count(),
                 TotalCancelledOrders = data.Where(t1 => t1.Status == OrderStatus.Cancelled).Count(),
-                TotalRefundedOrders = data.Where(ti => ti.Status == OrderStatus.RefundedAndDamaged || ti.Status == OrderStatus.RefundedAndRestocked).Count(),
+                TotalRefundedOrders = data.Where(ti => ti.Status == OrderStatus.ReturnedAndRefunded).Count(),
                 TotalAmount = totalAmount,
                 TotalCODAmount = totalCODAmount,
                 TotalRefundAmount = totalRefundAmount,
@@ -1219,5 +1396,228 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             return Result<List<TotalAmountLineChartResponse>>.Success(result);
         }
+    
+    //////////////////////////////////Checkout order logic//////////////////////////////////////
+        public async Task<Result> ConfirmCheckoutOrderAsync(Guid checkoutOrderId)
+        {
+            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(checkoutOrderId);
+            if (checkoutOrder == null)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (!checkoutOrder.Payments.Any(p => p.PaymentType == PaymentType.Purchase && p.PaymentMethod == PaymentMethod.COD))
+            {
+                return Result.Failure("Only COD checkout orders can be confirmed.", 400);
+            }
+            if (checkoutOrder.Status != CheckoutOrderStatus.Pending)
+            {
+                return Result.Failure("Only pending checkout orders can be confirmed.", 400);
+            }
+
+            checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
+            checkoutOrder.UpdatedAt = DateTime.UtcNow;
+            _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+            foreach(var childOrder in checkoutOrder.Orders)
+            {
+                if (childOrder.Status == OrderStatus.Pending)
+                {
+                    childOrder.Status = OrderStatus.Confirmed;
+                    childOrder.UpdatedAt = DateTime.UtcNow;
+                    _orderRepository.UpdateEntity(childOrder);
+                }
+            }
+
+            await _unitOfWork.SaveChangeAsync();
+            return Result.Success($"Checkout order status updated to 'Confirmed'.");
+        }
+    
+        public async Task<Result> CancelCheckoutOrderByAdminAsync(Guid checkoutOrderId)
+        {
+            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(checkoutOrderId);
+            if (checkoutOrder == null)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (checkoutOrder.Status == CheckoutOrderStatus.Cancelled || checkoutOrder.Status == CheckoutOrderStatus.CancelledAndRefunding || checkoutOrder.Status == CheckoutOrderStatus.CancelledAndRefunded)
+            {
+                return Result.Failure("Checkout order is already cancelled.", 400);
+            }
+
+            // Check if any child order is already confirmed or beyond
+            // if (checkoutOrder.Orders.Any(o => o.Status != OrderStatus.Pending))
+            // {
+            //     return Result.Failure("Cannot cancel checkout order when some child orders are already confirmed or beyond. Please cancel child orders first.", 400);
+            // }
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Cancel all child orders
+                foreach(var childOrder in checkoutOrder.Orders)
+                {
+                    if (childOrder.Status >= OrderStatus.Delivered && childOrder.Status <= OrderStatus.ReturnedAndRefunded)
+                    {
+                        childOrder.Status = OrderStatus.Cancelled;
+                        childOrder.UpdatedAt = DateTime.UtcNow;
+                        _orderRepository.UpdateEntity(childOrder);
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        return Result.Failure($"Cannot cancel child order in {childOrder.Status}, please contact to staff!", 400);
+                    }
+                }
+
+                var lastPurchasePayment = checkoutOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault(p => p.PaymentType == PaymentType.Purchase);
+                if (lastPurchasePayment != null && lastPurchasePayment.Status == PaymentStatus.Paid)
+                {
+                    var refundPayment = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        CheckoutProductOrderId = checkoutOrder.Id,
+                        Amount = lastPurchasePayment.Amount,
+                        OrderCode = checkoutOrder.CheckoutOrderCode,
+                        PaymentType = PaymentType.Refund,
+                        PaymentMethod = PaymentMethod.Other,
+                        Status = PaymentStatus.Refunding,
+                        Description = $"Refund for cancelled CheckoutOrder {checkoutOrder.CheckoutOrderCode}.",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                    };
+                    _paymentRepository.AddEntity(refundPayment);
+
+                    checkoutOrder.RefundingAmount = refundPayment.Amount;
+                    checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunding;
+                }
+                else
+                {
+                    checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
+                }
+                checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+                HandleVoucherRestore(checkoutOrder);
+
+                await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
+            }catch(Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to cancel checkout order.", 500);
+            }
+            
+            return Result.Success($"Checkout order and its child orders have been cancelled.");
+        }
+
+        private void HandleVoucherRestore(CheckoutProductOrder checkoutOrder)
+        {
+            if (checkoutOrder.UserVoucherId.HasValue)
+            {
+                var userVoucher = _userVoucherRepository.GetByIdAsync(checkoutOrder.UserVoucherId.Value).Result;
+                if (userVoucher != null)
+                {
+                    userVoucher.IsUsed = false;
+                    userVoucher.UsedAt = null;
+                    _userVoucherRepository.UpdateEntity(userVoucher);
+                }
+            }
+        }
+
+        public async Task<Result> CancelCheckoutOrderByUserAsync(Guid checkoutOrderId, Guid customerId)
+        {
+            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(checkoutOrderId);
+            if (checkoutOrder == null)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (checkoutOrder.CustomerId != customerId)
+            {
+                return Result.Failure("Checkout order not found.", 404);
+            }
+
+            if (checkoutOrder.Status == CheckoutOrderStatus.Cancelled)
+            {
+                return Result.Failure("Checkout order is already cancelled.", 400);
+            }
+
+            var lastPurchasePayment = checkoutOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault(p => p.PaymentType == PaymentType.Purchase);
+            if(lastPurchasePayment == null)
+            {
+                return Result.Failure("Cannot find purchase payment for this checkout order.", 400);
+            }
+
+            if (checkoutOrder.Status > CheckoutOrderStatus.Confirmed)
+            {
+                return Result.Failure($"Cannot Cancel check out order in {checkoutOrder.Status}, please contact to staff!", 400);
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Cancel child orders that belong to the user
+                foreach(var childOrder in checkoutOrder.Orders.Where(o => o.CustomerId == customerId))
+                {
+                    if (childOrder.Status <= OrderStatus.Confirmed)
+                    {
+                        childOrder.Status = OrderStatus.Cancelled;
+                        childOrder.UpdatedAt = DateTime.UtcNow;
+                        _orderRepository.UpdateEntity(childOrder);
+                    }else
+                    {
+                        return Result.Failure($"Cannot cancel child order in {childOrder.Status}, please contact to staff!", 400);
+                    }
+                }
+                if (lastPurchasePayment.Status == PaymentStatus.Pending)
+                {
+                    lastPurchasePayment.Status = PaymentStatus.Failed;
+                    lastPurchasePayment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(lastPurchasePayment);
+                }
+
+                if (lastPurchasePayment.Status == PaymentStatus.Paid)
+                {
+                    var refundPayment = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        CheckoutProductOrderId = checkoutOrder.Id,
+                        Amount = lastPurchasePayment.Amount,
+                        OrderCode = checkoutOrder.CheckoutOrderCode,
+                        PaymentType = PaymentType.Refund,
+                        PaymentMethod = PaymentMethod.Other,
+                        Status = PaymentStatus.Refunding,
+                        Description = $"Refund for cancelled CheckoutOrder {checkoutOrder.CheckoutOrderCode}.",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                    };
+                    _paymentRepository.AddEntity(refundPayment);
+
+                    checkoutOrder.RefundingAmount = refundPayment.Amount;
+                    checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunding;
+                }
+                else
+                {
+                    checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
+                }
+                checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+                HandleVoucherRestore(checkoutOrder);
+
+                await _unitOfWork.SaveChangeAsync();
+                await transaction.CommitAsync();
+            }catch(Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to cancel checkout order.", 500);
+            }
+            
+            return Result.Success($"Checkout order and its child orders have been cancelled.");
+        }
+    
     }
 }

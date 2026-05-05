@@ -29,6 +29,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly ITradeInOrderRepository _tradeInOrderRepository;
         private readonly IHangFireService _hangFireService;
+        private readonly ICheckoutProductOrderRepository _checkoutProductOrderRepository;
 
         public ShippingTaskService(
             IShippingTaskRepository taskRepository,
@@ -42,7 +43,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ICustomerRepository customerRepository,
             ISystemConfigRepository systemConfigRepository,
             ITradeInOrderRepository tradeInOrderRepository,
-            IHangFireService hangFireService
+            IHangFireService hangFireService,
+            ICheckoutProductOrderRepository checkoutProductOrderRepository
             )
         {
             _taskRepository = taskRepository;
@@ -57,6 +59,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _systemConfigRepository = systemConfigRepository;
             _tradeInOrderRepository = tradeInOrderRepository;
             _hangFireService = hangFireService;
+            _checkoutProductOrderRepository = checkoutProductOrderRepository;
         }
 
         public async Task<Result<ShippingTaskResponse>> CreateShippingTaskAsync(ShippingTaskCreateRequest request)
@@ -81,7 +84,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
 
                 var existingTask = await _taskRepository.GetTaskByOrderIdAsync(order.Id);
-                if (existingTask != null)
+                if (existingTask.Count > 0)
                 {
                     return Result<ShippingTaskResponse>.Failure("Order already has a shipping task.", 400);
                 }
@@ -249,7 +252,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ActionType = "TaskToDelivering",
                     Message = $"your task {task.ShippingTaskId} hass been updated to delivering",
                 };
-                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
                 var notificationToCustomer = new Notification
                 {
                     UserId = order.CustomerId,
@@ -389,17 +391,43 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId!.Value);
             if (order == null || (order.Status != OrderStatus.Shipping && order.Status != OrderStatus.Shipping_Replacement)) return Result.Failure("Order is not in Shipping status.", 400);
 
-            var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
-            bool isVnPay = payment != null && payment.PaymentMethod == PaymentMethod.VnPay;
+            var payment = await _paymentRepository.GetPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId.HasValue ? order.CheckoutProductOrderId.Value : order.Id);
+            bool isValidVnPay = payment != null && payment.PaymentMethod == PaymentMethod.VnPay && payment.Status == PaymentStatus.Paid;
 
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                // Update Order Status
-                order.Status = isVnPay ? OrderStatus.Completed : OrderStatus.Delivered;
-                order.UpdatedAt = DateTime.UtcNow;
-                await _orderRepository.UpdateAsync(order);
+                if (isValidVnPay)
+                {
+                    // Update Order Status
+                    order.Status = OrderStatus.Completed;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    await _orderRepository.UpdateAsync(order);
+                }else if(payment != null && payment.PaymentMethod == PaymentMethod.COD && payment.Status == PaymentStatus.Pending)
+                {
+                    if (string.IsNullOrEmpty(request.PaymentEvidenceUrl))
+                    {
+                        return Result.Failure("Payment evidence is required for COD orders.", 400);
+                    }
 
+                    // For COD, we mark as completed but the payment is still pending until the shipper confirms the cash collection
+                    order.Status = OrderStatus.Completed;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    await _orderRepository.UpdateAsync(order);
+
+                    // Update payment evidence
+                    payment.EvidenceUrl= request.PaymentEvidenceUrl;
+
+                    // Update payment status to Paid
+                    payment.Status = PaymentStatus.CODPaid;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(payment);
+                }
+                else
+                {
+                    return Result.Failure("Payment is not completed yet.", 400);
+                }
+                
                 // Award points if order is Completed
                 if (order.Status == OrderStatus.Completed)
                 {
@@ -416,17 +444,45 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         customer.MemberCoin += coinsEarned;
                         _customerRepository.UpdateEntity(customer);
                     }
+
+                    if (order.CheckoutProductOrderId.HasValue)
+                    {
+                        var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                        var siblingOrders = await _orderRepository.GetOrdersByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+                        bool allOtherCompleted = siblingOrders.Where(o => o.Id != order.Id).All(o => o.Status == OrderStatus.Completed);
+                        if (checkoutOrder != null)
+                        {
+                            if (allOtherCompleted)
+                            {
+                                checkoutOrder.Status = CheckoutOrderStatus.Completed;
+                            }else
+                            {
+                                checkoutOrder.Status = CheckoutOrderStatus.PartialCompleted;
+                            }
+                            _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+                        }
+                    }
+                }
+
+                foreach (var item in order.OrderItems)
+                {
+                    if (item.ExchangeRequestedQuantity > 0)
+                    {
+                        //Update order item Exchange request quantity
+                        item.ExchangeRequestedQuantity = 0;
+                        _orderRepository.UpdateEntity(order);
+                    }
                 }
 
                 // Update Task Status
                 task.Status = ShippingTaskStatus.Delivered;
                 task.CompletionDate = DateTime.UtcNow;
-                await _taskRepository.UpdateAsync(task);
+                _taskRepository.UpdateEntity(task);
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)
                 {
-                    await _evidenceRepository.CreateAsync(new ShippingEvidence
+                    _evidenceRepository.AddEntity(new ShippingEvidence
                     {
                         EvidenceId = Guid.NewGuid(),
                         ShippingTaskId = task.ShippingTaskId,
@@ -435,7 +491,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         CreatedAt = DateTime.UtcNow
                     });
                 }
-
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 var notification = new Notification
                 {
@@ -544,21 +600,52 @@ namespace DreamGuard.BE.BLL.Services.Implements
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
+                var DamagedItems = new List<DamagedItem>();
+                if(request.DamagedItems.Count > 0)
+                {
+                    // Validate damaged items
+                    var orderItemIds = order.OrderItems.Select(oi => oi.Id).ToHashSet();
+                    foreach (var damagedItem in request.DamagedItems)
+                    {
+                        if (!orderItemIds.Contains(damagedItem.OrderItemId))
+                        {
+                            return Result.Failure($"Invalid damaged item with OrderItemId: {damagedItem.OrderItemId}", 400);
+                        }
+
+                        if (damagedItem.DamagedQuantity <= 0)
+                        {
+                            return Result.Failure($"Damaged quantity must be greater than 0 for OrderItemId: {damagedItem.OrderItemId}", 400);
+                        }
+
+                        if (damagedItem.DamagedQuantity > order.OrderItems.First(oi => oi.Id == damagedItem.OrderItemId).Quantity)
+                        {
+                            return Result.Failure($"Damaged quantity cannot exceed ordered quantity for OrderItemId: {damagedItem.OrderItemId}", 400);
+                        }
+
+                        DamagedItems.Add(new DamagedItem
+                        {
+                            OrderItemId = damagedItem.OrderItemId,
+                            DamagedQuantity = damagedItem.DamagedQuantity,
+                        });
+                    }
+                }
+
                 // Unhappy Case: Order status -> Returning (No refund or restock yet)
                 order.Status = OrderStatus.Returning;
                 order.UpdatedAt = DateTime.UtcNow;
-                await _orderRepository.UpdateAsync(order);
+                _orderRepository.UpdateEntity(order);
 
                 // Task status -> Returning
                 task.Status = ShippingTaskStatus.Returning;
                 task.StaffNote = request.Reason;
+                task.DamagedItems = DamagedItems;
                 // Don't set CompletionDate yet, the manager finishes it.
-                await _taskRepository.UpdateAsync(task);
+                _taskRepository.UpdateEntity(task);
 
                 // Save Evidences
                 foreach (var url in request.EvidenceUrls)
                 {
-                    await _evidenceRepository.CreateAsync(new ShippingEvidence
+                    _evidenceRepository.AddEntity(new ShippingEvidence
                     {
                         EvidenceId = Guid.NewGuid(),
                         ShippingTaskId = task.ShippingTaskId,
@@ -567,7 +654,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         CreatedAt = DateTime.UtcNow
                     });
                 }
-
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 var notification = new Notification
                 {
@@ -783,13 +870,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                // Update Order Status
-                order.Status = isDamaged ? OrderStatus.RefundedAndDamaged : OrderStatus.RefundedAndRestocked;
-                order.UpdatedAt = DateTime.UtcNow;
-                await _orderRepository.UpdateAsync(order);
-
                 // Task status
-                task.Status = isDamaged ? ShippingTaskStatus.RefundedAndDamaged : ShippingTaskStatus.RefundedAndRestocked;
+                task.Status = ShippingTaskStatus.Returned;
                 task.CompletionDate = DateTime.UtcNow;
                 if (!string.IsNullOrWhiteSpace(request.DamageNote))
                 {
@@ -797,45 +879,46 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         ? $"Manager Note: {request.DamageNote}" 
                         : $"{task.StaffNote} | Manager Note: {request.DamageNote}";
                 }
-                await _taskRepository.UpdateAsync(task);
+                _taskRepository.UpdateEntity(task);
 
                 // --- REFUND VNPay ---
-                // var payment = await _paymentRepository.GetPaymentByOrderIdAsync(order.Id);
-                // if (payment != null && payment.PaymentMethod == PaymentMethod.VnPay && payment.Status == PaymentStatus.Paid && payment.PaymentType == PaymentType.Purchase)
-                // {
-                //     var refundReq = new VnPaymentRefundRequest
-                //     {
-                //         OrderId = payment.Id.ToString(), // Or TxnRef
-                //         Amount = payment.Amount,
-                //         PaymentDate = payment.CreatedAt,
-                //         CreateBy = "Manager",
-                //         IpAddress = "127.0.0.1",
-                //         TransactionNo = "0"
-                //     };
+                var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(order.CheckoutProductOrderId!.Value);
+                
+                if(checkoutOrder == null) return Result.Failure("Associated checkout order not found.", 404);
 
-                    // var refundRes = await _vnPayService.RefundPaymentAsync(refundReq);
-                    // if (!refundRes.Success)
-                    // {
-                    //     await transaction.RollbackAsync();
-                    //     return Result.Failure($"VnPay Refund failed: {refundRes.Message} (Code: {refundRes.ResponseCode})", 400);
-                    // }
+                if (request.IsRefund && checkoutOrder.Payments.Any(p => p.PaymentMethod == PaymentMethod.VnPay && p.Status == PaymentStatus.Paid && p.PaymentType == PaymentType.Purchase))
+                {
+                    //Update checkout order refunding amount
+                    checkoutOrder.RefundingAmount += order.TotalAmount;
+                    _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
 
-                    // var refundPayment = new Payment
-                    // {
-                    //     Id = Guid.NewGuid(),
-                    //     OrderCode = order.OrderCode,
-                    //     POrderId = order.Id,
-                    //     Status = PaymentStatus.Paid,
-                    //     PaymentType = PaymentType.Refund,
-                    //     Amount = payment.Amount,
-                    //     Description = $"Refund for Order {order.OrderCode}.",
-                    //     PaymentMethod = PaymentMethod.VnPay,
-                    //     CreatedAt = DateTime.UtcNow,
-                    //     UpdatedAt = DateTime.UtcNow,
-                    //     ExpiredAt = DateTime.UtcNow.AddMinutes(5)
-                    // };
-                    // await _paymentRepository.CreateAsync(refundPayment);
-                // }
+                    //Update order status
+                    order.Status = OrderStatus.ReturnedAndRefunding;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    _orderRepository.UpdateEntity(order);
+
+                    var refundPayment = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        OrderCode = order.OrderCode,
+                        POrderId = order.Id,
+                        Status = PaymentStatus.Refunding,
+                        PaymentType = PaymentType.Refund,
+                        Amount = order.TotalAmount,
+                        Description = $"Refund for Order {order.OrderCode}.",
+                        PaymentMethod = PaymentMethod.Other,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                    };
+                    _paymentRepository.AddEntity(refundPayment);
+                }
+                else
+                {
+                    order.Status = OrderStatus.Returned;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    _orderRepository.UpdateEntity(order);
+                }
 
                 // Rollback Stock (Split between Normal and Defect)
                 foreach (var item in order.OrderItems)
@@ -958,10 +1041,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             EvidenceType = "DamageReport",
                             CreatedAt = DateTime.UtcNow
                         };
-                        await _evidenceRepository.CreateAsync(evidence);
+                        _evidenceRepository.AddEntity(evidence);
                     }
                 }
-
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 return Result.Success("Return processed successfully.");
             }
@@ -1004,7 +1087,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 tradeInOrder.Status = isDamaged ? TradeInOrderStatus.RefundedAndDamaged : TradeInOrderStatus.RefundedAndRestocked;
 
                 // Task status
-                task.Status = isDamaged ? ShippingTaskStatus.RefundedAndDamaged : ShippingTaskStatus.RefundedAndRestocked;
+                task.Status = ShippingTaskStatus.Returned;
                 task.CompletionDate = DateTime.UtcNow;
                 if (!string.IsNullOrWhiteSpace(request.DamageNote))
                 {
@@ -1149,7 +1232,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Update Order Status
                 order.Status = OrderStatus.ExchangeRequested;
                 order.UpdatedAt = DateTime.UtcNow;
-                await _orderRepository.UpdateAsync(order);
+                _orderRepository.UpdateEntity(order);
 
                 // Task status (Closed)
                 task.Status = ShippingTaskStatus.ExchangeRequested;
@@ -1160,7 +1243,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         ? $"Manager Note (Exchange): {request.ExchangeNote}" 
                         : $"{task.StaffNote} | Manager Note (Exchange): {request.ExchangeNote}";
                 }
-                await _taskRepository.UpdateAsync(task);
+                _taskRepository.UpdateEntity(task);
 
                 // Add Defect Stock & Deduct New Stock for Replacement
                 foreach (var item in order.OrderItems)
@@ -1172,6 +1255,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     {
                         if (item.ProductVariantId.HasValue)
                         {
+                            //Update order item Exchange request quantity
+                            item.ExchangeRequestedQuantity = damagedQty;
+                            _orderRepository.UpdateEntity(order);
+
                             // Put broken into defect
                             var dr = await _inventoryService.RestoreDefectVariantStockAsync(item.ProductVariantId.Value, damagedQty);
                             if (!dr.Succeeded) { 
@@ -1216,6 +1303,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         }
                         else if (item.ComboId.HasValue)
                         {
+                            //Update order item Exchange request quantity
+                            item.ExchangeRequestedQuantity = damagedQty;
+                            _orderRepository.UpdateEntity(order);
+
                             var dr = await _inventoryService.RestoreDefectComboStockAsync(item.ComboId.Value, damagedQty);
                             if (!dr.Succeeded) { 
                                 await transaction.RollbackAsync();
@@ -1271,7 +1362,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             EvidenceType = "ExchangeReport",
                             CreatedAt = DateTime.UtcNow
                         };
-                        await _evidenceRepository.CreateAsync(evidence);
+                        _evidenceRepository.AddEntity(evidence);
                     }
                 }
 
@@ -1284,8 +1375,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Status = ShippingTaskStatus.Pending,
                     CreatedAt = DateTime.UtcNow
                 };
-                await _taskRepository.CreateAsync(newShippingTask);
+                _taskRepository.AddEntity(newShippingTask);
 
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 return Result.Success("Exchange processed successfully. Replacement task created.");
             }
@@ -1460,6 +1552,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ShippingDate = task.ShippingDate,
                 CompletionDate = task.CompletionDate,
                 StaffNote = task.StaffNote,
+                DamagedItems = task.DamagedItems?.Select(d => new DamagedItemResponse
+                {
+                    OrderItemId = d.OrderItemId,
+                    DamagedQuantity = d.DamagedQuantity
+                }).ToList() ?? new List<DamagedItemResponse>(),
                 Evidences = task.ShippingEvidences?.Select(e => new ShippingEvidenceResponse
                 {
                     EvidenceId = e.EvidenceId,

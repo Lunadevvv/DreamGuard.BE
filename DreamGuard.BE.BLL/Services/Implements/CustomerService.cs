@@ -23,6 +23,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _mapper = mapper;
         }
 
+        public async Task<Result> AddCoinAsync(Customer customer, int amount)
+        {
+            customer.MemberCoin += amount;
+            var result = await _repo.UpdateAsync(customer);
+            return result > 0 ? Result.Success("Success add coin") : Result.Failure("Failed to add coins to the customer.", 500);
+        }
+
         public async Task<Result<CustomerResponse>> GetByIdAsync(Guid customerId)
         {
             var result = await _repo.GetByUserIdWithUserAsync(customerId);

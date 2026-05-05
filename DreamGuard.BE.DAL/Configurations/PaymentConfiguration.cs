@@ -29,7 +29,10 @@ namespace DreamGuard.BE.DAL.Configurations
                 .HasForeignKey(p => p.POrderId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-           
+            builder.HasOne(p => p.CheckoutProductOrder)
+                .WithMany(c => c.Payments)
+                .HasForeignKey(p => p.CheckoutProductOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasIndex(p => p.POrderId);
             builder.HasIndex(p => p.Status);

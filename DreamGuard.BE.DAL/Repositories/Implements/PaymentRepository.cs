@@ -62,8 +62,11 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         {
             var query = _context.Payments
                 .Include(p => p.POrder)
-                .Where(p => p.POrder != null && p.POrder.CustomerId == customerId)
+                .Include(p => p.TradeInOrder)
+                .Include(p => p.CheckoutProductOrder)
+                .Where(p => p.POrder != null && p.POrder.CustomerId == customerId || p.TradeInOrder != null && p.TradeInOrder.CustomerId == customerId || p.CheckoutProductOrder != null && p.CheckoutProductOrder.CustomerId == customerId)
                 .OrderByDescending(p => p.CreatedAt)
+                .AsSplitQuery()
                 .AsNoTracking();
 
             if (status.HasValue)
@@ -106,5 +109,34 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
         }
 
 
+        public async Task<Payment?> GetPaidPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId)
+        {
+            return await _context.Payments
+                .Where(p => p.CheckoutProductOrderId == checkoutProductOrderId
+                         && p.Status == PaymentStatus.Paid
+                         && p.PaymentType != PaymentType.Refund)
+                .OrderByDescending(p => p.CreatedAt)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Payment?> GetLatestNonRefundPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId)
+        {
+            return await _context.Payments
+                .Where(p => p.CheckoutProductOrderId == checkoutProductOrderId
+                         && p.PaymentType != PaymentType.Refund)
+                .OrderByDescending(p => p.CreatedAt)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Payment?> GetPaymentByCheckoutOrderIdAsync(Guid checkoutProductOrderId)
+        {
+            return await _context.Payments
+                .Where(p => p.CheckoutProductOrderId == checkoutProductOrderId)
+                .OrderByDescending(p => p.CreatedAt)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
     }
 }
