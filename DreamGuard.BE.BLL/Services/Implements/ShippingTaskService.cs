@@ -792,7 +792,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Unhappy Case: FORCED_CANCELLED by staff
                 tradeInOrder.Status = TradeInOrderStatus.FORCED_CANCELLED;
                 _tradeInOrderRepository.UpdateEntity(tradeInOrder);
-
+                var lastPayment = tradeInOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault(p => p.PaymentMethod == PaymentMethod.COD);
+                if (lastPayment != null)
+                {
+                    lastPayment.Status = PaymentStatus.Failed;
+                    lastPayment.UpdatedAt = DateTime.UtcNow;
+                    _paymentRepository.UpdateEntity(lastPayment);
+                }
                 // Task status -> FORCED_CANCELLED
                 task.Status = ShippingTaskStatus.FORCED_CANCELLED;
                 task.StaffNote = request.Reason;

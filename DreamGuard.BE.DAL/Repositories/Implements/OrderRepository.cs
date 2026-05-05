@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -110,8 +110,9 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                         .ThenInclude(p => p.Assets)
                 .Where(oi => oi.Order!.CustomerId == customerId
                 && oi.ProductVariant!.Product!.Category!.CateParentId == categoryParentId
-                && oi.TradeInUsedAmount < oi.Quantity && (oi.UnitPrice <= salePrice) && (oi.ProductVariant.Product.MinTradeInPrice <= oi.UnitPrice - depositAmount) 
-                && oi.Order.Payments.Any(p => p.PaymentType == PaymentType.Purchase && (p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.CODPaid) ))
+                && oi.TradeInUsedAmount < oi.Quantity && (oi.UnitPrice <= salePrice) && (oi.ProductVariant.Product.MinTradeInPrice <= oi.UnitPrice - depositAmount)
+                //&& oi.Order.Payments.Any(p => p.PaymentType == PaymentType.Purchase && (p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.CODPaid)))
+                && (oi.Order.Status == OrderStatus.Completed))
                 .ToListAsync();
         }
         public async Task<OrderItem?> GetOrderItemByIdAsync(Guid orderItemId)

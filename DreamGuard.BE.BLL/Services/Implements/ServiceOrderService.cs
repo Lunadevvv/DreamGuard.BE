@@ -427,6 +427,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only pending order can be rejected", 400);
             }
             var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if (lastPayment.PaymentMethod == PaymentMethod.COD)
+            {
+                lastPayment.Status = PaymentStatus.Failed;
+            }
+            await _paymentRepository.UpdateAsync(lastPayment);
             //luồng refund (bỏ)
             //var isRefunded = false;
             //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
@@ -454,7 +459,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //}
             //else
             //{
-                serviceOrder.Status = OrderServiceStatus.Rejected;
+            serviceOrder.Status = OrderServiceStatus.Rejected;
             //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
@@ -516,7 +521,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Only pending order can be cancelled", 400);
             }
             //luồng rend tiền (bỏ)
-            //var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if(lastPayment.PaymentMethod == PaymentMethod.COD)
+            {
+                lastPayment.Status = PaymentStatus.Failed;
+                await _paymentRepository.UpdateAsync(lastPayment);
+            }
             //bool isRefunded = false;
             //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             //{
@@ -543,7 +553,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //}
             //else
             //{
-                serviceOrder.Status = OrderServiceStatus.Cancelled;
+            serviceOrder.Status = OrderServiceStatus.Cancelled;
             //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             var result = await _serviceOrderRepository.UpdateAsync(serviceOrder);
@@ -580,7 +590,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 _serviceTaskRepository.UpdateEntity(serviceTask);
             }
             // luong refund (bỏ)
-            //var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if(lastPayment.PaymentMethod == PaymentMethod.COD)
+            {
+                lastPayment.Status = PaymentStatus.Failed;
+                _paymentRepository.UpdateEntity(lastPayment);
+            }
             //bool isRefunded = false;
             //if (lastPayment != null && lastPayment.Status == PaymentStatus.Paid)
             //{
@@ -607,7 +622,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //}
             //else
             //{
-                serviceOrder.Status = OrderServiceStatus.Cancelled;
+            serviceOrder.Status = OrderServiceStatus.Cancelled;
             //}
             serviceOrder.UpdatedAt = DateTime.UtcNow;
             _serviceOrderRepo.UpdateEntity(serviceOrder);
@@ -632,6 +647,12 @@ namespace DreamGuard.BE.BLL.Services.Implements
             if (serviceOrder.Status != OrderServiceStatus.Processing)
             {
                 return Result.Failure("Only processing order can be cancelled by manager", 400);
+            }
+            var lastPayment = serviceOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault(p => p.PaymentMethod == PaymentMethod.COD);
+            if (lastPayment != null)
+            {
+                lastPayment.Status = PaymentStatus.Failed;
+                await _paymentRepository.UpdateAsync(lastPayment);
             }
             serviceOrder.Status = OrderServiceStatus.ForcedCancelled;
             serviceOrder.UpdatedAt = DateTime.UtcNow;

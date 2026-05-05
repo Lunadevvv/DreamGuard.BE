@@ -538,7 +538,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     //ko save(fixed)
                 }
                 //hủy payment cod
-                var codPayment = tradeInOrder.Payments.FirstOrDefault(p => p.PaymentType == PaymentType.Purchase && p.PaymentMethod == PaymentMethod.COD && p.Status == PaymentStatus.COD);
+                var codPayment = tradeInOrder.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault(p => p.PaymentType == PaymentType.Purchase && p.PaymentMethod == PaymentMethod.COD && p.Status == PaymentStatus.COD);
                 if (codPayment != null)
                 {
                     codPayment.Status = PaymentStatus.Failed;
