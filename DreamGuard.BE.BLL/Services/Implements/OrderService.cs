@@ -1287,7 +1287,37 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 ShippingFee = order.ShippingFee
             };
         }
-
+        public async Task<Result<List<TopProductResponse>>> GetTopSellerProductsAsync(int limit)
+        {
+            var products = await _orderRepository.GetBestSellerProductsAsync(limit);
+            var productResponses = new List<TopProductResponse>();
+            foreach (var p in products)
+            {
+                var hasVariants = p.Product.Variants != null && p.Product.Variants.Any();
+                var productResponse = new ProductResponse
+                {
+                    Id = p.Product.Id,
+                    Name = p.Product.Name,
+                    Summary = p.Product.Summary,
+                    Slug = p.Product.Slug,
+                    Material = p.Product.Material,
+                    AgeGroup = p.Product.AgeGroup,
+                    AverageRating = p.Product.AverageRating,
+                    BasePrice = hasVariants ? p.Product.Variants.Min(v => v.BasePrice) : 0,
+                    SalePrice = hasVariants ? p.Product.Variants.Min(v => v.SalePrice) : 0,
+                    IsTradeInEligible = p.Product.IsTradeInEligible,
+                    MinTradeInPrice = p.Product.MinTradeInPrice,
+                    DepositAmount = p.Product.DepositAmount,
+                    ImageUrls = p.Product.Assets.Select(a => a.Url).ToList()
+                };
+                productResponses.Add(new TopProductResponse
+                {
+                    Product = productResponse,
+                    TotalQuantity = p.TotalQuantity
+                });
+            }
+            return Result<List<TopProductResponse>>.Success(productResponses);
+        }
         public async Task<Result<OrderDashBoardResponse>> GetOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate)
         {
             var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
@@ -1325,34 +1355,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 });
             }
-            //take 5 best-seller products
-            var products = await _orderRepository.GetBestSellerProductsAsync(5);
-            var productResponses = new List<TopProductResponse>();
-            foreach (var p in products)
-            {
-                var hasVariants = p.Product.Variants != null && p.Product.Variants.Any();
-                var productResponse = new ProductResponse
-                {
-                    Id = p.Product.Id,
-                    Name = p.Product.Name,
-                    Summary = p.Product.Summary,
-                    Slug = p.Product.Slug,
-                    Material = p.Product.Material,
-                    AgeGroup = p.Product.AgeGroup,
-                    AverageRating = p.Product.AverageRating,
-                    BasePrice = hasVariants ? p.Product.Variants.Min(v => v.BasePrice) : 0,
-                    SalePrice = hasVariants ? p.Product.Variants.Min(v => v.SalePrice) : 0,
-                    IsTradeInEligible = p.Product.IsTradeInEligible,
-                    MinTradeInPrice = p.Product.MinTradeInPrice,
-                    DepositAmount = p.Product.DepositAmount,
-                    ImageUrls = p.Product.Assets.Select(a => a.Url).ToList()
-                };
-                productResponses.Add(new TopProductResponse
-                {
-                    Product = productResponse,
-                    TotalQuantity = p.TotalQuantity
-                });
-            }
+
 
             var response = new OrderDashBoardResponse
             {
@@ -1365,9 +1368,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TotalRefundAmount = totalRefundAmount,
                 TotalVnPayAmount = totalVnPayAmount,
                 FromDate = fromDate,
-                ToDate = toDate,
-                TopSellingProducts = productResponses
-            };
+                ToDate = toDate,            };
             return Result<OrderDashBoardResponse>.Success(response);
         }
 

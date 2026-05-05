@@ -185,7 +185,7 @@ namespace DreamGuard.BE.API.Controllers
 
         [HttpPut("{id}/delivered-for-tradeIn")]
         [Authorize(Roles = Role.DeliveryStaff)]
-        public async Task<IActionResult> CompleteShippingForTradeIn(Guid id, [FromBody] CompleteShippingRequest request)
+        public async Task<IActionResult> CompleteShippingForTradeIn(Guid id, [FromBody] CompleteShippingForTradeInRequest request)
         {
             if (!ModelState.IsValid)
             {
