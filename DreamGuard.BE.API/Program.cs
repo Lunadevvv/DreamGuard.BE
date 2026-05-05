@@ -1,4 +1,4 @@
-﻿using CloudinaryDotNet;
+using CloudinaryDotNet;
 using DreamGuard.BE.API.Hubs;
 using DreamGuard.BE.API.Implements;
 using DreamGuard.BE.BLL;
@@ -331,6 +331,16 @@ namespace DreamGuard.BE.API
             app.MapHub<ChatHub>("/chathub");
             app.MapHub<SystemHub>("/systemhub");
             app.MapHub<NotiAndLogHub>("/notiandloghub");
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var hangfireService = scope.ServiceProvider.GetRequiredService<IHangFireService>();
+                // Run daily at 01:00 UTC (08:00 AM VN time)
+                hangfireService.AddOrUpdateRecurringJob<ICustomerCareService>(
+                    "SendProductCareEmailsJob",
+                    service => service.SendProductCareEmailsAsync(),
+                    "0 1 * * *");
+            }
 
             app.Run();
         }

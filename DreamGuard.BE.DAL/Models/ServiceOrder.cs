@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.HttpResults;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,6 +31,7 @@ namespace DreamGuard.BE.DAL.Models
         public DateTime CreatedAt { get ; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; } = null;
+        public bool IsCareEmailSent { get; set; } = false;
         public Customer Customer { get; set; } = null!;
         public ICollection<ServiceTask> ServiceTasks { get; set; } = new List<ServiceTask>();
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();

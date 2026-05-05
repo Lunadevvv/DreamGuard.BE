@@ -994,19 +994,20 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             order.Status = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
-            await _orderRepository.UpdateAsync(order);
+            _orderRepository.UpdateEntity(order);
 
             if(newStatus == OrderStatus.Confirmed && order.CheckoutProductOrderId.HasValue)
             {
-                var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersByIdAsync(order.CheckoutProductOrderId.Value);
+                var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
                 if (checkoutOrder != null && checkoutOrder.Status == CheckoutOrderStatus.Pending)
                 {
                     checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
                     checkoutOrder.UpdatedAt = DateTime.UtcNow;
-                    await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                    _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
                 }
             }
             
+            await _unitOfWork.SaveChangeAsync();
             // notification
             Notification notification = new Notification
             {
