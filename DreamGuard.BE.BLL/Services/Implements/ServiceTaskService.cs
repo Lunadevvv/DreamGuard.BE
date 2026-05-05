@@ -398,11 +398,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 UserId = newStaffId,
                 ActionType = "ServiceTask Create",
-                Message = $"You have been assigned ServiceTask: {serviceTask.ServiceTaskId}",
+                Message = $"You have been assigned ServiceTask: {newServiceTask.ServiceTaskId}",
             };
 
             _hangFireService.Enqueue<NotificationService>(job => job.SendNotificationAsync(notification));
-            return Result.Success($"staff reassigned to service task: {serviceTask.ServiceTaskId}");
+            return Result.Success($"staff reassigned to service task: {newServiceTask.ServiceTaskId}");
         }
     }
 }

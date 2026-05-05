@@ -509,16 +509,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
         }
         //ko saved(fixed)
-        public async Task<Result> CompleteShippingForTradeInOrderAsync(Guid taskId, Guid staffId, CompleteShippingRequest request)
+        public async Task<Result> CompleteShippingForTradeInOrderAsync(Guid taskId, Guid staffId, CompleteShippingForTradeInRequest request)
         {
             if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
             {
                 return Result.Failure("At least one evidence image is required.", 400);
             }
 
+
             var task = await _taskRepository.GetTaskWithDetailsForUpdateNoTrackingAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
-
+            
             if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
 
             if (task.Status != ShippingTaskStatus.Arrived) return Result.Failure($"Cannot complete from status '{task.Status}'.", 400);
@@ -1095,36 +1096,36 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         ? $"Manager Note: {request.DamageNote}"
                         : $"{task.StaffNote} | Manager Note: {request.DamageNote}";
                 }
- 
+
 
                 // --- REFUND VNPay ---
-                // Check if deposit was paid
-                // var lastPaymentPaid = tradeInOrder.Payments
-                //     .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
-                //     .OrderByDescending(p => p.CreatedAt)
-                //     .FirstOrDefault();
-                // if (lastPaymentPaid != null)
-                // {
-                //     var paymentRefund = new Payment
-                //     {
-                //         TradeInOrderId = tradeInOrder.TradeInOrderId,
-                //         Amount = lastPaymentPaid.Amount,
-                //         OrderCode = tradeInOrder.OrderCode,
-                //         PaymentType = PaymentType.Refund,
-                //         PaymentMethod = lastPaymentPaid.PaymentMethod,
-                //         Status = PaymentStatus.Refunded,
-                //         Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
-                //     };
-                //     VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
-                //     {
-                //         OrderId = lastPaymentPaid.Id.ToString(),
-                //         Amount = lastPaymentPaid.Amount,
-                //         PaymentDate = lastPaymentPaid.CreatedAt,
-                //     };
+                //Check if deposit was paid
+                 var lastPaymentPaid = tradeInOrder.Payments
+                     .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
+                     .OrderByDescending(p => p.CreatedAt)
+                     .FirstOrDefault();
+                if (lastPaymentPaid != null)
+                {
+                    var paymentRefund = new Payment
+                    {
+                        TradeInOrderId = tradeInOrder.TradeInOrderId,
+                        Amount = lastPaymentPaid.Amount,
+                        OrderCode = tradeInOrder.OrderCode,
+                        PaymentType = PaymentType.Refund,
+                        PaymentMethod = lastPaymentPaid.PaymentMethod,
+                        Status = PaymentStatus.Refunding,
+                        Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
+                    };
+                    //     VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                    //     {
+                    //         OrderId = lastPaymentPaid.Id.ToString(),
+                    //         Amount = lastPaymentPaid.Amount,
+                    //         PaymentDate = lastPaymentPaid.CreatedAt,
+                    //     };
                     //fire and forget this because refund can't not use for now
                     //var refundResult = _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
-                //     _paymentRepository.AddEntity(paymentRefund);
-                // }
+                    _paymentRepository.AddEntity(paymentRefund);
+                }
 
                 // Rollback Stock (Split between Normal and Defect)
                 int damagedQty = isDamaged ? 1 : 0;

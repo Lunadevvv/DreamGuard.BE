@@ -704,7 +704,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         //    return Result.Success("Trade-in order status updated to DELIVERED successfully");
         //}
 
-        public async Task<Result> CompletedAsync(Guid tradeInOrderId)
+        public async Task<Result> CompletedAsync(Guid tradeInOrderId, string paymentEvidenceUrl)
         {
             var tradeInOrder = await _tradeInOrderRepository.GetTradeInByIdAsync(tradeInOrderId);
             if (tradeInOrder == null)
@@ -725,6 +725,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             //ko save(fixed)
             lastFinalPayment.Status = PaymentStatus.CODPaid;
             lastFinalPayment.UpdatedAt = DateTime.UtcNow;
+            lastFinalPayment.EvidenceUrl = paymentEvidenceUrl;
             _paymentRepository.UpdateEntity(lastFinalPayment); _paymentRepository.UpdateEntity(lastFinalPayment);
 
             //award coins for customer

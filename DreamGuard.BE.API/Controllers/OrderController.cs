@@ -40,6 +40,22 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+        [HttpGet("get-top-seller-products")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
+        public async Task<IActionResult> GetTopSellerProducts([FromQuery] int limit = 5)
+        {
+            var result = await _orderService.GetTopSellerProductsAsync(limit);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpGet("get-total-amount-line-chart")]
         [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
         public async Task<IActionResult> GetTotalAmountLineChart([FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate)

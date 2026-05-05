@@ -18,7 +18,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> CancelAsync(Guid tradeInOrderId, bool isAdmin);
         Task<Result> ConfirmAsync(Guid tradeInOrderId, decimal tradeInPrice);
         Task<Result> ProcessingAsync(Guid tradeInOrderId, Guid staffId, DateTime shippingDate);
-        Task<Result> CompletedAsync(Guid tradeInOrderId);
+        Task<Result> CompletedAsync(Guid tradeInOrderId, string paymentEvidenceUrl);
         Task<Result<CreateTradeInOrderResponse>> TradeInOrderAsync(CreateTradeInOrderRequest request, Guid customerId, string ipAddress);
         Task<Result<CreateTradeInOrderResponse>> ReOrderTradeInAsync(Guid tradeInOrderId, Guid customerId, string ipAddress);
         Task<Result> UploadTradeInOrderImageAsync(Guid tradeInOrderId, TradeInOrderImageCreateRequest request);
