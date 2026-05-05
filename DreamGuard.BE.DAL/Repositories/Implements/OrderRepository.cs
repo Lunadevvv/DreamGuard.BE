@@ -97,10 +97,10 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
             return await PaginatedList<Order>.CreateAsync(query, pageNumber, 10);
         }
 
-        public async Task AddOrderItemsAsync(List<OrderItem> items)
+        public void AddOrderItems(List<OrderItem> items)
         {
-            await _context.OrderItems.AddRangeAsync(items);
-            await _context.SaveChangesAsync();
+            _context.OrderItems.AddRange(items);
+            // await _context.SaveChangesAsync();
         }
         public async Task<List<OrderItem>> GetOrdersToTradeInAsync(Guid customerId, int categoryParentId, decimal salePrice, decimal depositAmount)
         {

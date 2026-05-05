@@ -58,6 +58,38 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Data);
         }
 
+        [HttpGet("GetDeliveryStaffsForAssignment")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}, {Role.Seller}")]
+        public async Task<IActionResult> GetDeliveryStaffsForAssignmentAsync(int pageNumber = 1, int pageSize = 4)
+        {
+            var result = await _staffService.GetDeliveryStaffsForAssignmentAsync(pageNumber, pageSize);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
+        [HttpGet("GetCleaningStaffsForAssignment")]
+        [Authorize(Roles = $"{Role.Manager}, {Role.Admin}, {Role.Seller}")]
+        public async Task<IActionResult> GetCleaningStaffsForAssignmentAsync(int pageNumber = 1, int pageSize = 4)
+        {
+            var result = await _staffService.GetCleaningStaffsForAssignmentAsync(pageNumber, pageSize);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error }
+                });
+            }
+            return Ok(result.Data);
+        }
+
         [HttpGet("{staffId}")]
         [Authorize(Roles = $"{Role.Admin}, {Role.Manager}")]
         public async Task<IActionResult> GetByIdAsync(Guid staffId)

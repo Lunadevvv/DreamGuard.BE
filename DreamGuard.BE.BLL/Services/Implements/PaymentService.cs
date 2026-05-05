@@ -521,7 +521,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                     {
                                         checkoutOrder.Status = CheckoutOrderStatus.CancelledAndRefunded;
                                     }
-                                    else if (checkoutOrder.Status == CheckoutOrderStatus.Confirmed) // Only move to PartialRefunded if it was previously Confirmed, otherwise keep it in Cancelled status until all are refunded
+                                    else if (checkoutOrder.Status == CheckoutOrderStatus.Confirmed || checkoutOrder.Status == CheckoutOrderStatus.PartialRefunding) 
                                     {
                                         checkoutOrder.Status = CheckoutOrderStatus.PartialRefunded;
                                     }
@@ -531,6 +531,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                     {
                                         checkoutOrder.Status = CheckoutOrderStatus.ReturnedAndRefunded;
                                     }
+
+                                    var anotherChildOrder = checkoutOrder.Orders.FirstOrDefault(o => o.Id != childOrder.Id);
+                                    if (anotherChildOrder != null && (anotherChildOrder.Status == OrderStatus.Cancelled || anotherChildOrder.Status == OrderStatus.Completed))
+                                    {
+                                        checkoutOrder.Status = CheckoutOrderStatus.Completed;
+                                    }
+                                    checkoutOrder.UpdatedAt = DateTime.UtcNow;
 
                                     _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
                                 }

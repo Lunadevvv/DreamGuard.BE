@@ -81,320 +81,320 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _checkoutProductOrderRepository = checkoutProductOrderRepository;
         }
 
-        public async Task<Result<OrderResponse>> CreateOrderByAdminAsync(Guid adminId, CreateOrderByAdminRequest request, string ipAddress)
-        {
-            var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
-            if (customer == null)
-                return Result<OrderResponse>.Failure("Customer profile not found.", 404);
+        // public async Task<Result<OrderResponse>> CreateOrderByAdminAsync(Guid adminId, CreateOrderByAdminRequest request, string ipAddress)
+        // {
+        //     var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
+        //     if (customer == null)
+        //         return Result<OrderResponse>.Failure("Customer profile not found.", 404);
 
-            var customerId = customer.CustomerId;
+        //     var customerId = customer.CustomerId;
 
-            var address = await _addressRepository.GetByIdAsync(customerId, request.AddressId);
-            if (address == null)
-                return Result<OrderResponse>.Failure("Address not found.", 404);
+        //     var address = await _addressRepository.GetByIdAsync(customerId, request.AddressId);
+        //     if (address == null)
+        //         return Result<OrderResponse>.Failure("Address not found.", 404);
 
-            await using var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
-            {
-                var orderItems = new List<OrderItem>();
-                decimal subTotal = 0;
-                decimal totalAddonPrice = 0;
+        //     await using var transaction = await _unitOfWork.BeginTransactionAsync();
+        //     try
+        //     {
+        //         var orderItems = new List<OrderItem>();
+        //         decimal subTotal = 0;
+        //         decimal totalAddonPrice = 0;
 
-                var variantIds = request.Items.Where(i => i.ProductVariantId.HasValue).Select(i => i.ProductVariantId!.Value).Distinct().ToList();
-                var comboIds = request.Items.Where(i => i.ComboId.HasValue).Select(i => i.ComboId!.Value).Distinct().ToList();
+        //         var variantIds = request.Items.Where(i => i.ProductVariantId.HasValue).Select(i => i.ProductVariantId!.Value).Distinct().ToList();
+        //         var comboIds = request.Items.Where(i => i.ComboId.HasValue).Select(i => i.ComboId!.Value).Distinct().ToList();
 
-                var variantsDict = (await _variantRepository.GetVariantsByIdsAsync(variantIds)).ToDictionary(v => v.Id);
-                var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds)).ToDictionary(i => i.ProductVariantId);
-                var combosDict = (await _comboRepository.GetCombosWithProductsByIdsAsync(comboIds)).ToDictionary(c => c.Id);
+        //         var variantsDict = (await _variantRepository.GetVariantsByIdsAsync(variantIds)).ToDictionary(v => v.Id);
+        //         var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds)).ToDictionary(i => i.ProductVariantId);
+        //         var combosDict = (await _comboRepository.GetCombosWithProductsByIdsAsync(comboIds)).ToDictionary(c => c.Id);
 
-                var allVariantCusList = await _variantCustomizeTypeRepository.GetByVariantIdsWithDetailsAsync(variantIds);
-                var variantCusDict = allVariantCusList.GroupBy(vc => vc.ProductVariantId).ToDictionary(g => g.Key, g => g.ToList());
+        //         var allVariantCusList = await _variantCustomizeTypeRepository.GetByVariantIdsWithDetailsAsync(variantIds);
+        //         var variantCusDict = allVariantCusList.GroupBy(vc => vc.ProductVariantId).ToDictionary(g => g.Key, g => g.ToList());
 
-                var auditUnChanged = new AuditLog
-                {
-                    UserId = adminId,
-                    ActionType = "CreateOrderFailed",
-                    Message = $"Admin {adminId} create order for {customerId} failed. Stock remain unchanged",
-                };
+        //         var auditUnChanged = new AuditLog
+        //         {
+        //             UserId = adminId,
+        //             ActionType = "CreateOrderFailed",
+        //             Message = $"Admin {adminId} create order for {customerId} failed. Stock remain unchanged",
+        //         };
 
-                foreach (var item in request.Items)
-                {
-                    if (item.ProductVariantId.HasValue)
-                    {
-                        variantsDict.TryGetValue(item.ProductVariantId.Value, out var variant);
-                        if (variant == null || variant.Status != ProductStatus.Published)
-                        {
-                            await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure($"Product variant '{item.ProductVariantId}' is no longer available.", 400);
-                        }
+        //         foreach (var item in request.Items)
+        //         {
+        //             if (item.ProductVariantId.HasValue)
+        //             {
+        //                 variantsDict.TryGetValue(item.ProductVariantId.Value, out var variant);
+        //                 if (variant == null || variant.Status != ProductStatus.Published)
+        //                 {
+        //                     await transaction.RollbackAsync();
+        //                     return Result<OrderResponse>.Failure($"Product variant '{item.ProductVariantId}' is no longer available.", 400);
+        //                 }
 
-                        inventoriesDict.TryGetValue(item.ProductVariantId.Value, out var inventory);
-                        if (inventory == null || inventory.Quantity < item.Quantity)
-                        {
-                            await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure($"Insufficient stock for product variant '{variant.Sku}'. Available: {inventory?.Quantity ?? 0}, Requested: {item.Quantity}.", 400);
-                        }
+        //                 inventoriesDict.TryGetValue(item.ProductVariantId.Value, out var inventory);
+        //                 if (inventory == null || inventory.Quantity < item.Quantity)
+        //                 {
+        //                     await transaction.RollbackAsync();
+        //                     return Result<OrderResponse>.Failure($"Insufficient stock for product variant '{variant.Sku}'. Available: {inventory?.Quantity ?? 0}, Requested: {item.Quantity}.", 400);
+        //                 }
 
-                        var deductResult = await _inventoryService.DeductVariantStockAsync(item.ProductVariantId.Value, item.Quantity);
-                        if (!deductResult.Succeeded)
-                        {
-                            await transaction.RollbackAsync();
-                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
-                            return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
-                        }
+        //                 var deductResult = await _inventoryService.DeductVariantStockAsync(item.ProductVariantId.Value, item.Quantity);
+        //                 if (!deductResult.Succeeded)
+        //                 {
+        //                     await transaction.RollbackAsync();
+        //                     _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
+        //                     return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
+        //                 }
 
-                        var audit = new AuditLog
-                        {
-                            UserId = adminId,
-                            ActionType = "CreateOrder",
-                            Message = $"Admin {adminId} deducted {item.Quantity} from stock of variant '{item.ProductVariantId.Value}' for order creation.",
-                        };
-                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+        //                 var audit = new AuditLog
+        //                 {
+        //                     UserId = adminId,
+        //                     ActionType = "CreateOrder",
+        //                     Message = $"Admin {adminId} deducted {item.Quantity} from stock of variant '{item.ProductVariantId.Value}' for order creation.",
+        //                 };
+        //                 _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
 
-                        if (inventory != null)
-                        {
-                            inventory.Quantity -= item.Quantity;
-                        }
+        //                 if (inventory != null)
+        //                 {
+        //                     inventory.Quantity -= item.Quantity;
+        //                 }
 
-                        List<VariantCustomizeType> itemVariantCustomizations = new();
-                        variantCusDict.TryGetValue(item.ProductVariantId.Value, out itemVariantCustomizations);
-                        itemVariantCustomizations ??= new List<VariantCustomizeType>();
+        //                 List<VariantCustomizeType> itemVariantCustomizations = new();
+        //                 variantCusDict.TryGetValue(item.ProductVariantId.Value, out itemVariantCustomizations);
+        //                 itemVariantCustomizations ??= new List<VariantCustomizeType>();
 
-                        var requestedCusIds = item.ProductCustomizeDetailRequest.Select(r => r.ProductCustomizeTypeId).ToList();
-                        var validCustomizations = itemVariantCustomizations.Where(vc => requestedCusIds.Contains(vc.CusId)).ToList();
+        //                 var requestedCusIds = item.ProductCustomizeDetailRequest.Select(r => r.ProductCustomizeTypeId).ToList();
+        //                 var validCustomizations = itemVariantCustomizations.Where(vc => requestedCusIds.Contains(vc.CusId)).ToList();
                         
-                        var itemCustomizeDetails = item.ProductCustomizeDetailRequest.Select(d =>
-                        {
-                            var vc = validCustomizations.FirstOrDefault(vc => vc.CusId == d.ProductCustomizeTypeId);
-                            if (vc == null) return null;
+        //                 var itemCustomizeDetails = item.ProductCustomizeDetailRequest.Select(d =>
+        //                 {
+        //                     var vc = validCustomizations.FirstOrDefault(vc => vc.CusId == d.ProductCustomizeTypeId);
+        //                     if (vc == null) return null;
 
-                            decimal addOnPrice = 0;
-                            var type = vc.ProductCustomizeType;
-                            if (type.CalculationMode == PriceCalculationMode.Multiplier)
-                            {
-                                double multiplier = vc.OverrideMultiplier ?? type.DefaultMultiplier ?? 1.0;
-                                if (multiplier > 1.0)
-                                    addOnPrice = variant.SalePrice * (decimal)(multiplier - 1.0);
-                            }
-                            else
-                            {
-                                addOnPrice = vc.OverridePrice ?? type.DefaultPrice;
-                            }
+        //                     decimal addOnPrice = 0;
+        //                     var type = vc.ProductCustomizeType;
+        //                     if (type.CalculationMode == PriceCalculationMode.Multiplier)
+        //                     {
+        //                         double multiplier = vc.OverrideMultiplier ?? type.DefaultMultiplier ?? 1.0;
+        //                         if (multiplier > 1.0)
+        //                             addOnPrice = variant.SalePrice * (decimal)(multiplier - 1.0);
+        //                     }
+        //                     else
+        //                     {
+        //                         addOnPrice = vc.OverridePrice ?? type.DefaultPrice;
+        //                     }
 
-                            return new ProductCustomizeDetail
-                            {
-                                CustomizeTypeName = type.Name,
-                                CustomizeContent = d.CustomizeContent,
-                                AddOnPrice = addOnPrice
-                            };
-                        }).Where(d => d != null).Select(d => d!).ToList();
+        //                     return new ProductCustomizeDetail
+        //                     {
+        //                         CustomizeTypeName = type.Name,
+        //                         CustomizeContent = d.CustomizeContent,
+        //                         AddOnPrice = addOnPrice
+        //                     };
+        //                 }).Where(d => d != null).Select(d => d!).ToList();
 
-                        var itemAddonPrice = itemCustomizeDetails.Sum(d => d.AddOnPrice);
-                        totalAddonPrice += itemAddonPrice * item.Quantity;
+        //                 var itemAddonPrice = itemCustomizeDetails.Sum(d => d.AddOnPrice);
+        //                 totalAddonPrice += itemAddonPrice * item.Quantity;
 
-                        var productName = variant.Product?.Name ?? "Unknown";
-                        var itemPrice = variant.SalePrice;
-                        orderItems.Add(new OrderItem
-                        {
-                            Id = Guid.NewGuid(),
-                            ProductVariantId = item.ProductVariantId,
-                            ComboId = null,
-                            Quantity = item.Quantity,
-                            UnitPrice = itemPrice,
-                            TotalPrice = itemPrice * item.Quantity,
-                            ItemName = $"{productName} - {variant.Size}",
-                            CustomizeHash = string.Empty,
-                            ProductCustomizeDetails = itemCustomizeDetails
-                        });
-                        subTotal += itemPrice * item.Quantity;
-                    }
-                    else if (item.ComboId.HasValue)
-                    {
-                        combosDict.TryGetValue(item.ComboId.Value, out var combo);
-                        if (combo == null || combo.Status != ProductStatus.Published)
-                        {
-                            await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure($"Combo '{item.ComboId}' is no longer available.", 400);
-                        }
+        //                 var productName = variant.Product?.Name ?? "Unknown";
+        //                 var itemPrice = variant.SalePrice;
+        //                 orderItems.Add(new OrderItem
+        //                 {
+        //                     Id = Guid.NewGuid(),
+        //                     ProductVariantId = item.ProductVariantId,
+        //                     ComboId = null,
+        //                     Quantity = item.Quantity,
+        //                     UnitPrice = itemPrice,
+        //                     TotalPrice = itemPrice * item.Quantity,
+        //                     ItemName = $"{productName} - {variant.Size}",
+        //                     CustomizeHash = string.Empty,
+        //                     ProductCustomizeDetails = itemCustomizeDetails
+        //                 });
+        //                 subTotal += itemPrice * item.Quantity;
+        //             }
+        //             else if (item.ComboId.HasValue)
+        //             {
+        //                 combosDict.TryGetValue(item.ComboId.Value, out var combo);
+        //                 if (combo == null || combo.Status != ProductStatus.Published)
+        //                 {
+        //                     await transaction.RollbackAsync();
+        //                     return Result<OrderResponse>.Failure($"Combo '{item.ComboId}' is no longer available.", 400);
+        //                 }
 
-                        var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
-                        if (comboStock < item.Quantity)
-                        {
-                            await transaction.RollbackAsync();
-                            return Result<OrderResponse>.Failure($"Insufficient stock for combo '{combo.Name}'. Available: {comboStock}, Requested: {item.Quantity}.", 400);
-                        }
+        //                 var comboStock = StockCalculator.CalculateComboStock(combo.ComboProductVariants);
+        //                 if (comboStock < item.Quantity)
+        //                 {
+        //                     await transaction.RollbackAsync();
+        //                     return Result<OrderResponse>.Failure($"Insufficient stock for combo '{combo.Name}'. Available: {comboStock}, Requested: {item.Quantity}.", 400);
+        //                 }
 
-                        var deductResult = await _inventoryService.DeductComboStockAsync(item.ComboId.Value, item.Quantity);
-                        if (!deductResult.Succeeded)
-                        {
-                            await transaction.RollbackAsync();
-                            _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
-                            return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
-                        }
+        //                 var deductResult = await _inventoryService.DeductComboStockAsync(item.ComboId.Value, item.Quantity);
+        //                 if (!deductResult.Succeeded)
+        //                 {
+        //                     await transaction.RollbackAsync();
+        //                     _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(auditUnChanged));
+        //                     return Result<OrderResponse>.Failure(deductResult.Error!, deductResult.StatusCode);
+        //                 }
 
-                        var audit = new AuditLog
-                        {
-                            UserId = adminId,
-                            ActionType = "CreateOrder",
-                            Message = $"Admin {adminId} deducted combo:{item.ComboId.Value} with quantity: {item.Quantity} for order creation.",
-                        };
-                        _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+        //                 var audit = new AuditLog
+        //                 {
+        //                     UserId = adminId,
+        //                     ActionType = "CreateOrder",
+        //                     Message = $"Admin {adminId} deducted combo:{item.ComboId.Value} with quantity: {item.Quantity} for order creation.",
+        //                 };
+        //                 _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
 
-                        var itemPrice = combo.SalePrice;
-                        orderItems.Add(new OrderItem
-                        {
-                            Id = Guid.NewGuid(),
-                            ProductVariantId = null,
-                            ComboId = item.ComboId,
-                            Quantity = item.Quantity,
-                            UnitPrice = itemPrice,
-                            TotalPrice = itemPrice * item.Quantity,
-                            ItemName = combo.Name
-                        });
-                        subTotal += itemPrice * item.Quantity;
-                    }
-                }
+        //                 var itemPrice = combo.SalePrice;
+        //                 orderItems.Add(new OrderItem
+        //                 {
+        //                     Id = Guid.NewGuid(),
+        //                     ProductVariantId = null,
+        //                     ComboId = item.ComboId,
+        //                     Quantity = item.Quantity,
+        //                     UnitPrice = itemPrice,
+        //                     TotalPrice = itemPrice * item.Quantity,
+        //                     ItemName = combo.Name
+        //                 });
+        //                 subTotal += itemPrice * item.Quantity;
+        //             }
+        //         }
 
-                decimal discountAmount = 0;
-                if (request.UserVoucherId.HasValue)
-                {
-                    var userVoucher = await _userVoucherRepository.GetByIdAsync(request.UserVoucherId.Value);
-                    if (userVoucher == null || userVoucher.CustomerId != customerId || userVoucher.IsUsed || userVoucher.ExpiredAt < DateTime.UtcNow)
-                    {
-                        await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("Voucher invalid or expired.", 400);
-                    }
+        //         decimal discountAmount = 0;
+        //         if (request.UserVoucherId.HasValue)
+        //         {
+        //             var userVoucher = await _userVoucherRepository.GetByIdAsync(request.UserVoucherId.Value);
+        //             if (userVoucher == null || userVoucher.CustomerId != customerId || userVoucher.IsUsed || userVoucher.ExpiredAt < DateTime.UtcNow)
+        //             {
+        //                 await transaction.RollbackAsync();
+        //                 return Result<OrderResponse>.Failure("Voucher invalid or expired.", 400);
+        //             }
 
-                    var voucher = userVoucher.Voucher;
-                    if (voucher == null || !voucher.IsActive || voucher.EndDate < DateTime.UtcNow)
-                    {
-                        await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("Voucher is no longer active.", 400);
-                    }
+        //             var voucher = userVoucher.Voucher;
+        //             if (voucher == null || !voucher.IsActive || voucher.EndDate < DateTime.UtcNow)
+        //             {
+        //                 await transaction.RollbackAsync();
+        //                 return Result<OrderResponse>.Failure("Voucher is no longer active.", 400);
+        //             }
 
-                    discountAmount = subTotal * voucher.DiscountValue;
-                    discountAmount = Math.Min(discountAmount, voucher.MaxDiscountAmount);
-                    discountAmount = Math.Min(discountAmount, subTotal);
+        //             discountAmount = subTotal * voucher.DiscountValue;
+        //             discountAmount = Math.Min(discountAmount, voucher.MaxDiscountAmount);
+        //             discountAmount = Math.Min(discountAmount, subTotal);
 
-                    if (voucher.VoucherType == VoucherType.Service)
-                    {
-                        await transaction.RollbackAsync();
-                        return Result<OrderResponse>.Failure("This voucher is specifically for services only.", 400);
-                    }
+        //             if (voucher.VoucherType == VoucherType.Service)
+        //             {
+        //                 await transaction.RollbackAsync();
+        //                 return Result<OrderResponse>.Failure("This voucher is specifically for services only.", 400);
+        //             }
 
-                    userVoucher.IsUsed = true;
-                    userVoucher.UsedAt = DateTime.UtcNow;
-                    await _userVoucherRepository.UpdateAsync(userVoucher);
-                }
+        //             userVoucher.IsUsed = true;
+        //             userVoucher.UsedAt = DateTime.UtcNow;
+        //             await _userVoucherRepository.UpdateAsync(userVoucher);
+        //         }
 
-                var totalAmount = Math.Max(0, subTotal + totalAddonPrice - discountAmount);
-                var orderCode = GenerateOrderCode();
+        //         var totalAmount = Math.Max(0, subTotal + totalAddonPrice - discountAmount);
+        //         var orderCode = GenerateOrderCode();
 
-                var order = new Order
-                {
-                    Id = Guid.NewGuid(),
-                    CustomerId = customerId,
-                    OrderCode = orderCode,
-                    Status = OrderStatus.Pending,
-                    ReceiverName = address.ReceiverName,
-                    PhoneNumber = address.PhoneNumber,
-                    Street = address.Street,
-                    City = address.City,
-                    District = address.District,
-                    Ward = address.Ward,
-                    Province = address.Province,
-                    SubTotal = subTotal,
-                    DiscountAmount = discountAmount,
-                    TotalAmount = totalAmount,
-                    TotalAddonPrice = totalAddonPrice,
-                    UserVoucherId = request.UserVoucherId,
-                    Note = request.Note,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+        //         var order = new Order
+        //         {
+        //             Id = Guid.NewGuid(),
+        //             CustomerId = customerId,
+        //             OrderCode = orderCode,
+        //             Status = OrderStatus.Pending,
+        //             ReceiverName = address.ReceiverName,
+        //             PhoneNumber = address.PhoneNumber,
+        //             Street = address.Street,
+        //             City = address.City,
+        //             District = address.District,
+        //             Ward = address.Ward,
+        //             Province = address.Province,
+        //             SubTotal = subTotal,
+        //             DiscountAmount = discountAmount,
+        //             TotalAmount = totalAmount,
+        //             TotalAddonPrice = totalAddonPrice,
+        //             UserVoucherId = request.UserVoucherId,
+        //             Note = request.Note,
+        //             CreatedAt = DateTime.UtcNow,
+        //             UpdatedAt = DateTime.UtcNow
+        //         };
 
-                var createResult = await _orderRepository.CreateAsync(order);
-                if (createResult < 0)
-                {
-                    await transaction.RollbackAsync();
-                    return Result<OrderResponse>.Failure("Failed to create order.", 500);
-                }
+        //         var createResult = await _orderRepository.CreateAsync(order);
+        //         if (createResult < 0)
+        //         {
+        //             await transaction.RollbackAsync();
+        //             return Result<OrderResponse>.Failure("Failed to create order.", 500);
+        //         }
 
-                foreach (var item in orderItems)
-                {
-                    item.OrderId = order.Id;
-                }
-                await _orderRepository.AddOrderItemsAsync(orderItems);
+        //         foreach (var item in orderItems)
+        //         {
+        //             item.OrderId = order.Id;
+        //         }
+        //         await _orderRepository.AddOrderItemsAsync(orderItems);
 
-                var payment = new Payment
-                {
-                    Id = Guid.NewGuid(),
-                    OrderCode = order.OrderCode,
-                    POrderId = order.Id,
-                    Status = PaymentStatus.Pending,
-                    Amount = totalAmount,
-                    Description = $"Payment for Order {order.OrderCode}",
-                    PaymentMethod = request.PaymentMethod,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    ExpiredAt = DateTime.UtcNow.AddMinutes(_vnPayOptions.PaymentExpirationMinutes)
-                };
+        //         var payment = new Payment
+        //         {
+        //             Id = Guid.NewGuid(),
+        //             OrderCode = order.OrderCode,
+        //             POrderId = order.Id,
+        //             Status = PaymentStatus.Pending,
+        //             Amount = totalAmount,
+        //             Description = $"Payment for Order {order.OrderCode}",
+        //             PaymentMethod = request.PaymentMethod,
+        //             CreatedAt = DateTime.UtcNow,
+        //             UpdatedAt = DateTime.UtcNow,
+        //             ExpiredAt = DateTime.UtcNow.AddMinutes(_vnPayOptions.PaymentExpirationMinutes)
+        //         };
 
-                await _paymentRepository.CreateAsync(payment);
-                await transaction.CommitAsync();
+        //         await _paymentRepository.CreateAsync(payment);
+        //         await transaction.CommitAsync();
 
-                Notification notification = new Notification
-                {
-                    UserId = customerId,
-                    ActionType = "Create order",
-                    Message = $"Your order {order.OrderCode} has been created by our staff",
-                };
-                _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+        //         Notification notification = new Notification
+        //         {
+        //             UserId = customerId,
+        //             ActionType = "Create order",
+        //             Message = $"Your order {order.OrderCode} has been created by our staff",
+        //         };
+        //         _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
 
-                string? paymentUrl = null;
-                if (request.PaymentMethod == PaymentMethod.VnPay)
-                {
-                    var vnPayRequest = new VnPaymentRequest
-                    {
-                        PaymentId = payment.Id.ToString(),
-                        OrderCode = order.OrderCode,
-                        Description = payment.Description,
-                        Amount = totalAmount,
-                        IpAddress = ipAddress,
-                        CreatedDate = payment.CreatedAt
-                    };
-                    paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
-                }
+        //         string? paymentUrl = null;
+        //         if (request.PaymentMethod == PaymentMethod.VnPay)
+        //         {
+        //             var vnPayRequest = new VnPaymentRequest
+        //             {
+        //                 PaymentId = payment.Id.ToString(),
+        //                 OrderCode = order.OrderCode,
+        //                 Description = payment.Description,
+        //                 Amount = totalAmount,
+        //                 IpAddress = ipAddress,
+        //                 CreatedDate = payment.CreatedAt
+        //             };
+        //             paymentUrl = _vnPayService.CreatePaymentUrl(vnPayRequest);
+        //         }
 
-                return Result<OrderResponse>.Success(new OrderResponse
-                {
-                    Id = order.Id,
-                    OrderCode = order.OrderCode,
-                    Status = order.Status,
-                    SubTotal = order.SubTotal,
-                    DiscountAmount = order.DiscountAmount,
-                    TotalAmount = order.TotalAmount,
-                    TotalAddonPrice = order.TotalAddonPrice,
-                    PaymentMethod = request.PaymentMethod,
-                    PaymentUrl = paymentUrl,
-                    CreatedAt = order.CreatedAt,
-                    PaymentId = payment.Id,
-                    PaymentExpiredAt = payment.ExpiredAt
-                });
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                var audit = new AuditLog
-                {
-                    UserId = adminId,
-                    ActionType = "CreateOrderFailed",
-                    Message = $"Admin {adminId} create order for CustomerId:{request.CustomerId} failed. Stock remain unchanged",
-                };
-                _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
-                return Result<OrderResponse>.Failure("Failed to create order.", 500);
-            }
-        }
+        //         return Result<OrderResponse>.Success(new OrderResponse
+        //         {
+        //             Id = order.Id,
+        //             OrderCode = order.OrderCode,
+        //             Status = order.Status,
+        //             SubTotal = order.SubTotal,
+        //             DiscountAmount = order.DiscountAmount,
+        //             TotalAmount = order.TotalAmount,
+        //             TotalAddonPrice = order.TotalAddonPrice,
+        //             PaymentMethod = request.PaymentMethod,
+        //             PaymentUrl = paymentUrl,
+        //             CreatedAt = order.CreatedAt,
+        //             PaymentId = payment.Id,
+        //             PaymentExpiredAt = payment.ExpiredAt
+        //         });
+        //     }
+        //     catch (Exception)
+        //     {
+        //         await transaction.RollbackAsync();
+        //         var audit = new AuditLog
+        //         {
+        //             UserId = adminId,
+        //             ActionType = "CreateOrderFailed",
+        //             Message = $"Admin {adminId} create order for CustomerId:{request.CustomerId} failed. Stock remain unchanged",
+        //         };
+        //         _hangFireService.Enqueue<IAuditLogService>(t => t.LogAsync(audit));
+        //         return Result<OrderResponse>.Failure("Failed to create order.", 500);
+        //     }
+        // }
 
         public async Task<Result<CheckoutProductOrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress)
         {
@@ -615,7 +615,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                     userVoucher.IsUsed = true;
                     userVoucher.UsedAt = DateTime.UtcNow;
-                    await _userVoucherRepository.UpdateAsync(userVoucher);
+                    _userVoucherRepository.UpdateEntity(userVoucher);
                 }
 
                 decimal shippingFee = request.ShippingFee; // Defaulting to 0 as per logic
@@ -640,7 +640,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                await _checkoutProductOrderRepository.CreateAsync(checkoutProductOrder);
+                _checkoutProductOrderRepository.AddEntity(checkoutProductOrder);
 
                 var createdOrders = new List<Order>();
 
@@ -686,13 +686,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    await _orderRepository.CreateAsync(childOrder);
+                    _orderRepository.AddEntity(childOrder);
 
                     foreach (var item in items)
                     {
                         item.OrderId = childOrder.Id;
                     }
-                    await _orderRepository.AddOrderItemsAsync(items);
+                    _orderRepository.AddOrderItems(items);
                     createdOrders.Add(childOrder);
                 }
 
@@ -713,7 +713,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ExpiredAt = DateTime.UtcNow.AddMinutes(_vnPayOptions.PaymentExpirationMinutes)
                 };
 
-                await _paymentRepository.CreateAsync(payment);
+                _paymentRepository.AddEntity(payment);
+                await _unitOfWork.SaveChangeAsync();
 
                 await _cartRepository.ClearCartItemsAsync(cart.Id);
 
@@ -800,7 +801,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result<OrderDetailResponse>.Failure("Order not found.", 404);
             }
 
-            return Result<OrderDetailResponse>.Success(MapToDetailResponse(order));
+            var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(order.CheckoutProductOrderId!.Value);
+            var checkoutPayment = checkoutOrder?.Payments.FirstOrDefault(co => co.CheckoutProductOrderId == checkoutOrder.Id);
+            return Result<OrderDetailResponse>.Success(MapToDetailResponse(order, checkoutPayment));
         }
 
         public async Task<Result<PaginatedList<OrderSummaryResponse>>> GetOrdersAsync(
@@ -1115,37 +1118,50 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Handle voucher restore and refund creation
                 if (order.CheckoutProductOrderId.HasValue)
                 {
-                    var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                    var checkoutOrder = await _checkoutProductOrderRepository.GetWithOrdersAndPaymentsByIdAsync(order.CheckoutProductOrderId.Value);
                     if (checkoutOrder != null)
                     {
-                        if (checkoutOrder.Status == CheckoutOrderStatus.Confirmed
+                        var checkoutPayment = checkoutOrder.Payments.OrderBy(cop => cop.CreatedAt).FirstOrDefault();
+                        if(checkoutPayment!.PaymentMethod == PaymentMethod.VnPay)
+                        {
+                            if (checkoutOrder.Status == CheckoutOrderStatus.Confirmed
                             || checkoutOrder.Status == CheckoutOrderStatus.PartialRefunding
                             || checkoutOrder.Status == CheckoutOrderStatus.PartialRefunded)
-                        {
-                            checkoutOrder.RefundingAmount += order.TotalAmount;
-                            checkoutOrder.Status = CheckoutOrderStatus.PartialRefunding;
-                            checkoutOrder.UpdatedAt = DateTime.UtcNow;
-                            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
-
-                            var lastPayment = await _paymentRepository.GetPaidPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
-                            if (lastPayment != null && order.TotalAmount > 0)
                             {
-                                var refundPayment = new Payment
+                                checkoutOrder.RefundingAmount += order.TotalAmount;
+                                checkoutOrder.Status = CheckoutOrderStatus.PartialRefunding;
+                                checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                                _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+                                var lastPayment = await _paymentRepository.GetPaidPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+                                if (lastPayment != null && order.TotalAmount > 0)
                                 {
-                                    Id = Guid.NewGuid(),
-                                    POrderId = order.Id,
-                                    OrderCode = order.OrderCode,
-                                    Status = PaymentStatus.Refunding,
-                                    PaymentType = PaymentType.Refund,
-                                    Amount = order.TotalAmount,
-                                    Description = $"Refund for cancelled child Order {order.OrderCode}.",
-                                    PaymentMethod = PaymentMethod.Other,
-                                    CreatedAt = DateTime.UtcNow,
-                                    UpdatedAt = DateTime.UtcNow,
-                                    ExpiredAt = DateTime.UtcNow.AddMinutes(5)
-                                };
-                                await _paymentRepository.CreateAsync(refundPayment);
+                                    var refundPayment = new Payment
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        POrderId = order.Id,
+                                        OrderCode = order.OrderCode,
+                                        Status = PaymentStatus.Refunding,
+                                        PaymentType = PaymentType.Refund,
+                                        Amount = order.TotalAmount,
+                                        Description = $"Refund for cancelled child Order {order.OrderCode}.",
+                                        PaymentMethod = PaymentMethod.Other,
+                                        CreatedAt = DateTime.UtcNow,
+                                        UpdatedAt = DateTime.UtcNow,
+                                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                                    };
+                                    _paymentRepository.AddEntity(refundPayment);
+                                }
                             }
+                        }else if (checkoutPayment!.PaymentMethod == PaymentMethod.COD)
+                        {
+                            checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
+                            checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                            _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
+
+                            checkoutPayment.Status = PaymentStatus.Failed;
+                            checkoutPayment.UpdatedAt = DateTime.UtcNow;
+                            _paymentRepository.UpdateEntity(checkoutPayment);
                         }
 
                         // Restore voucher ONLY if ALL other child orders are already cancelled
@@ -1158,7 +1174,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             {
                                 userVoucher.IsUsed = false;
                                 userVoucher.UsedAt = null;
-                                await _userVoucherRepository.UpdateAsync(userVoucher);
+                                _userVoucherRepository.UpdateEntity(userVoucher);
                             }
                         }
                     }
@@ -1173,7 +1189,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         {
                             userVoucher.IsUsed = false;
                             userVoucher.UsedAt = null;
-                            await _userVoucherRepository.UpdateAsync(userVoucher);
+                            _userVoucherRepository.UpdateEntity(userVoucher);
                         }
                     }
 
@@ -1182,13 +1198,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     {
                         payment.Status = PaymentStatus.Failed;
                         payment.UpdatedAt = DateTime.UtcNow;
-                        await _paymentRepository.UpdateAsync(payment);
+                        _paymentRepository.UpdateEntity(payment);
                     }
                 }
 
                 order.Status = OrderStatus.Cancelled;
                 order.UpdatedAt = DateTime.UtcNow;
-                await _orderRepository.UpdateAsync(order);
+                _orderRepository.UpdateEntity(order);
                 // notification
                 Notification notification = new Notification
                 {
@@ -1197,6 +1213,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     Message = $"Order:{order.Id} has been cancelled",
                 };
                 _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(notification));
+                await _unitOfWork.SaveChangeAsync();
                 await transaction.CommitAsync();
                 return Result.Success("Order cancelled successfully.");
             }
@@ -1238,7 +1255,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return $"DG-{datePart}-{randomPart}";
         }
 
-        private static OrderDetailResponse MapToDetailResponse(Order order)
+        private static OrderDetailResponse MapToDetailResponse(Order order, Payment? checkoutPayment)
         {
             return new OrderDetailResponse
             {
@@ -1255,6 +1272,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Items = order.OrderItems?.Select(oi => new OrderItemResponse
                 {
                     Id = oi.Id,
+                    OrderId = oi.OrderId,
                     ProductVariantId = oi.ProductVariantId,
                     ComboId = oi.ComboId,
                     ItemName = oi.ItemName,
@@ -1280,8 +1298,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 Note = order.Note,
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
-                PaymentMethod = order.Payments?.OrderByDescending(p => p.CreatedAt).FirstOrDefault()?.PaymentMethod ?? PaymentMethod.COD,
-                PaymentStatus = order.Payments?.OrderByDescending(p => p.CreatedAt).FirstOrDefault()?.Status ?? PaymentStatus.Pending,
+                PaymentMethod = checkoutPayment?.PaymentMethod ?? PaymentMethod.Other,
+                PaymentStatus = checkoutPayment?.Status ?? PaymentStatus.Pending,
                 ShippingStaffName = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.FullName ?? "N/A",
                 ShippingStatus = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Status.ToString() ?? "N/A",
                 ShippingStaffAvatarUrl = order.ShippingTasks?.OrderByDescending(st => st.CreatedAt).FirstOrDefault(st => st.OrderId == order.Id)?.Staff?.AvatarUrl ?? string.Empty,

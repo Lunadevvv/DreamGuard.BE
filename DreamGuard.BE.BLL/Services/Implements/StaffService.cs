@@ -35,20 +35,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
         {
             var staffs = await _repo.GetAllByAdminAsync(pageNumber, pageSize);
             var staffResponse = _mapper.Map<List<StaffResponse>>(staffs.Items);
-            var staffDict = staffs.Items.ToDictionary(sr => sr.StaffId);
-            foreach (var response in staffResponse)
-            {
-                if (response.Position == DAL.Constants.Role.CleaningStaff)
-                {
-                    var serviceTask = staffDict[response.StaffId].ServiceTasks;
-                    response.TaskCount = serviceTask.Count(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedOut || st.Status == ServiceTaskStatus.CheckedIn || st.Status == ServiceTaskStatus.Processing);
-                }else if (response.Position == DAL.Constants.Role.DeliveryStaff)
-                {
-                    var shippingTask = staffDict[response.StaffId].ShippingTasks;
-                    response.TaskCount = shippingTask.Count(o => o.Status == ShippingTaskStatus.Pending || o.Status == ShippingTaskStatus.Arrived || o.Status == ShippingTaskStatus.Delivering || o.Status == ShippingTaskStatus.Returning);
-                }
-                
-            }
             var paginatedResult = new PaginatedList<StaffResponse>(staffResponse, staffs.TotalCount, staffs.PageNumber, staffs.PageSize);
             return Result<PaginatedList<StaffResponse>>.Success(paginatedResult);
         }
@@ -63,6 +49,35 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var staffResponse = _mapper.Map<Staff, StaffResponse>(result);
             return Result<StaffResponse>.Success(staffResponse);
         }
+
+        public async Task<Result<PaginatedList<StaffResponse>>> GetCleaningStaffsForAssignmentAsync(int pageNumber, int pageSize)
+        {
+            var staffs = await _repo.GetCleaningStaffsForAssignmentAsync(pageNumber, pageSize);
+            var staffResponse = _mapper.Map<List<StaffResponse>>(staffs.Items);
+            var staffDict = staffs.Items.ToDictionary(s => s.StaffId, s => s);
+            foreach (var staff in staffResponse)
+            {
+                var pendingTasksCount = staffDict[staff.StaffId].ServiceTasks;
+                staff.TaskCount = pendingTasksCount.Count(st => st.Status == ServiceTaskStatus.Pending || st.Status == ServiceTaskStatus.CheckedOut || st.Status == ServiceTaskStatus.CheckedIn || st.Status == ServiceTaskStatus.Processing);
+            }
+            var paginatedResult = new PaginatedList<StaffResponse>(staffResponse, staffs.TotalCount, staffs.PageNumber, staffs.PageSize);
+            return Result<PaginatedList<StaffResponse>>.Success(paginatedResult);
+        }
+
+        public async Task<Result<PaginatedList<StaffResponse>>> GetDeliveryStaffsForAssignmentAsync(int pageNumber, int pageSize)
+        {
+            var staffs = await _repo.GetDeliveryStaffsForAssignmentAsync(pageNumber, pageSize);
+            var staffResponse = _mapper.Map<List<StaffResponse>>(staffs.Items);
+            var staffDict = staffs.Items.ToDictionary(s => s.StaffId, s => s);
+            foreach (var staff in staffResponse)
+            {
+                var pendingTasksCount = staffDict[staff.StaffId].ShippingTasks;
+                staff.TaskCount = pendingTasksCount.Count(st => st.Status == ShippingTaskStatus.Pending || st.Status == ShippingTaskStatus.Arrived || st.Status == ShippingTaskStatus.Delivering || st.Status == ShippingTaskStatus.Returning);
+            }
+            var paginatedResult = new PaginatedList<StaffResponse>(staffResponse, staffs.TotalCount, staffs.PageNumber, staffs.PageSize);
+            return Result<PaginatedList<StaffResponse>>.Success(paginatedResult);
+        }
+
         public async Task<Result<PaginatedList<RatingResponse>>> GetRatings(Guid staffId, int pageNumber, int pageSize)
         {
             var ratings = await _ratingRepository.GetRatingsByStaffIdAsync(staffId, pageNumber, pageSize);

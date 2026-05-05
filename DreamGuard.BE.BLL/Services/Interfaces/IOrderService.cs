@@ -14,7 +14,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result<List<TotalAmountLineChartResponse>>> GetTotalAmountLineChartAsync(DateOnly fromDate, DateOnly toDate);
         Task<Result<OrderDashBoardResponse>> GetOrderDashBoardAsync(DateOnly fromDate, DateOnly toDate);
         Task<Result<CheckoutProductOrderResponse>> CreateOrderAsync(Guid userId, CreateOrderRequest request, string ipAddress);
-        Task<Result<OrderResponse>> CreateOrderByAdminAsync(Guid adminId, CreateOrderByAdminRequest request, string ipAddress);
+        // Task<Result<OrderResponse>> CreateOrderByAdminAsync(Guid adminId, CreateOrderByAdminRequest request, string ipAddress);
         Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid orderId);
         Task<Result<PaginatedList<OrderSummaryResponse>>> GetOrdersAsync(Guid userId, int pageNumber, OrderStatus? status);
         Task<Result<PaginatedList<OrderSummaryResponse>>> GetAllOrdersForAdminAsync(int pageNumber, OrderStatus? status, string? orderCode);

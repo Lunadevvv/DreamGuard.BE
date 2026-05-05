@@ -8,5 +8,7 @@ namespace DreamGuard.BE.DAL.Repositories.Interfaces
     {
         Task<PaginatedList<Staff>> GetAllByAdminAsync(int pageNumber, int pageSize);
         Task<Staff?> GetByUserIdAsync(Guid userId);
+        Task<PaginatedList<Staff>> GetDeliveryStaffsForAssignmentAsync(int pageNumber, int pageSize);
+        Task<PaginatedList<Staff>> GetCleaningStaffsForAssignmentAsync(int pageNumber, int pageSize);
     }
 }
