@@ -13,4 +13,9 @@ namespace DreamGuard.BE.BLL.Requests
     {
         public List<string> EvidenceUrls { get; set; } = new List<string>();
     }
+    public class CompleteTradeInOrderRequest
+    {
+        [Required]
+        public string PaymentEvidenceUrl { get; set; }
+    }
 }
