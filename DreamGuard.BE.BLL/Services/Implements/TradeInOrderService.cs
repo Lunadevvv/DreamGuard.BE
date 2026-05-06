@@ -80,6 +80,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("ProductVariant not found", 404);
                 }
+                //check if product variant is available for trade-in
+                if(productVariant.Product.IsTradeInEligible == false)
+                {
+                    return Result<CreateTradeInOrderResponse>.Failure("This product variant is not eligible for trade-in", 400);
+                }
                 //old product variant check
                 var orderItem = await _orderRepository.GetOrderItemByIdAsync(request.POrderItemId);
                 if (orderItem == null)
@@ -109,11 +114,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
 
                 var oldProductVariant = orderItem.ProductVariant;
-                //check if old product variant is eligible for trade-in
-                if (oldProductVariant!.Product!.IsTradeInEligible == false)
-                {
-                    return Result<CreateTradeInOrderResponse>.Failure("The product of this OrderItem is not eligible for trade-in", 400);
-                }
+
                 //check if the new product variant is in the same category parent as the old product variant
                 var oldCategoryParentId = oldProductVariant.Product.Category!.CateParentId;
                 if (oldCategoryParentId == null)

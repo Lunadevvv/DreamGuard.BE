@@ -1135,7 +1135,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         Amount = lastPaymentPaid.Amount,
                         OrderCode = tradeInOrder.OrderCode,
                         PaymentType = PaymentType.Refund,
-                        PaymentMethod = lastPaymentPaid.PaymentMethod,
+                        PaymentMethod = PaymentMethod.Other,
                         Status = PaymentStatus.Refunding,
                         Description = $"Refund for ProcessReturned TradeInOrder {tradeInOrder.OrderCode}",
                     };
