@@ -185,7 +185,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         {
                             order.Status = OrderStatus.Confirmed;
                             order.UpdatedAt = DateTime.UtcNow;
-                            await _orderRepository.UpdateAsync(order);
+                            _orderRepository.UpdateEntity(order);
                         }
                         AuditLog audit = new AuditLog
                         {
@@ -209,7 +209,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         {
                             checkoutOrder.Status = CheckoutOrderStatus.Confirmed;
                             checkoutOrder.UpdatedAt = DateTime.UtcNow;
-                            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                            _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
 
                             foreach(var childOrder in checkoutOrder.Orders)
                             {
@@ -217,7 +217,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                 {
                                     childOrder.Status = OrderStatus.Confirmed;
                                     childOrder.UpdatedAt = DateTime.UtcNow;
-                                    await _orderRepository.UpdateAsync(childOrder);
+                                    _orderRepository.UpdateEntity(childOrder);
                                 }
                             }
                             
@@ -244,7 +244,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         if (tradeInOrder != null && tradeInOrder.Status == TradeInOrderStatus.Pending)
                         {
                             tradeInOrder.Status = TradeInOrderStatus.WAITING_FOR_STAFF;
-                            await _tradeInOrderRepository.UpdateAsync(tradeInOrder);
+                            _tradeInOrderRepository.UpdateEntity(tradeInOrder);
                         }
                         AuditLog audit = new AuditLog
                         {
@@ -317,7 +317,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 payment.UpdatedAt = DateTime.UtcNow;
                 payment.Description = $"{payment.Description} | VnPay TxnId: {vnPayResult.VnpayTransactionId}, ResponseCode: {vnPayResult.VnPayResponseCode}";
-                await _paymentRepository.UpdateAsync(payment);
+                _paymentRepository.UpdateEntity(payment);
+
+                await _unitOfWork.SaveChangeAsync();
 
                 await transaction.CommitAsync();
 

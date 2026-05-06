@@ -33,7 +33,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         public async Task LogAsync(AuditLog audit)
         {
             await _repo.CreateAsync(audit);
-            await _hubService.SendAuditLogToAdmins(audit);
+            // await _hubService.SendAuditLogToAdmins(audit);
         }
     }
 }

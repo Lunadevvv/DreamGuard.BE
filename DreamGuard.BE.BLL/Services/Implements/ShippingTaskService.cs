@@ -77,7 +77,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result<ShippingTaskResponse>.Failure("Order not found.", 404);
                 }
 
-                if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Processing)
+                if (order.Status != OrderStatus.Processing)
                 {
                     return Result<ShippingTaskResponse>.Failure(
                         $"Cannot create shipping task. Order must be in 'Confirmed' or 'Processing' status but is currently '{order.Status}'.", 400);
@@ -670,7 +670,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ActionType = "fail shipping",
                     Message = $"fail shipping for task: {task.ShippingTaskId}. Task is now in {task.Status}, please review",
                 };
-                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationToManagerAsync(notification));
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationToManagerAsync(notificationToManager));
                 return Result.Success("Shipping marked as returning successfully. Pending manager review.");
             }
             catch (Exception)
@@ -750,7 +750,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     ActionType = "fail shipping task for trade in",
                     Message = $"fail shipping trade-in for task: {task.ShippingTaskId}. Task is now in {task.Status}, please review",
                 };
-                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationToManagerAsync(notification));
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationToManagerAsync(notificationToManager));
                 return Result.Success("Shipping marked as returning successfully. Pending manager review.");
             }
             catch (Exception)
@@ -844,6 +844,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> ProcessReturnedOrderAsync(Guid taskId, ProcessReturnedRequest request, Guid managerId)
         {
+            if (request.IsRefund && request.RefundAmount <= 0)
+            {
+                return Result.Failure("Refund amount must be greater than 0 when IsRefund is true.", 400);
+            }
+
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
             if (task.OrderId == null) return Result.Failure("Associated order not found for this task.", 404);
@@ -895,8 +900,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 if (request.IsRefund && checkoutOrder.Payments.Any(p => p.PaymentMethod == PaymentMethod.VnPay && p.Status == PaymentStatus.Paid && p.PaymentType == PaymentType.Purchase))
                 {
+                    if (request.RefundAmount > order.TotalAmount)
+                    {
+                        await transaction.RollbackAsync();
+                        return Result.Failure($"Refund amount cannot exceed original payment amount of {order.TotalAmount}.", 400);
+                    }
+
                     //Update checkout order refunding amount
-                    checkoutOrder.RefundingAmount += order.TotalAmount;
+                    checkoutOrder.RefundingAmount += request.RefundAmount;
                     _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
 
                     //Update order status
@@ -911,7 +922,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                         POrderId = order.Id,
                         Status = PaymentStatus.Refunding,
                         PaymentType = PaymentType.Refund,
-                        Amount = order.TotalAmount,
+                        Amount = request.RefundAmount,
                         Description = $"Refund for Order {order.OrderCode}.",
                         PaymentMethod = PaymentMethod.Other,
                         CreatedAt = DateTime.UtcNow,
@@ -1306,7 +1317,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                 ActionType = "ProcessExchange",
                                 Message = $"deduct variant: {item.ProductVariantId.Value} by {damagedQty}",
                             };
-                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(audit));
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(newAudit));
                         }
                         else if (item.ComboId.HasValue)
                         {
@@ -1351,6 +1362,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                 ActionType = "ProcessExchange",
                                 Message = $"deduct combo: {item.ComboId.Value} by {damagedQty}",
                             };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(newAudit));
                         }
                     }
                 }

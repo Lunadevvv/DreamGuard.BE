@@ -36,9 +36,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ICustomerRepository _customerRepository;
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly VnPayOptions _vnPayOptions;
-        private readonly IVariantCustomizeTypeRepository _variantCustomizeTypeRepository;
-        private readonly IProductRepository _productRepository;
         private readonly ICheckoutProductOrderRepository _checkoutProductOrderRepository;
+        private readonly IShippingTaskRepository _shippingTaskRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
@@ -56,9 +55,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ISystemConfigRepository systemConfigRepository,
             IOptions<VnPayOptions> vnPayOptions,
             IHangFireService hangFireService,
-            IVariantCustomizeTypeRepository variantCustomizeTypeRepository,
-            IProductRepository productRepository,
-            ICheckoutProductOrderRepository checkoutProductOrderRepository
+            ICheckoutProductOrderRepository checkoutProductOrderRepository,
+            IShippingTaskRepository shippingTaskRepository
             )
         {
             _orderRepository = orderRepository;
@@ -76,9 +74,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _systemConfigRepository = systemConfigRepository;
             _vnPayOptions = vnPayOptions.Value;
             _hangFireService = hangFireService;
-            _variantCustomizeTypeRepository = variantCustomizeTypeRepository;
-            _productRepository = productRepository;
             _checkoutProductOrderRepository = checkoutProductOrderRepository;
+            _shippingTaskRepository = shippingTaskRepository;
         }
 
         // public async Task<Result<OrderResponse>> CreateOrderByAdminAsync(Guid adminId, CreateOrderByAdminRequest request, string ipAddress)
@@ -972,10 +969,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
 
             // If cancelling, restore stock and voucher
-            if (newStatus == OrderStatus.Cancelled)
-            {
-                return await CancelOrderInternalAsync(order);
-            }
+            // if (newStatus == OrderStatus.Cancelled)
+            // {
+            //     return await CancelOrderInternalAsync(order);
+            // }
 
             // Award points if order becomes Completed
             if (order.Status != OrderStatus.Completed && newStatus == OrderStatus.Completed)
@@ -1063,10 +1060,50 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 }
             }
 
-            return await CancelOrderInternalAsync(order);
+            return await CancelOrderInternalAsync(order, order.TotalAmount);
         }
 
-        private async Task<Result> CancelOrderInternalAsync(Order order)
+        public async Task<Result> CancelOrderByAdminAsync(Guid orderId, decimal refundAmount)
+        {
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(orderId);
+            if (order == null)
+            {
+                return Result.Failure("Order not found.", 404);
+            }
+
+            if (refundAmount < 0 || refundAmount > order.TotalAmount)
+            {
+                return Result.Failure("Invalid refund amount.", 400);
+            }
+
+            if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Completed || order.Status == OrderStatus.Returned || order.Status == OrderStatus.Returning || order.Status == OrderStatus.ReturnedAndRefunding || order.Status == OrderStatus.ReturnedAndRefunded)
+            {
+                return Result.Failure(
+                    $"Cannot cancel order with status '{order.Status}'.", 400);
+            }
+
+            // if (order.CheckoutProductOrderId.HasValue)
+            // {
+            //     // Use GetByIdAsync to avoid loading Orders graph (current 'order' is already tracked)
+            //     var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+            //     if (checkoutOrder != null)
+            //     {
+            //         if (checkoutOrder.Status == CheckoutOrderStatus.Pending)
+            //         {
+            //             return Result.Failure("Cannot cancel child order while checkout order is pending. Please cancel the checkout order instead.", 400);
+            //         }
+            //         var payment = await _paymentRepository.GetLatestNonRefundPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+            //         if (payment != null && payment.PaymentMethod == PaymentMethod.COD)
+            //         {
+            //             return Result.Failure("Cannot partially cancel a COD order. You must cancel the entire checkout order.", 400);
+            //         }
+            //     }
+            // }
+
+            return await CancelOrderInternalAsync(order, refundAmount);
+        }
+
+        private async Task<Result> CancelOrderInternalAsync(Order order, decimal refundAmount)
         {
             await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
@@ -1128,7 +1165,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                             || checkoutOrder.Status == CheckoutOrderStatus.PartialRefunding
                             || checkoutOrder.Status == CheckoutOrderStatus.PartialRefunded)
                             {
-                                checkoutOrder.RefundingAmount += order.TotalAmount;
+                                checkoutOrder.RefundingAmount += refundAmount;
                                 checkoutOrder.Status = CheckoutOrderStatus.PartialRefunding;
                                 checkoutOrder.UpdatedAt = DateTime.UtcNow;
                                 _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
@@ -1143,7 +1180,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                         OrderCode = order.OrderCode,
                                         Status = PaymentStatus.Refunding,
                                         PaymentType = PaymentType.Refund,
-                                        Amount = order.TotalAmount,
+                                        Amount = refundAmount,
                                         Description = $"Refund for cancelled child Order {order.OrderCode}.",
                                         PaymentMethod = PaymentMethod.Other,
                                         CreatedAt = DateTime.UtcNow,
@@ -1153,7 +1190,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                                     _paymentRepository.AddEntity(refundPayment);
                                 }
                             }
-                        }else if (checkoutPayment!.PaymentMethod == PaymentMethod.COD)
+                        }else if (checkoutPayment!.PaymentMethod == PaymentMethod.COD && checkoutPayment.Status == PaymentStatus.Pending)
                         {
                             checkoutOrder.Status = CheckoutOrderStatus.Cancelled;
                             checkoutOrder.UpdatedAt = DateTime.UtcNow;
@@ -1202,6 +1239,29 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     }
                 }
 
+                //handle shipping task cancellation
+                var shippingTasks = await _shippingTaskRepository.GetTaskByOrderIdAsync(order.Id);
+                if (shippingTasks != null && shippingTasks.Count > 0)
+                {
+                    foreach (var task in shippingTasks)
+                    {
+                        if (task.Status != ShippingTaskStatus.Cancelled && task.Status != ShippingTaskStatus.Delivered && task.Status != ShippingTaskStatus.Returned && task.Status != ShippingTaskStatus.Returning && task.Status != ShippingTaskStatus.ExchangeRequested)
+                        {
+                            task.Status = ShippingTaskStatus.Cancelled;
+                            _shippingTaskRepository.UpdateEntity(task);
+
+                            //notification to staff
+                            Notification staffNotification = new Notification
+                            {
+                                UserId = task.StaffId,
+                                ActionType = "Cancel shipping task",
+                                Message = $"Shipping task for order:{order.Id} has been cancelled",
+                            };
+                            _hangFireService.Enqueue<INotificationService>(t => t.SendNotificationAsync(staffNotification));
+                        }
+                    }
+                }
+
                 order.Status = OrderStatus.Cancelled;
                 order.UpdatedAt = DateTime.UtcNow;
                 _orderRepository.UpdateEntity(order);
@@ -1237,9 +1297,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return (current, next) switch
             {
                 (OrderStatus.Pending, OrderStatus.Confirmed) => true,
-                (OrderStatus.Pending, OrderStatus.Cancelled) => true,
+                // (OrderStatus.Pending, OrderStatus.Cancelled) => true,
                 (OrderStatus.Confirmed, OrderStatus.Processing) => true,
-                (OrderStatus.Confirmed, OrderStatus.Cancelled) => true,
+                // (OrderStatus.Confirmed, OrderStatus.Cancelled) => true,
                 (OrderStatus.Processing, OrderStatus.Shipping) => true,
                 (OrderStatus.Shipping, OrderStatus.Delivered) => true,
                 (OrderStatus.Shipping, OrderStatus.Returned) => true,

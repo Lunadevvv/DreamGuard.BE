@@ -23,6 +23,7 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> ConfirmCheckoutOrderAsync(Guid checkoutOrderId);
         Task<Result> UpdateOrderStatusAsync(Guid orderId, OrderStatus newStatus);
         Task<Result> CancelOrderAsync(Guid userId, Guid orderId);
+        Task<Result> CancelOrderByAdminAsync(Guid orderId, decimal refundAmount);
         Task<Result<List<OrderItemResponse>>> GetOrdersToTradeInAsync(Guid customerId, Guid productVariantId);
         Task<Result> CancelCheckoutOrderByAdminAsync(Guid checkoutOrderId);
         Task<Result> CancelCheckoutOrderByUserAsync(Guid checkoutOrderId, Guid customerId);

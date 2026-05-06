@@ -202,6 +202,27 @@ namespace DreamGuard.BE.API.Controllers
             return Ok(result.Message);
         }
 
+        [HttpPut("admin/cancel")]
+        [Authorize(Roles = "Admin, Manager, Seller")]
+        public async Task<IActionResult> CancelOrderByAdmin([FromQuery]Guid orderId, [FromQuery]decimal refundAmount)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+
+            var result = await _orderService.CancelOrderByAdminAsync(orderId, refundAmount);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, new ErrorResponse
+                {
+                    ErrorCode = result.StatusCode,
+                    Message = new List<string> { result.Error! }
+                });
+            }
+            return Ok(result.Message);
+        }
+
         [HttpPut("{orderId}/status")]
         [Authorize(Roles = "Admin, Manager, Seller")]
         public async Task<IActionResult> UpdateOrderStatus(Guid orderId, [FromQuery] OrderStatus status)

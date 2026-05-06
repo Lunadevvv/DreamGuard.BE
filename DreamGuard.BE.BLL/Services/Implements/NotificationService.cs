@@ -29,13 +29,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
         }
         public async Task SendNotificationAsync(Notification notification)
         {
-           await _notificationRepository.CreateAsync(notification);
            await _hubService.SendNotificationToStaff(notification);
+           await _notificationRepository.CreateAsync(notification);
         }
         public async Task SendNotificationToManagerAsync(Notification notification)
         {
-            await _notificationRepository.CreateAsync(notification);
             await _hubService.SendNotificationToManager(notification);
+            await _notificationRepository.CreateAsync(notification);
         }
 
 
