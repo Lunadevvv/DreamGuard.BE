@@ -84,9 +84,9 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 {
                     return Result<CreateTradeInOrderResponse>.Failure("OrderItem not found", 404);
                 }
-                if(orderItem.Order.Payments.Any(p => p.PaymentType == PaymentType.Purchase && (p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.CODPaid)) == false)
+                if(orderItem.Order.Status != OrderStatus.Completed)
                 {
-                    return Result<CreateTradeInOrderResponse>.Failure("The order of this OrderItem has not been paid", 400);
+                    return Result<CreateTradeInOrderResponse>.Failure("The order of this OrderItem has not been completed", 400);
                 }
                 //check if order item is already used for trade-in
                 if (orderItem.TradeInUsedAmount == orderItem.Quantity)
