@@ -33,6 +33,8 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
                 .Include(ti => ti.TradeInImages)
                 .Include(ti => ti.Payments)
                 .Include(ti => ti.Conversation)
+                .Include(ti => ti.ShippingTasks)
+                    .ThenInclude(st => st.Staff)
                 .Where(o => o.TradeInOrderId == tradeInOrderId).FirstOrDefaultAsync();
         }
         public async Task<TradeInOrder?> GetTradeInByIdAsync(Guid tradeInOrderId)
