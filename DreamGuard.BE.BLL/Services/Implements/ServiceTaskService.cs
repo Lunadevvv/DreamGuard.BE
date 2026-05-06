@@ -174,6 +174,11 @@ namespace DreamGuard.BE.BLL.Services.Implements
             {
                 return Result.Failure("Service task is not in pending status.", 400);
             }
+            var today = DateTime.UtcNow.Date;
+            if (today < serviceTask.ServiceOrder.AppointmentDate.Date)
+            {
+                return Result.Failure("You can only check in on the appointment date onward.", 400);
+            }
             foreach (var url in request.EvidenceUrls)
             {
                 var serviceEvidence = new ServiceEvidence

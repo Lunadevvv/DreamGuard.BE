@@ -373,7 +373,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 var inventoriesDict = (await _inventoryRepository.GetInventoriesByVariantIdsAsync(variantIds))
                     .ToDictionary(i => i.ProductVariantId);
                 var existingCartItems = (await _cartRepository.GetCartItemsByCartIdAsync(cart.Id))
-                    .GroupBy(ci => (ci.ProductVariantId, ci.ComboId, ci.CustomizeHash))
+                    .GroupBy(ci => (ci.ProductVariantId, ci.ComboId, ci.CustomizeHash ?? ""))
                     .ToDictionary(g => g.Key, g => g.First());
 
                 var allVariantCusList = await _variantCustomizeTypeRepository.GetByVariantIdsWithDetailsAsync(variantIds);

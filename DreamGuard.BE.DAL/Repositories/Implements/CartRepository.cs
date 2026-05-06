@@ -45,11 +45,13 @@ namespace DreamGuard.BE.DAL.Repositories.Implements
 
         public async Task<CartItem?> GetCartItemAsync(Guid cartId, Guid? productVariantId, Guid? comboId, string? customizeHash)
         {
+            var hashToMatch = customizeHash ?? "";
+
             return await _context.CartItems
                 .FirstOrDefaultAsync(ci => ci.CartId == cartId
                     && ci.ProductVariantId == productVariantId
                     && ci.ComboId == comboId
-                    && ci.CustomizeHash == customizeHash);
+                    && (ci.CustomizeHash == hashToMatch || (hashToMatch == "" && ci.CustomizeHash == null)));
         }
 
         public async Task<CartItem?> GetCartItemByIdAsync(Guid cartItemId)
