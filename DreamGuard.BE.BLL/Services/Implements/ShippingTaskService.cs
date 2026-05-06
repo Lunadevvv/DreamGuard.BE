@@ -346,8 +346,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
             if (task.Status != ShippingTaskStatus.Delivering)
                 return Result.Failure($"Cannot arrive from status '{task.Status}'.", 400);
-
+            if(task.TradeInOrderId != null)
+            {
+                var today = DateTime.UtcNow.Date;
+                if (today < task.ShippingDate!.Value.Date)
+                {
+                    return Result.Failure("Cannot mark as arrived before the shipping date.", 400);
+                }
+            }
             task.Status = ShippingTaskStatus.Arrived;
+            
             await _taskRepository.UpdateAsync(task);
             //
             if (task.TradeInOrderId != null)
