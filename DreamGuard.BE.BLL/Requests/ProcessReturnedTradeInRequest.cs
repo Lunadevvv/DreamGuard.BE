@@ -11,5 +11,6 @@ namespace DreamGuard.BE.BLL.Requests
         public string DamageNote { get; set; } = string.Empty;
         public List<string> EvidenceUrls { get; set; } = new List<string>();
         public Guid ProductVariantId { get; set; }
+        public bool IsRefund { get; set; } 
     }
 }

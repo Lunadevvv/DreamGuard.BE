@@ -36,6 +36,13 @@ namespace DreamGuard.BE.BLL.Responses
         public OrderItemResponse OrderItem { get; set; }
         public ProductVariantSummaryResponse ProductVariant { get; set; }
         public Conversation? Conversation { get; set; }
+        public string SellerName { get; set; }
+        public Guid SellerId { get; set; }
+        public Guid DeliveryStaffId { get; set; }
+        public string DeliveryStaffName { get; set; }
+        public string ShippingTaskStatus { get; set; }
+
+
         private class Mapping : Profile
         {
             public Mapping()

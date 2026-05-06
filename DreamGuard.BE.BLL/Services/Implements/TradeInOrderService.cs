@@ -37,7 +37,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly IShippingTaskRepository _shippingTaskRepository;
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly IHangFireService _hangFireService;
-        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository, IInventoryRepository inventoryRepository, IShippingTaskRepository shippingTaskRepository, ISystemConfigRepository systemConfigRepository, IHangFireService hangFireService)
+        private readonly IStaffRepository _staffRepository;
+        public TradeInOrderService(IProductVariantRepository productVariantRepository, ITradeInOrderRepository tradeInOrderRepository, IMapper mapper, IUnitOfWork unitOfWork, IOrderRepository orderRepository, ICloudinaryService cloudinaryService, ITradeInImageRepository tradeInImageRepository, IOrderItemRepository orderItemRepository, IVnPayService vnPayService, IPaymentRepository paymentRepository, ICustomerRepository customerRepository, IConversationRepository conversationRepository, IInventoryRepository inventoryRepository, IShippingTaskRepository shippingTaskRepository, ISystemConfigRepository systemConfigRepository, IHangFireService hangFireService, IStaffRepository staffRepository)
         {
             _productVariantRepository = productVariantRepository;
             _tradeInOrderRepository = tradeInOrderRepository;
@@ -55,6 +56,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _shippingTaskRepository = shippingTaskRepository;
             _systemConfigRepository = systemConfigRepository;
             _hangFireService = hangFireService;
+            _staffRepository = staffRepository;
         }
         private string GenerateOrderCode()
         {
@@ -401,6 +403,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
             response.MaxTradeInPrice = maxTradeInPrice ?? 0;
             response.NewProductVariantUrl = tradeInOrder.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? string.Empty;
             response.OldProductVariantUrl = tradeInOrder.OrderItem.ProductVariant?.Product?.Assets?.FirstOrDefault()?.Url ?? string.Empty;
+            if(response.Conversation != null)
+            {
+                var staff = await _staffRepository.GetByIdAsync(response.Conversation.StaffId);
+                if(staff != null)
+                {
+                    response.SellerName = staff.FullName;
+                    response.SellerId = staff.StaffId;
+                }
+            }
+            var shippingTask = tradeInOrder.ShippingTasks.OrderByDescending(st => st.CreatedAt).FirstOrDefault();
+            if (shippingTask != null)
+            {
+                response.DeliveryStaffId = shippingTask.StaffId;
+                if(shippingTask.Staff != null)
+                    response.DeliveryStaffName = shippingTask.Staff.FullName;
+                response.ShippingTaskStatus = shippingTask.Status.ToString();
+            }
             //với mỗi payment type lấy ra cái mới nhất
             response.Payments = response.Payments.GroupBy(p => p.PaymentType).Select(g => g.OrderByDescending(p => p.CreatedAt).First()).ToList();
             return Result<TradeInOrderDetailResponse>.Success(response);

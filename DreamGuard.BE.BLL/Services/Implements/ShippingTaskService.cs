@@ -1067,9 +1067,14 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
             if (task == null) return Result.Failure("Shipping task not found.", 404);
             if (task.TradeInOrderId == null) return Result.Failure("Associated tradeInOrder not found for this task.", 404);
+            var firstStatus = task.Status;
             if (task.Status != ShippingTaskStatus.Returning && task.Status != ShippingTaskStatus.FORCED_CANCELLED)
             {
                 return Result.Failure($"Task must be in 'Returning' status to process. Current status: '{task.Status}'.", 400);
+            }
+            if (request.IsRefund && firstStatus == ShippingTaskStatus.FORCED_CANCELLED)
+            {
+                return Result.Failure("Cannot refund a forced cancelled trade-in order.", 400);
             }
 
             var tradeInOrder = task.TradeInOrder;
@@ -1110,7 +1115,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                      .Where(p => p.PaymentType == PaymentType.Deposit && p.Status == PaymentStatus.Paid)
                      .OrderByDescending(p => p.CreatedAt)
                      .FirstOrDefault();
-                if (lastPaymentPaid != null)
+
+                if (lastPaymentPaid != null && request.IsRefund)
                 {
                     var paymentRefund = new Payment
                     {
