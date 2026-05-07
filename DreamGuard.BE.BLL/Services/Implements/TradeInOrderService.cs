@@ -101,7 +101,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     return Result<CreateTradeInOrderResponse>.Failure("This OrderItem has already been used for trade-in", 400);
                 }
                 //check if they are reordering the failed trade-in order
-                var pendingTradeInOrder = orderItem.TradeInOrders.FirstOrDefault(ti => ti.Status == TradeInOrderStatus.Pending);
+                var pendingTradeInOrder = orderItem.TradeInOrders.OrderByDescending(ti => ti.CreatedAt).FirstOrDefault(ti => ti.Status == TradeInOrderStatus.Pending);
                 if (pendingTradeInOrder != null)
                 {
                     string errorMessage = $"please cancel or reOrder this order to be able to make a new order {pendingTradeInOrder.TradeInOrderId}";
@@ -549,10 +549,17 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Nếu đã confirm thì hủy task giao hàng nếu có
                 if (firstStatus == TradeInOrderStatus.CONFIRMED)
                 {
-                    tradeInOrder.ShippingTasks.ToList().ForEach(st =>
+                    if(tradeInOrder.ShippingTasks?.Any(st => st.Status == ShippingTaskStatus.Delivering) == true)
                     {
-                        st.Status = ShippingTaskStatus.Cancelled;
-                        _shippingTaskRepository.UpdateEntity(st);
+                        return Result.Failure("Cannot cancel order that is being delivered", 400);
+                    }
+                    tradeInOrder.ShippingTasks?.ToList().ForEach(st =>
+                    {
+                        if (st.Status == ShippingTaskStatus.Pending)
+                        {
+                            st.Status = ShippingTaskStatus.Cancelled;
+                            _shippingTaskRepository.UpdateEntity(st);
+                        }
                     });
                     await _unitOfWork.SaveChangeAsync();
                     //ko save(fixed)
