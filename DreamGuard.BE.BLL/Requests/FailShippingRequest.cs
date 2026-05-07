@@ -8,8 +8,15 @@ namespace DreamGuard.BE.BLL.Requests
     {
         [Required]
         public string Reason { get; set; } = string.Empty;
-        
+
         public List<string> EvidenceUrls { get; set; } = new List<string>();
         public List<DamagedItemRequest> DamagedItems { get; set; } = new List<DamagedItemRequest>();
+    }
+    public class FailShippingRequestForTradeIn
+    {
+        [Required]
+        public string Reason { get; set; } = string.Empty;
+
+        public List<string> EvidenceUrls { get; set; } = new List<string>();
     }
 }
