@@ -161,7 +161,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
         public async Task<Result> UpdateCheckedInStatusAsync(Guid serviceTaskId, Guid staffId, ServiceTaskCheckInRequest request)
         {
-            var serviceTask = await _repo.GetByIdAsync(serviceTaskId);
+            var serviceTask = await _repo.GetByIdWithSoAsync(serviceTaskId);
             if (serviceTask == null)
             {
                 return Result.Failure("Service task not found.", 404);
