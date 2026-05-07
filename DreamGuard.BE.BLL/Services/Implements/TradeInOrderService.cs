@@ -502,30 +502,29 @@ namespace DreamGuard.BE.BLL.Services.Implements
 
                 bool isRefund = preConfirmedStatuses.Contains(firstStatus);
 
-                //Nếu đã trả tiền và  tradeInOrder firstStatus là các status trước CONFIRMED thì tạo payment REFUND
-                //luồng refund (bỏ)
-                //if (lastPaymentPaid != null && isRefund)
-                //{
-                //    var paymentRefund = new Payment
-                //    {
-                //        TradeInOrderId = tradeInOrder.TradeInOrderId,
-                //        Amount = lastPaymentPaid.Amount,
-                //        OrderCode = tradeInOrder.OrderCode,
-                //        PaymentType = PaymentType.Refund,
-                //        PaymentMethod = lastPaymentPaid.PaymentMethod,
-                //        Status = PaymentStatus.Refunded,
-                //        Description = $"Refund for cancelled TradeInOrder {tradeInOrder.OrderCode}",
-                //    };
-                //    tradeInOrder.Status = TradeInOrderStatus.REFUNDED;
-                //    VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
-                //    {
-                //        OrderId = lastPaymentPaid.Id.ToString(),
-                //        Amount = lastPaymentPaid.Amount,
-                //        PaymentDate = lastPaymentPaid.CreatedAt,
-                //    };
-                //    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
-                //    await _paymentRepository.CreateAsync(paymentRefund);
-                //}
+                //Nếu đã trả tiền và tradeInOrder firstStatus là các status trước CONFIRMED thì tạo payment REFUND
+                if (lastPaymentPaid != null && isRefund)
+                {
+                    var paymentRefund = new Payment
+                    {
+                        TradeInOrderId = tradeInOrder.TradeInOrderId,
+                        Amount = lastPaymentPaid.Amount,
+                        OrderCode = tradeInOrder.OrderCode,
+                        PaymentType = PaymentType.Refund,
+                        PaymentMethod = PaymentMethod.Other,
+                        Status = PaymentStatus.Refunding,
+                        Description = $"Refund for cancelled TradeInOrder {tradeInOrder.OrderCode}",
+                    };
+                    //tradeInOrder.Status = TradeInOrderStatus.REFUNDED;
+                    //VnPaymentRefundRequest vnPayRefundRequest = new VnPaymentRefundRequest
+                    //{
+                    //    OrderId = lastPaymentPaid.Id.ToString(),
+                    //    Amount = lastPaymentPaid.Amount,
+                    //    PaymentDate = lastPaymentPaid.CreatedAt,
+                    //};
+                    //var refundResult = await _vnPayService.RefundPaymentAsync(vnPayRefundRequest);
+                    await _paymentRepository.CreateAsync(paymentRefund);
+                }
 
                 // Update inventory và tradeInUsedAmount
                 //tradeInOrder có status là pending và payment failed thì ko cộng inventory và trừ TradeInUsedAmount vì đơn failed đã trừ tồn và trừ TradeInUsedAmount rồi
