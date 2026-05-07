@@ -28,6 +28,18 @@ namespace DreamGuard.BE.DAL.Configurations
                      c => SafeDeserialize(JsonSerializer.Serialize(c, (JsonSerializerOptions)null))
                      ));
 
+              builder.Property(oi => oi.RelatedProducts)
+                     .HasColumnType("jsonb")
+                     .HasConversion(
+                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                     v => SafeDeserializeRelatedProducts(v)
+                     )
+                     .Metadata.SetValueComparer(new ValueComparer<List<RelatedProduct>>(
+                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions)null),
+                     c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions)null).GetHashCode(),
+                     c => SafeDeserializeRelatedProducts(JsonSerializer.Serialize(c, (JsonSerializerOptions)null))
+                     ));
+
               builder.Property(x => x.StaffNote)
                      .HasMaxLength(1000);
 
@@ -62,6 +74,23 @@ namespace DreamGuard.BE.DAL.Configurations
                      {
                             // Nếu JSON từ DB bị hỏng hoặc không phải List (VD: chuỗi tóm tắt, object...)
                             return new List<DamagedItem>();
+                     }
+              }
+
+              private static List<RelatedProduct> SafeDeserializeRelatedProducts(string? json)
+              {
+                     if (string.IsNullOrWhiteSpace(json) || json == "null" || json == "\"\"" || json == "{}")
+                     {
+                            return new List<RelatedProduct>();
+                     }
+
+                     try
+                     {
+                            return JsonSerializer.Deserialize<List<RelatedProduct>>(json, (JsonSerializerOptions?)null) ?? new List<RelatedProduct>();
+                     }
+                     catch (JsonException)
+                     {
+                            return new List<RelatedProduct>();
                      }
               }
        }

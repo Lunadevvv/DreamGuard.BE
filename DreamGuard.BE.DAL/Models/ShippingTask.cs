@@ -19,6 +19,7 @@ namespace DreamGuard.BE.DAL.Models
         public string StaffNote { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public List<DamagedItem> DamagedItems { get; set; } = new List<DamagedItem>(); 
+        public List<RelatedProduct> RelatedProducts { get; set; } = new List<RelatedProduct>();
         public Staff Staff { get; set; } = null!;
         public Order? Order { get; set; }
         public TradeInOrder? TradeInOrder { get; set; }
@@ -29,5 +30,15 @@ namespace DreamGuard.BE.DAL.Models
     {
         public Guid OrderItemId { get; set; }
         public int DamagedQuantity { get; set; }
+    }
+
+    public class RelatedProduct
+    {
+        public Guid OrderItemId { get; set; }
+        public Guid? ProductVariantId { get; set; }
+        public Guid? ComboId { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
     }
 }

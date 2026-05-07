@@ -175,10 +175,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 return Result.Failure("Service task is not in pending status.", 400);
             }
             var today = DateTime.UtcNow.Date;
-            if (today < serviceTask.ServiceOrder.AppointmentDate.Date)
-            {
-                return Result.Failure("You can only check in on the appointment date onward.", 400);
-            }
+            // if (today < serviceTask.ServiceOrder.AppointmentDate.Date)
+            // {
+            //     return Result.Failure("You can only check in on the appointment date onward.", 400);
+            // }
             foreach (var url in request.EvidenceUrls)
             {
                 var serviceEvidence = new ServiceEvidence
@@ -219,10 +219,10 @@ namespace DreamGuard.BE.BLL.Services.Implements
             }
             serviceTask.Status = ServiceTaskStatus.Processing;
             var serviceOrder = serviceTask.ServiceOrder;
-            if(serviceOrder.Status != OrderServiceStatus.Confirmed && serviceOrder.Status != OrderServiceStatus.Rescheduled)
-            {
-                return Result.Failure("Service order must be confirmed or rescheduled before processing service task.", 400);
-            }
+            // if(serviceOrder.Status != OrderServiceStatus.Confirmed && serviceOrder.Status != OrderServiceStatus.Rescheduled)
+            // {
+            //     return Result.Failure("Service order must be confirmed or rescheduled before processing service task.", 400);
+            // }
             serviceTask.ServiceOrder.Status = OrderServiceStatus.Processing;
             _repo.UpdateEntity(serviceTask);
             _soRepo.UpdateEntity(serviceOrder);

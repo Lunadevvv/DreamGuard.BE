@@ -1402,39 +1402,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
             var to = toDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
             var data = await _orderRepository.GetOrderDashBoardAsync(from, to);
+            var payments = await _paymentRepository.GetPaymentsForDashboardAsync(from, to);
             if (data == null || !data.Any())
             {
                 return Result<OrderDashBoardResponse>.Success(new OrderDashBoardResponse());
             }
-            decimal totalAmount = 0;
-            decimal totalCODAmount = 0;
-            decimal totalRefundAmount = 0;
-            decimal totalVnPayAmount = 0;
-            foreach (var item in data)
-            {
-                if (item.Payments == null || !item.Payments.Any())
-                {
-                    continue;
-                }
-                item.Payments.ForEach(p =>
-                {
-                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.CODPaid)
-                    {
-                        totalAmount += p.Amount;
-                        totalCODAmount += p.Amount;
-                    }
-                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.Paid)
-                    {
-                        totalAmount += p.Amount;
-                        totalVnPayAmount += p.Amount;
-                    }
-                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded)
-                    {
-                        totalRefundAmount += p.Amount;
-                    }
-                });
-            }
 
+            decimal totalCODAmount = payments.Where(p => p.PaymentMethod == PaymentMethod.COD && p.Status == PaymentStatus.CODPaid && p.CheckoutProductOrderId != null && p.PaymentType == PaymentType.Purchase).Sum(p => p.Amount);
+            decimal totalRefundAmount = payments.Where(p => p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded && p.POrderId != null).Sum(p => p.Amount);
+            decimal totalVnPayAmount = payments.Where(p => p.PaymentMethod == PaymentMethod.VnPay && p.Status == PaymentStatus.Paid && p.CheckoutProductOrderId != null && p.PaymentType == PaymentType.Purchase).Sum(p => p.Amount);
 
             var response = new OrderDashBoardResponse
             {
@@ -1442,12 +1418,13 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TotalCompletedOrders = data.Where(ti => ti.Status == OrderStatus.Completed).Count(),
                 TotalCancelledOrders = data.Where(t1 => t1.Status == OrderStatus.Cancelled).Count(),
                 TotalRefundedOrders = data.Where(ti => ti.Status == OrderStatus.ReturnedAndRefunded).Count(),
-                TotalAmount = totalAmount,
+                TotalAmount = totalCODAmount + totalVnPayAmount - totalRefundAmount,
                 TotalCODAmount = totalCODAmount,
                 TotalRefundAmount = totalRefundAmount,
                 TotalVnPayAmount = totalVnPayAmount,
                 FromDate = fromDate,
-                ToDate = toDate,            };
+                ToDate = toDate,            
+            };
             return Result<OrderDashBoardResponse>.Success(response);
         }
 

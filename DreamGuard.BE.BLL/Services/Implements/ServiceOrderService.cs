@@ -709,38 +709,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
             var from = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
             var to = toDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
             var data = await _serviceOrderRepo.GetServiceOrderDashBoardAsync(from, to);
+            var paymentData = await _paymentRepository.GetPaymentsForDashboardAsync(from, to);
             if (data == null || !data.Any())
             {
                 return Result<ServiceOrderDashBoardResponse>.Success(new ServiceOrderDashBoardResponse());
             }
-            decimal totalAmount = 0;
-            decimal totalCODAmount = 0;
-            decimal totalRefundAmount = 0;
-            decimal totalVnPayAmount = 0;
-            foreach (var item in data)
-            {
-                if (item.Payments == null || !item.Payments.Any())
-                {
-                    continue;
-                }
-                foreach (var p in item.Payments)
-                {
-                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.CODPaid)
-                    {
-                        totalAmount += p.Amount;
-                        totalCODAmount += p.Amount;
-                    }
-                    if (p.PaymentType == PaymentType.Purchase && p.Status == PaymentStatus.Paid)
-                    {
-                        totalAmount += p.Amount;
-                        totalVnPayAmount += p.Amount;
-                    }
-                    if (p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded)
-                    {
-                        totalRefundAmount += p.Amount;
-                    }
-                };
-            }
+
+            decimal totalCODAmount = paymentData.Where(p => p.PaymentMethod == PaymentMethod.COD && p.Status == PaymentStatus.CODPaid && p.SoId != null && p.PaymentType == PaymentType.Purchase).Sum(p => p.Amount);
+            decimal totalRefundAmount = paymentData.Where(p => p.PaymentType == PaymentType.Refund && p.Status == PaymentStatus.Refunded && p.SoId != null).Sum(p => p.Amount);
+            decimal totalVnPayAmount = paymentData.Where(p => p.PaymentMethod == PaymentMethod.VnPay && p.Status == PaymentStatus.Paid && p.SoId != null && p.PaymentType == PaymentType.Purchase).Sum(p => p.Amount);
+
             var response = new ServiceOrderDashBoardResponse
             {
                 TotalServiceOrders = data.Count(),
@@ -748,7 +726,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 TotalRefundOrders = data.Count(so => so.Status == OrderServiceStatus.Refund),
                 TotalRejectedOrders = data.Count(so => so.Status == OrderServiceStatus.Rejected),
                 TotalCompletedOrders = data.Count(so => so.Status == OrderServiceStatus.Completed),
-                TotalAmount = totalAmount,
+                TotalAmount = totalCODAmount + totalVnPayAmount - totalRefundAmount,
                 TotalRefundAmount = totalRefundAmount,
                 TotalVnPayAmount = totalVnPayAmount,
                 TotalCODAmount = totalCODAmount,

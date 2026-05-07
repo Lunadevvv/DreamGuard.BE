@@ -17,6 +17,7 @@ namespace DreamGuard.BE.BLL.Responses
         public DateTime? CompletionDate { get; set; }
         public string StaffNote { get; set; } = string.Empty;
         public List<DamagedItemResponse> DamagedItems { get; set; } = new List<DamagedItemResponse>();
+        public List<RelatedProductResponse> RelatedProducts { get; set; } = new List<RelatedProductResponse>();
         public List<ShippingEvidenceResponse> Evidences { get; set; } = new List<ShippingEvidenceResponse>();
 
     }
@@ -24,6 +25,16 @@ namespace DreamGuard.BE.BLL.Responses
     {
         public Guid OrderItemId { get; set; }
         public int DamagedQuantity { get; set; }
+    }
+
+    public class RelatedProductResponse
+    {
+        public Guid OrderItemId { get; set; }
+        public Guid? ProductVariantId { get; set; }
+        public Guid? ComboId { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
     }
 
     public class ShippingEvidenceResponse
@@ -34,3 +45,4 @@ namespace DreamGuard.BE.BLL.Responses
         public DateTime CreatedAt { get; set; }
     }
 }
+

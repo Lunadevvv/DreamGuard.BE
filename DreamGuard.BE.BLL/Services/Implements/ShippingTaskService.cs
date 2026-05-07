@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -95,7 +95,16 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     StaffId = request.StaffId,
                     OrderId = request.OrderId,
                     Status = ShippingTaskStatus.Pending,
-                    StaffNote = string.Empty
+                    StaffNote = string.Empty,
+                    RelatedProducts = order.OrderItems.Select(oi => new RelatedProduct
+                    {
+                        OrderItemId = oi.Id,
+                        ProductVariantId = oi.ProductVariantId,
+                        ComboId = oi.ComboId,
+                        ItemName = oi.ItemName,
+                        Quantity = oi.Quantity,
+                        UnitPrice = oi.UnitPrice
+                    }).ToList()
                 };
 
                 await _taskRepository.CreateAsync(task);
@@ -1406,7 +1415,18 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     OrderId = order.Id,
                     StaffId = request.NewStaffId,
                     Status = ShippingTaskStatus.Pending,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    RelatedProducts = order.OrderItems
+                        .Where(oi => oi.ExchangeRequestedQuantity > 0)
+                        .Select(oi => new RelatedProduct
+                        {
+                            OrderItemId = oi.Id,
+                            ProductVariantId = oi.ProductVariantId,
+                            ComboId = oi.ComboId,
+                            ItemName = oi.ItemName,
+                            Quantity = oi.ExchangeRequestedQuantity,
+                            UnitPrice = oi.UnitPrice
+                        }).ToList()
                 };
                 _taskRepository.AddEntity(newShippingTask);
 
@@ -1590,6 +1610,15 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     OrderItemId = d.OrderItemId,
                     DamagedQuantity = d.DamagedQuantity
                 }).ToList() ?? new List<DamagedItemResponse>(),
+                RelatedProducts = task.RelatedProducts?.Select(rp => new RelatedProductResponse
+                {
+                    OrderItemId = rp.OrderItemId,
+                    ProductVariantId = rp.ProductVariantId,
+                    ComboId = rp.ComboId,
+                    ItemName = rp.ItemName,
+                    Quantity = rp.Quantity,
+                    UnitPrice = rp.UnitPrice
+                }).ToList() ?? new List<RelatedProductResponse>(),
                 Evidences = task.ShippingEvidences?.Select(e => new ShippingEvidenceResponse
                 {
                     EvidenceId = e.EvidenceId,
