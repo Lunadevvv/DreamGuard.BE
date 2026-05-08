@@ -158,6 +158,7 @@ namespace DreamGuard.BE.API.Controllers
             }
             return Ok(result.Data);
         }
+
         [HttpGet("AdminSearchTradeInOrder")]
         [Authorize(Roles = $"{Role.Manager}, {Role.Admin}")]
         public async Task<IActionResult> AdminSearchTradeInOrder([FromQuery] AdminSearchTradeInOrderRequest request,int pageNumber = 1, int pageSize = 4)
@@ -201,7 +202,7 @@ namespace DreamGuard.BE.API.Controllers
         }
 
         [HttpPost("{tradeInOrderId}/confirm")]
-        [Authorize(Roles = $"{Role.Seller}, {Role.Manager}, {Role.Admin}")]
+        [Authorize(Roles = $"{Role.Seller}")]
         public async Task<IActionResult> Confirm(Guid tradeInOrderId, decimal tradeInPrice)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var staffId))

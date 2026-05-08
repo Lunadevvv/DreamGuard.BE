@@ -548,10 +548,6 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // Nếu đã confirm thì hủy task giao hàng nếu có
                 if (firstStatus == TradeInOrderStatus.CONFIRMED)
                 {
-                    if(tradeInOrder.ShippingTasks?.Any(st => st.Status == ShippingTaskStatus.Delivering) == true)
-                    {
-                        return Result.Failure("Cannot cancel order that is being delivered", 400);
-                    }
                     tradeInOrder.ShippingTasks?.ToList().ForEach(st =>
                     {
                         if (st.Status == ShippingTaskStatus.Pending)
