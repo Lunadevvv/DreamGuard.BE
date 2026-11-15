@@ -196,6 +196,7 @@ namespace DreamGuard.BE.API
                             "http://localhost:5173",
                             "https://localhost:5173",
                             "https://dream-guard.vercel.app",
+                            "https://dreamguard-fe.onrender.com",
                             "http://127.0.0.1:5500" // Thêm localhost với cổng 5500 để test static files
                         )
                             .AllowAnyHeader()
