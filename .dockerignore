@@ -14,3 +14,4 @@
 **/Dockerfile
 **/.dockerignore
 **/appsettings.Development.json
+**/appsettings*.json
