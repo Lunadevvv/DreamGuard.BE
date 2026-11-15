@@ -30,6 +30,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
         private readonly ITradeInOrderRepository _tradeInOrderRepository;
         private readonly IHangFireService _hangFireService;
         private readonly ICheckoutProductOrderRepository _checkoutProductOrderRepository;
+        private readonly IOrderService _orderService;
 
         public ShippingTaskService(
             IShippingTaskRepository taskRepository,
@@ -44,7 +45,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
             ISystemConfigRepository systemConfigRepository,
             ITradeInOrderRepository tradeInOrderRepository,
             IHangFireService hangFireService,
-            ICheckoutProductOrderRepository checkoutProductOrderRepository
+            ICheckoutProductOrderRepository checkoutProductOrderRepository,
+            IOrderService orderService
             )
         {
             _taskRepository = taskRepository;
@@ -60,6 +62,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             _tradeInOrderRepository = tradeInOrderRepository;
             _hangFireService = hangFireService;
             _checkoutProductOrderRepository = checkoutProductOrderRepository;
+            _orderService = orderService;
         }
 
         public async Task<Result<ShippingTaskResponse>> CreateShippingTaskAsync(ShippingTaskCreateRequest request)
@@ -1627,6 +1630,419 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     CreatedAt = e.CreatedAt
                 }).ToList() ?? new List<ShippingEvidenceResponse>()
             };
+        }
+
+
+        public async Task<Result> CompleteFailShippingAsync(Guid taskId, Guid staffId, CompleteFailShippingRequest request)
+        {
+            if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
+            {
+                return Result.Failure("At least one evidence image is required.", 400);
+            }
+
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+            if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
+            if (task.Status != ShippingTaskStatus.Returning)
+            {
+                return Result.Failure($"Task must be in 'Returning' status to complete fail shipping. Current status: '{task.Status}'.", 400);
+            }
+            if (task.OrderId == null) return Result.Failure("Associated order not found for this task.", 404);
+
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId.Value);
+            if (order == null) return Result.Failure("Order not found.", 404);
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Restock all items (full quantity, no defect)
+                foreach (var item in order.OrderItems)
+                {
+                    if (item.ProductVariantId.HasValue)
+                    {
+                        var hr = await _inventoryService.RestoreVariantStockAsync(item.ProductVariantId.Value, item.Quantity);
+                        if (!hr.Succeeded)
+                        {
+                            await transaction.RollbackAsync();
+                            return Result.Failure(hr.Error!, hr.StatusCode);
+                        }
+                        var auditLog = new AuditLog
+                        {
+                            UserId = staffId,
+                            ActionType = "CompleteFailShipping",
+                            Message = $"Restored {item.Quantity} stock for ProductVariant {item.ProductVariantId.Value}",
+                        };
+                        _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                    }
+                    else if (item.ComboId.HasValue)
+                    {
+                        var hr = await _inventoryService.RestoreComboStockAsync(item.ComboId.Value, item.Quantity);
+                        if (!hr.Succeeded)
+                        {
+                            await transaction.RollbackAsync();
+                            return Result.Failure(hr.Error!, hr.StatusCode);
+                        }
+                        var auditLog = new AuditLog
+                        {
+                            UserId = staffId,
+                            ActionType = "CompleteFailShipping",
+                            Message = $"Restored {item.Quantity} combo stock for Combo {item.ComboId.Value}",
+                        };
+                        _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                    }
+                }
+
+                // Update task status
+                task.Status = ShippingTaskStatus.Returned;
+                task.CompletionDate = DateTime.UtcNow;
+                await _taskRepository.UpdateAsync(task);
+
+                // Update order to Failed (includes checkout sibling check)
+                var orderResult = await _orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.Failed);
+                if (!orderResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure(orderResult.Error!, orderResult.StatusCode);
+                }
+
+                // Save evidences
+                foreach (var url in request.EvidenceUrls)
+                {
+                    await _evidenceRepository.CreateAsync(new ShippingEvidence
+                    {
+                        EvidenceId = Guid.NewGuid(),
+                        ShippingTaskId = task.ShippingTaskId,
+                        EvidenceUrl = url,
+                        EvidenceType = "ReturnCompleted",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                await transaction.CommitAsync();
+
+                var notification = new Notification
+                {
+                    UserId = order.CustomerId,
+                    ActionType = "complete fail shipping",
+                    Message = $"Order {order.Id} shipping has failed. Items have been returned to warehouse.",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+
+                return Result.Success("Fail shipping completed. Stock restored and order marked as Failed.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to complete fail shipping.", 500);
+            }
+        }
+
+        public async Task<Result> SubmitReturnAsync(Guid taskId, Guid staffId, SubmitReturnRequest request)
+        {
+            if (request.EvidenceUrls == null || !request.EvidenceUrls.Any())
+            {
+                return Result.Failure("At least one evidence image is required.", 400);
+            }
+
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+            if (task.StaffId != staffId) return Result.Failure("You are not assigned to this task.", 403);
+            if (task.Status != ShippingTaskStatus.Arrived && task.Status != ShippingTaskStatus.Delivering)
+            {
+                return Result.Failure($"Cannot submit return from status '{task.Status}'. Must be Arrived or Delivering.", 400);
+            }
+            if (task.OrderId == null) return Result.Failure("Associated order not found for this task.", 404);
+
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId.Value);
+            if (order == null) return Result.Failure("Order not found.", 404);
+
+            // Validate damaged items if provided
+            if (request.DamagedItems != null && request.DamagedItems.Any())
+            {
+                foreach (var damageReq in request.DamagedItems)
+                {
+                    var orderItem = order.OrderItems.FirstOrDefault(oi => oi.Id == damageReq.OrderItemId);
+                    if (orderItem == null)
+                    {
+                        return Result.Failure($"Order item with ID {damageReq.OrderItemId} not found in the order.", 404);
+                    }
+                    if (damageReq.DamagedQuantity < 0 || damageReq.DamagedQuantity > orderItem.Quantity)
+                    {
+                        return Result.Failure($"Invalid damaged quantity for order item {orderItem.Id}. Must be between 0 and {orderItem.Quantity}.", 400);
+                    }
+                }
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Update order status to Returning
+                order.Status = OrderStatus.Returning;
+                order.UpdatedAt = DateTime.UtcNow;
+                await _orderRepository.UpdateAsync(order);
+
+                // Update task status to Returning
+                task.Status = ShippingTaskStatus.Returning;
+                task.StaffNote = request.Reason;
+
+                // Append damaged items info to staff note if provided
+                if (request.DamagedItems != null && request.DamagedItems.Any())
+                {
+                    var damagedInfo = string.Join(", ", request.DamagedItems
+                        .Where(d => d.DamagedQuantity > 0)
+                        .Select(d => $"ItemId:{d.OrderItemId} DamagedQty:{d.DamagedQuantity}"));
+                    if (!string.IsNullOrEmpty(damagedInfo))
+                    {
+                        task.StaffNote += $" | Damaged: [{damagedInfo}]";
+                    }
+                }
+                await _taskRepository.UpdateAsync(task);
+
+                // Save evidences
+                foreach (var url in request.EvidenceUrls)
+                {
+                    await _evidenceRepository.CreateAsync(new ShippingEvidence
+                    {
+                        EvidenceId = Guid.NewGuid(),
+                        ShippingTaskId = task.ShippingTaskId,
+                        EvidenceUrl = url,
+                        EvidenceType = "ReturnSubmission",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                await transaction.CommitAsync();
+
+                // Notify customer
+                var notification = new Notification
+                {
+                    UserId = order.CustomerId,
+                    ActionType = "submit return",
+                    Message = $"A return has been submitted for your order {order.Id}. We will process it shortly.",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+
+                // Notify manager
+                var managerNotification = new Notification
+                {
+                    UserId = task.StaffId,
+                    ActionType = "submit return",
+                    Message = $"Return submitted for task {task.ShippingTaskId}. Pending manager review.",
+                };
+                _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationToManagerAsync(managerNotification));
+
+                return Result.Success("Return submitted successfully. Pending manager review.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to submit return.", 500);
+            }
+        }
+
+        public async Task<Result> ConfirmReturnAsync(Guid taskId, ConfirmReturnRequest request, Guid managerId)
+        {
+            var task = await _taskRepository.GetTaskWithDetailsForUpdateAsync(taskId);
+            if (task == null) return Result.Failure("Shipping task not found.", 404);
+            if (task.OrderId == null) return Result.Failure("Associated order not found for this task.", 404);
+            if (task.Status != ShippingTaskStatus.Returning)
+            {
+                return Result.Failure($"Task must be in 'Returning' status to confirm return. Current status: '{task.Status}'.", 400);
+            }
+
+            var order = await _orderRepository.GetOrderWithItemsForUpdateAsync(task.OrderId.Value);
+            if (order == null) return Result.Failure("Order not found.", 404);
+
+            bool isDamaged = request.DamagedItems != null && request.DamagedItems.Any(d => d.DamagedQuantity > 0);
+
+            var paidPayment = await _paymentRepository.GetPaidPaymentByCheckoutOrderIdAsync(order.CheckoutProductOrderId!.Value);
+            // if(paidPayment == null) return Result.Failure("Payment information not found for the order.", 404);
+
+            // Validate damaged items
+            if (isDamaged)
+            {
+                foreach (var damageReq in request.DamagedItems!)
+                {
+                    var orderItem = order.OrderItems.FirstOrDefault(oi => oi.Id == damageReq.OrderItemId);
+                    if (orderItem == null)
+                    {
+                        return Result.Failure($"Order item with ID {damageReq.OrderItemId} not found in the order.", 404);
+                    }
+                    if (damageReq.DamagedQuantity < 0 || damageReq.DamagedQuantity > orderItem.Quantity)
+                    {
+                        return Result.Failure($"Invalid damaged quantity for order item {orderItem.Id}. Must be between 0 and {orderItem.Quantity}.", 400);
+                    }
+                }
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Restock/Defect logic
+                foreach (var item in order.OrderItems)
+                {
+                    var damageReq = request.DamagedItems?.FirstOrDefault(d => d.OrderItemId == item.Id);
+                    int damagedQty = damageReq?.DamagedQuantity ?? 0;
+                    int healthyQty = item.Quantity - damagedQty;
+
+                    if (item.ProductVariantId.HasValue)
+                    {
+                        if (healthyQty > 0)
+                        {
+                            var hr = await _inventoryService.RestoreVariantStockAsync(item.ProductVariantId.Value, healthyQty);
+                            if (!hr.Succeeded)
+                            {
+                                await transaction.RollbackAsync();
+                                return Result.Failure(hr.Error!, hr.StatusCode);
+                            }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ConfirmReturn",
+                                Message = $"Restored {healthyQty} stock for ProductVariant {item.ProductVariantId.Value}",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                        }
+                        if (damagedQty > 0)
+                        {
+                            var dr = await _inventoryService.RestoreDefectVariantStockAsync(item.ProductVariantId.Value, damagedQty);
+                            if (!dr.Succeeded)
+                            {
+                                await transaction.RollbackAsync();
+                                return Result.Failure(dr.Error!, dr.StatusCode);
+                            }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ConfirmReturn",
+                                Message = $"Restored {damagedQty} defect stock for ProductVariant {item.ProductVariantId.Value}",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                        }
+                    }
+                    else if (item.ComboId.HasValue)
+                    {
+                        if (healthyQty > 0)
+                        {
+                            var hr = await _inventoryService.RestoreComboStockAsync(item.ComboId.Value, healthyQty);
+                            if (!hr.Succeeded)
+                            {
+                                await transaction.RollbackAsync();
+                                return Result.Failure(hr.Error!, hr.StatusCode);
+                            }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ConfirmReturn",
+                                Message = $"Restored {healthyQty} combo stock for Combo {item.ComboId.Value}",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                        }
+                        if (damagedQty > 0)
+                        {
+                            var dr = await _inventoryService.RestoreDefectComboStockAsync(item.ComboId.Value, damagedQty);
+                            if (!dr.Succeeded)
+                            {
+                                await transaction.RollbackAsync();
+                                return Result.Failure(dr.Error!, dr.StatusCode);
+                            }
+                            var auditLog = new AuditLog
+                            {
+                                UserId = managerId,
+                                ActionType = "ConfirmReturn",
+                                Message = $"Restored {damagedQty} defect combo stock for Combo {item.ComboId.Value}",
+                            };
+                            _hangFireService.Enqueue<IAuditLogService>(job => job.LogAsync(auditLog));
+                        }
+                    }
+                }
+
+                // Update task
+                task.Status = ShippingTaskStatus.Returned;
+                task.CompletionDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(request.ManagerNote))
+                {
+                    task.StaffNote = string.IsNullOrEmpty(task.StaffNote)
+                        ? $"Manager Note: {request.ManagerNote}"
+                        : $"{task.StaffNote} | Manager Note: {request.ManagerNote}";
+                }
+                await _taskRepository.UpdateAsync(task);
+
+                if (request.IsRefund && paidPayment == null)
+                {
+                    await transaction.RollbackAsync();
+                    return Result.Failure("Refund requested but no payment information found for the order.", 404);
+                }
+
+                if (request.IsRefund && paidPayment != null)
+                {
+                    // Update order to ReturnedAndRefunding
+                    order.Status = OrderStatus.ReturnedAndRefunding;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    await _orderRepository.UpdateAsync(order);
+
+                    // Create refund payment
+                    var refundPayment = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        OrderCode = order.OrderCode,
+                        POrderId = order.Id,
+                        Status = PaymentStatus.Refunding,
+                        PaymentType = PaymentType.Refund,
+                        Amount = order.TotalAmount,
+                        Description = $"Refund for returned Order {order.OrderCode}.",
+                        PaymentMethod = PaymentMethod.COD,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        ExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                    };
+                    await _paymentRepository.CreateAsync(refundPayment);
+
+                    // Update checkout order RefundingAmount
+                    if (order.CheckoutProductOrderId.HasValue)
+                    {
+                        var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                        if (checkoutOrder != null)
+                        {
+                            checkoutOrder.RefundingAmount += order.TotalAmount;
+                            checkoutOrder.Status = CheckoutOrderStatus.PartialRefunding;
+                            checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                            await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+
+                    var notification = new Notification
+                    {
+                        UserId = order.CustomerId,
+                        ActionType = "confirm return with refund",
+                        Message = $"Your return for order {order.Id} has been confirmed. A refund of {order.TotalAmount} is being processed.",
+                    };
+                    _hangFireService.Enqueue<INotificationService>(job => job.SendNotificationAsync(notification));
+
+                    return Result.Success("Return confirmed with refund. Order status updated to ReturnedAndRefunding.");
+                }
+                else
+                {
+                    // No refund — mark order as Failed (includes checkout sibling check)
+                    var orderResult = await _orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.Failed);
+                    if (!orderResult.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        return Result.Failure(orderResult.Error!, orderResult.StatusCode);
+                    }
+
+                    await transaction.CommitAsync();
+
+                    return Result.Success("Return confirmed without refund. Order marked as Failed.");
+                }
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return Result.Failure("Failed to confirm return.", 500);
+            }
         }
     }
 }

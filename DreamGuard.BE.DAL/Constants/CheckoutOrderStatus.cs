@@ -11,6 +11,7 @@ namespace DreamGuard.BE.DAL.Constants
         Cancelled = 6,
         Completed = 7,
         ReturnedAndRefunded = 8,
-        PartialCompleted = 9
+        PartialCompleted = 9,
+        Failed = 10
     }
 }

@@ -14,6 +14,7 @@ namespace DreamGuard.BE.DAL.Constants
         ReturnedAndRefunding = 9,
         ReturnedAndRefunded = 10,
         ExchangeRequested = 11,
-        Shipping_Replacement = 12
+        Shipping_Replacement = 12,
+        Failed = 13
     }
 }

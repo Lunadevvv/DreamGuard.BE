@@ -1,4 +1,4 @@
-﻿using CloudinaryDotNet.Actions;
+using CloudinaryDotNet.Actions;
 using DreamGuard.BE.BLL.Common;
 using DreamGuard.BE.BLL.Requests;
 using DreamGuard.BE.BLL.Responses;
@@ -1006,6 +1006,23 @@ namespace DreamGuard.BE.BLL.Services.Implements
                     _checkoutProductOrderRepository.UpdateEntity(checkoutOrder);
                 }
             }
+
+            // If order becomes Failed, check if all siblings in checkout are also terminal → update checkout
+            if (newStatus == OrderStatus.Failed && order.CheckoutProductOrderId.HasValue)
+            {
+                var siblingOrders = await _orderRepository.GetOrdersByCheckoutOrderIdAsync(order.CheckoutProductOrderId.Value);
+                bool allTerminal = siblingOrders.All(o => o.Status == OrderStatus.Failed || o.Status == OrderStatus.Cancelled);
+                if (allTerminal)
+                {
+                    var checkoutOrder = await _checkoutProductOrderRepository.GetByIdAsync(order.CheckoutProductOrderId.Value);
+                    if (checkoutOrder != null)
+                    {
+                        checkoutOrder.Status = CheckoutOrderStatus.Failed;
+                        checkoutOrder.UpdatedAt = DateTime.UtcNow;
+                        await _checkoutProductOrderRepository.UpdateAsync(checkoutOrder);
+                    }
+                }
+            }
             
             await _unitOfWork.SaveChangeAsync();
             // notification
@@ -1302,7 +1319,8 @@ namespace DreamGuard.BE.BLL.Services.Implements
                 // (OrderStatus.Confirmed, OrderStatus.Cancelled) => true,
                 (OrderStatus.Processing, OrderStatus.Shipping) => true,
                 (OrderStatus.Shipping, OrderStatus.Delivered) => true,
-                (OrderStatus.Shipping, OrderStatus.Returned) => true,
+                (OrderStatus.Shipping, OrderStatus.Failed) => true,
+                (OrderStatus.Returning, OrderStatus.Failed) => true,
                 (OrderStatus.Delivered, OrderStatus.Completed) => true,
                 _ => false
             };

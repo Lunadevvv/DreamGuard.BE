@@ -275,6 +275,73 @@ namespace DreamGuard.BE.API.Controllers
             return Ok();
         }
 
+        [HttpPut("{id}/complete-fail-shipping")]
+        [Authorize(Roles = Role.DeliveryStaff)]
+        public async Task<IActionResult> CompleteFailShipping(Guid id, [FromBody] CompleteFailShippingRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var staffIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdStr) || !Guid.TryParse(staffIdStr, out var staffId))
+            {
+                return Unauthorized("Invalid staff token.");
+            }
+
+            var result = await _shippingTaskService.CompleteFailShippingAsync(id, staffId, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
+
+        [HttpPost("{id}/submit-return")]
+        [Authorize(Roles = Role.DeliveryStaff)]
+        public async Task<IActionResult> SubmitReturn(Guid id, [FromBody] SubmitReturnRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var staffIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdStr) || !Guid.TryParse(staffIdStr, out var staffId))
+            {
+                return Unauthorized("Invalid staff token.");
+            }
+
+            var result = await _shippingTaskService.SubmitReturnAsync(id, staffId, request);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
+
+        [HttpPost("{id}/confirm-return")]
+        [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.Seller)]
+        public async Task<IActionResult> ConfirmReturn(Guid id, [FromBody] ConfirmReturnRequest request)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            {
+                return Unauthorized(new ErrorResponse { ErrorCode = 401, Message = new List<string> { "Invalid user token." } });
+            }
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _shippingTaskService.ConfirmReturnAsync(id, request, managerId);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.StatusCode, result.Error);
+            }
+            return Ok();
+        }
+
         [HttpPost("{id}/process-returned")]
         [Authorize(Roles = Role.Admin + "," + Role.Manager + "," + Role.Seller)]
         public async Task<IActionResult> ProcessReturnedOrder(Guid id, [FromBody] ProcessReturnedRequest request)

@@ -29,5 +29,9 @@ namespace DreamGuard.BE.BLL.Services.Interfaces
         Task<Result> UpdateTaskToDeliveringForTradeInAsync(Guid taskId, Guid staffId, StartShippingRequest request); //delivering-for-tradeIn
         Task<Result> ProcessReturnedTradeInOrderAsync(Guid taskId, ProcessReturnedTradeInRequest request, Guid managerId, string role); //process-returned-for-tradeIn
         Task<Result> ProcessExchangeTradeInOrderAsync(Guid taskId, ProcessExchangeTradeInRequest request, Guid managerId, string role); //process-exchange-for-tradeIn
+
+        Task<Result> CompleteFailShippingAsync(Guid taskId, Guid staffId, CompleteFailShippingRequest request);
+        Task<Result> SubmitReturnAsync(Guid taskId, Guid staffId, SubmitReturnRequest request);
+        Task<Result> ConfirmReturnAsync(Guid taskId, ConfirmReturnRequest request, Guid managerId);
     }
 }

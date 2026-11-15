@@ -457,7 +457,7 @@ namespace DreamGuard.BE.BLL.Services.Implements
             return Result<PaymentResponse>.Success(MapToResponse(payment));
         }
 
-        public async Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus, Guid managerId, string userRole, string? evidenceUrl = null)
+        public async Task<Result> UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus newStatus, Guid managerId, string userRole, string? evidenceUrl = null, bool isCancelledProcess = false)
         {
             var payment = await _paymentRepository.GetByIdAsync(paymentId);
             if (payment == null)
